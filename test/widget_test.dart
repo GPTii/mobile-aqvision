@@ -1,30 +1,91 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/main.dart';
+import 'package:mobile/screens/home/camera_detail_screen.dart';
+import 'package:mobile/screens/home/record_list_screen.dart';
+import 'package:mobile/screens/home/tabs/camera_tab.dart';
+import 'package:mobile/screens/home/tabs/home_tab.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Shows the RapidMedia login screen', (WidgetTester tester) async {
+    await tester.pumpWidget(const RapidMediaApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('RapidMedia'), findsOneWidget);
+    expect(find.text('Đăng nhập'), findsWidgets);
+    expect(find.byType(TextFormField), findsNWidgets(2));
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Home tab stat cards do not overflow on a narrow screen', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(
+      const MaterialApp(home: HomeTab()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Camera tab does not overflow on a narrow screen in grid or list view', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: CameraTab()),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // Toggle to list view and back.
+    await tester.tap(find.byIcon(Icons.view_list_rounded));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    // Filter down to the offline chip.
+    final offlineChip = find.textContaining('Mất kết nối');
+    await tester.ensureVisible(offlineChip);
+    await tester.tap(offlineChip);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Camera detail screen does not overflow on a narrow screen', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: CameraDetailScreen(
+          name: 'Cổng chính',
+          location: 'Tầng 1 · Lối vào',
+          online: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Record list screen does not overflow on a narrow screen', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: RecordListScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }
