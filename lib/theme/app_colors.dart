@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Shared color palette for the app: a light, white-based UI with a red
-/// brand accent (sampled from the AQP logo mark) and a blue secondary
-/// accent carried over from the existing web dashboard.
+/// brand accent and a blue secondary accent carried over from the existing
+/// web dashboard.
 class AppColors {
   AppColors._();
 
@@ -13,11 +13,11 @@ class AppColors {
 
   // Pastel tint of the brand red — used as a soft header background so
   // headers don't blend into the plain white page.
-  static const headerBackground = Color(0xFFFAEAED);
+  static const headerBackground = Color(0xFFFFECEC);
 
-  // Brand red, sampled from the AQP logo mark.
-  static const accent = Color(0xFFD1273F);
-  static const accentSecondary = Color(0xFF7A1B2C);
+  // Brand red.
+  static const accent = Color(0xFFFF5354);
+  static const accentSecondary = Color(0xFFB23A3B);
 
   // Secondary/informational blue, carried over from the web dashboard.
   static const info = Color(0xFF4C86FF);

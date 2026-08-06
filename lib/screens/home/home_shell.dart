@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
-import 'tabs/notification_tab.dart';
+import 'tabs/profile_tab.dart';
 import 'tabs/report_tab.dart';
 
 class HomeShell extends StatefulWidget {
@@ -19,15 +19,15 @@ class _HomeShellState extends State<HomeShell> {
   static const _tabs = [
     HomeTab(),
     CameraTab(),
-    NotificationTab(),
     ReportTab(),
+    ProfileTab(),
   ];
 
   static const _navItems = [
     _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'),
     _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'),
-    _NavItemData(icon: Icons.notifications_rounded, outlineIcon: Icons.notifications_outlined, label: 'Thông báo'),
     _NavItemData(icon: Icons.bar_chart_rounded, outlineIcon: Icons.bar_chart_outlined, label: 'Báo cáo'),
+    _NavItemData(icon: Icons.person_rounded, outlineIcon: Icons.person_outline_rounded, label: 'Hồ sơ'),
   ];
 
   @override

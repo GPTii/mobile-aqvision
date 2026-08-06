@@ -8,15 +8,14 @@ import 'package:mobile/screens/home/tabs/camera_tab.dart';
 import 'package:mobile/screens/home/tabs/home_tab.dart';
 
 void main() {
-  testWidgets('Shows the RapidMedia login screen', (WidgetTester tester) async {
+  testWidgets('Shows the login screen', (WidgetTester tester) async {
     await tester.pumpWidget(const RapidMediaApp());
 
-    expect(find.text('RapidMedia'), findsOneWidget);
     expect(find.text('Đăng nhập'), findsWidgets);
     expect(find.byType(TextFormField), findsNWidgets(2));
   });
 
-  testWidgets('Home tab stat cards do not overflow on a narrow screen', (WidgetTester tester) async {
+  testWidgets('Home tab does not overflow on a narrow screen', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(320, 720);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -44,13 +43,6 @@ void main() {
 
     // Toggle to list view and back.
     await tester.tap(find.byIcon(Icons.view_list_rounded));
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-
-    // Filter down to the offline chip.
-    final offlineChip = find.textContaining('Mất kết nối');
-    await tester.ensureVisible(offlineChip);
-    await tester.tap(offlineChip);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });

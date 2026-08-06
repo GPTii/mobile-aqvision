@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -36,10 +35,10 @@ class _LoginScreenState extends State<LoginScreen>
       parent: _fadeController,
       curve: Curves.easeOut,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+          CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic),
+        );
     _fadeController.forward();
   }
 
@@ -67,9 +66,9 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text;
 
     if (username == 'admin' && password == 'admin') {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomeShell()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
       return;
     }
 
@@ -79,7 +78,11 @@ class _LoginScreenState extends State<LoginScreen>
         backgroundColor: AppColors.textPrimary,
         content: Row(
           children: [
-            Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+            Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.danger,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             const Text(
               'Sai tài khoản hoặc mật khẩu',
@@ -123,7 +126,10 @@ class _LoginScreenState extends State<LoginScreen>
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: FadeTransition(
@@ -134,13 +140,7 @@ class _LoginScreenState extends State<LoginScreen>
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildBrandHeader(),
-                            const SizedBox(height: 40),
-                            _buildLoginCard(),
-                            const SizedBox(height: 24),
-                            _buildFooter(),
-                          ],
+                          children: [_buildLoginCard()],
                         ),
                       ),
                     ),
@@ -151,53 +151,6 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBrandHeader() {
-    return Column(
-      children: [
-        Container(
-          width: 76,
-          height: 76,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: AppColors.accentGradient,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withValues(alpha: 0.28),
-                blurRadius: 28,
-                spreadRadius: -4,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.videocam_rounded,
-            color: Colors.white,
-            size: 38,
-          ),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'RapidMedia',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-            letterSpacing: 0.3,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Hệ thống quản lý camera thông minh',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 
@@ -230,10 +183,7 @@ class _LoginScreenState extends State<LoginScreen>
           const SizedBox(height: 4),
           const Text(
             'Truy cập hệ thống camera của bạn',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 28),
           _buildLabel('Email hoặc tên đăng nhập'),
@@ -259,7 +209,8 @@ class _LoginScreenState extends State<LoginScreen>
             icon: Icons.lock_outline_rounded,
             obscureText: _obscurePassword,
             suffixIcon: IconButton(
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
               icon: Icon(
                 _obscurePassword
                     ? Icons.visibility_outlined
@@ -285,19 +236,19 @@ class _LoginScreenState extends State<LoginScreen>
                 scale: 0.9,
                 child: Checkbox(
                   value: _rememberMe,
-                  onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                  onChanged: (value) =>
+                      setState(() => _rememberMe = value ?? false),
                   activeColor: AppColors.accent,
                   checkColor: Colors.white,
                   side: const BorderSide(color: AppColors.border, width: 1.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
               const Text(
                 'Ghi nhớ đăng nhập',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const Spacer(),
               TextButton(
@@ -320,10 +271,6 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 12),
           _buildLoginButton(),
-          const SizedBox(height: 22),
-          _buildDivider(),
-          const SizedBox(height: 18),
-          _buildAltLoginRow(),
         ],
       ),
     );
@@ -363,7 +310,10 @@ class _LoginScreenState extends State<LoginScreen>
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.border),
@@ -430,85 +380,6 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: AppColors.border)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            'hoặc tiếp tục với',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ),
-        const Expanded(child: Divider(color: AppColors.border)),
-      ],
-    );
-  }
-
-  Widget _buildAltLoginRow() {
-    final options = [
-      (Icons.fingerprint_rounded, 'Sinh trắc học'),
-      (Icons.qr_code_scanner_rounded, 'Quét mã QR'),
-    ];
-
-    return Row(
-      children: options
-          .map(
-            (opt) => Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: opt == options.first ? 8 : 0,
-                  left: opt == options.last ? 8 : 0,
-                ),
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(opt.$1, size: 18, color: AppColors.textSecondary),
-                  label: Text(
-                    opt.$2,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Center(
-      child: RichText(
-        text: TextSpan(
-          text: 'Chưa có tài khoản? ',
-          style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
-          children: [
-            TextSpan(
-              text: 'Liên hệ quản trị viên',
-              style: const TextStyle(
-                color: AppColors.accent,
-                fontWeight: FontWeight.w700,
-              ),
-              recognizer: TapGestureRecognizer()..onTap = () {},
-            ),
-          ],
         ),
       ),
     );
