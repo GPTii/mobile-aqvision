@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../data/camera_store.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/camera_form_sheet.dart';
+import '../../widgets/prompt_dialog.dart';
 import 'record_list_screen.dart';
 
 class _MotionEvent {
@@ -10,85 +13,87 @@ class _MotionEvent {
   const _MotionEvent(this.location, this.time);
 }
 
-class CameraDetailScreen extends StatefulWidget {
-  final String name;
-  final String location;
-  final bool online;
-  final String resolution;
-  final bool recording;
+const _motionEvents = [
+  _MotionEvent('Gần cửa ra vào', '5 phút trước'),
+  _MotionEvent('Khu vực trung tâm', '22 phút trước'),
+  _MotionEvent('Gần cửa sổ', '1 giờ trước'),
+];
 
-  const CameraDetailScreen({
-    super.key,
-    required this.name,
-    required this.location,
-    required this.online,
-    this.resolution = '1080p',
-    this.recording = true,
-  });
+class CameraDetailScreen extends StatefulWidget {
+  final String cameraId;
+
+  const CameraDetailScreen({super.key, required this.cameraId});
 
   @override
   State<CameraDetailScreen> createState() => _CameraDetailScreenState();
 }
 
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
-  final _pageController = PageController();
-  int _page = 0;
-  late bool _isRecording = widget.recording;
   bool _isAlarmArmed = false;
 
-  static const _motionEvents = [
-    _MotionEvent('Gần cửa ra vào', '5 phút trước'),
-    _MotionEvent('Khu vực trung tâm', '22 phút trước'),
-    _MotionEvent('Gần cửa sổ', '1 giờ trước'),
-  ];
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  Future<void> _confirmDelete(BuildContext context, Camera camera) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Xoá camera?',
+      message: 'Bạn có chắc muốn xoá "${camera.name}"? Hành động này không thể hoàn tác.',
+    );
+    if (!confirmed || !context.mounted) return;
+    CameraStore.instance.deleteCamera(camera.id);
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+    return ListenableBuilder(
+      listenable: CameraStore.instance,
+      builder: (context, _) {
+        final camera = CameraStore.instance.cameraById(widget.cameraId);
+        if (camera == null) {
+          return const Scaffold(backgroundColor: AppColors.background);
+        }
+        final group = CameraStore.instance.groupById(camera.groupId);
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: Column(
+              children: [
+                DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: AppColors.headerBackground,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: _buildHeader(context, camera, group?.name ?? ''),
                 ),
-              ),
-              child: _buildHeader(context),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildPreview(),
-                    _buildDots(),
-                    const SizedBox(height: 20),
-                    _buildControls(),
-                    const SizedBox(height: 8),
-                    _buildSpeakButton(),
-                    _buildMotionSection(),
-                  ],
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildPreview(camera),
+                        const SizedBox(height: 20),
+                        _buildControls(camera),
+                        const SizedBox(height: 8),
+                        _buildSpeakButton(),
+                        _buildDeviceInfoSection(camera, group?.name ?? ''),
+                        _buildMotionSection(camera),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, Camera camera, String groupName) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 16, 16),
       child: Row(
@@ -106,7 +111,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.name,
+                  camera.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -116,7 +121,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                   ),
                 ),
                 Text(
-                  widget.location,
+                  groupName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -124,23 +129,48 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => RecordListScreen(cameraName: widget.name),
-              ),
-            ),
+          PopupMenuButton<String>(
             icon: const Icon(
-              Icons.history_rounded,
+              Icons.more_vert_rounded,
               color: AppColors.textPrimary,
               size: 22,
             ),
+            color: AppColors.card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            onSelected: (value) {
+              switch (value) {
+                case 'history':
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => RecordListScreen(cameraName: camera.name),
+                    ),
+                  );
+                case 'edit':
+                  showCameraFormSheet(context, camera: camera);
+                case 'delete':
+                  _confirmDelete(context, camera);
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'history',
+                child: Text('Lịch sử ghi hình'),
+              ),
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Sửa thông tin'),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Xoá camera', style: TextStyle(color: AppColors.danger)),
+              ),
+            ],
           ),
           Icon(
-            widget.online
+            camera.online
                 ? Icons.power_settings_new_rounded
                 : Icons.power_off_rounded,
-            color: widget.online ? AppColors.success : AppColors.textMuted,
+            color: camera.online ? AppColors.success : AppColors.textMuted,
             size: 22,
           ),
           const SizedBox(width: 4),
@@ -149,7 +179,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildPreview() {
+  Widget _buildPreview(Camera camera) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: AspectRatio(
@@ -167,103 +197,98 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: 3,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (context, index) => Stack(
-                children: [
-                  const Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: AppColors.mediaPlaceholderGradient,
+            child: Stack(
+              children: [
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.mediaPlaceholderGradient,
+                    ),
+                  ),
+                ),
+                const Center(
+                  child: Icon(
+                    Icons.videocam_rounded,
+                    color: AppColors.mediaPlaceholderIcon,
+                    size: 56,
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      camera.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const Center(
-                    child: Icon(
-                      Icons.videocam_rounded,
-                      color: AppColors.mediaPlaceholderIcon,
-                      size: 56,
-                    ),
-                  ),
+                ),
+                if (camera.online)
                   Positioned(
                     top: 12,
-                    left: 12,
+                    right: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
+                        color: AppColors.danger.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(
-                        'Cam ${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.only(right: 4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const Text(
+                            'LIVE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  if (widget.online)
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.only(right: 4),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const Text(
-                              'LIVE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  Positioned(
-                    bottom: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.fullscreen_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                    child: const Icon(
+                      Icons.fullscreen_rounded,
+                      color: Colors.white,
+                      size: 18,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -271,37 +296,18 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildDots() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(3, (index) {
-          final selected = index == _page;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            width: selected ? 16 : 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.accent : AppColors.border,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildControls() {
+  Widget _buildControls(Camera camera) {
     final controls = [
       (
-        icon: _isRecording
+        icon: camera.recording
             ? Icons.stop_circle_rounded
             : Icons.fiber_manual_record_rounded,
         label: 'Record',
-        active: _isRecording,
-        onTap: () => setState(() => _isRecording = !_isRecording),
+        active: camera.recording,
+        onTap: () => CameraStore.instance.updateCamera(
+          camera.id,
+          recording: !camera.recording,
+        ),
       ),
       (
         icon: Icons.camera_alt_rounded,
@@ -383,7 +389,93 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildMotionSection() {
+  Widget _buildDeviceInfoSection(Camera camera, String groupName) {
+    final rows = [
+      ('Camera ID', camera.cameraCode, Icons.qr_code_2_rounded),
+      ('Loại camera', camera.type, Icons.videocam_outlined),
+      ('Địa chỉ IP', camera.ipAddress, Icons.wifi_rounded),
+      ('Vị trí lắp đặt', camera.location, Icons.place_outlined),
+      ('Nhóm', groupName, Icons.folder_open_rounded),
+      (
+        'Trạng thái',
+        camera.online ? 'Online' : 'Offline',
+        camera.online ? Icons.check_circle_rounded : Icons.cancel_rounded,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 26, 16, 12),
+          child: Text(
+            'Thông tin thiết bị',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: List.generate(rows.length, (i) {
+                final (label, value, icon) = rows[i];
+                final isStatus = label == 'Trạng thái';
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      child: Row(
+                        children: [
+                          Icon(icon, size: 17, color: isStatus
+                              ? (camera.online ? AppColors.success : AppColors.textMuted)
+                              : AppColors.textMuted),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: isStatus
+                                    ? (camera.online ? AppColors.success : AppColors.danger)
+                                    : AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (i != rows.length - 1)
+                      Divider(height: 1, color: AppColors.divider, indent: 14, endIndent: 14),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMotionSection(Camera camera) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -411,7 +503,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 final event = _motionEvents[i];
                 return Column(
                   children: [
-                    _MotionTile(event: event, cameraName: widget.name),
+                    _MotionTile(event: event, cameraName: camera.name),
                     if (i != _motionEvents.length - 1)
                       Divider(
                         height: 1,

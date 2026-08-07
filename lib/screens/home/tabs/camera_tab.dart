@@ -1,34 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/camera_store.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/camera_form_sheet.dart';
+import '../../../widgets/notification_bell_button.dart';
+import '../../../widgets/prompt_dialog.dart';
 import '../camera_detail_screen.dart';
-
-class _Camera {
-  final String name;
-  final String location;
-  final bool online;
-  final String resolution;
-  final bool recording;
-
-  const _Camera(
-    this.name,
-    this.location,
-    this.online,
-    this.resolution,
-    this.recording,
-  );
-}
-
-const _cameras = [
-  _Camera('Cổng chính', 'Tầng 1 · Lối vào', true, '1080p', true),
-  _Camera('Bãi đỗ xe', 'Khu vực ngoài trời', true, '4K', true),
-  _Camera('Kho hàng', 'Tầng hầm B1', false, '1080p', false),
-  _Camera('Hành lang T2', 'Tầng 2 · Khu văn phòng', true, '1080p', true),
-  _Camera('Quầy lễ tân', 'Tầng 1 · Sảnh chính', true, '4K', true),
-  _Camera('Phòng server', 'Tầng 3 · Khu kỹ thuật', true, '1080p', true),
-  _Camera('Cửa sau', 'Tầng 1 · Lối thoát hiểm', false, '720p', false),
-  _Camera('Sân thượng', 'Tầng mái', true, '1080p', false),
-];
 
 class CameraTab extends StatefulWidget {
   const CameraTab({super.key});
@@ -46,46 +23,54 @@ class _CameraTabState extends State<CameraTab> {
 
   @override
   Widget build(BuildContext context) {
-    final onlineCount = _cameras.where((c) => c.online).length;
+    return ListenableBuilder(
+      listenable: CameraStore.instance,
+      builder: (context, _) {
+        final cameras = CameraStore.instance.cameras;
+        final onlineCount = cameras.where((c) => c.online).length;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          DecoratedBox(
-            decoration: const BoxDecoration(
-              color: AppColors.headerBackground,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppColors.headerBackground,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(28),
+                    bottomRight: Radius.circular(28),
+                  ),
+                ),
+                child: SafeArea(
+                  bottom: false,
+                  child: _Header(
+                    total: cameras.length,
+                    online: onlineCount,
+                    isGridView: _isGridView,
+                    onToggleView: () => setState(() => _isGridView = !_isGridView),
+                  ),
+                ),
               ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: _Header(
-                total: _cameras.length,
-                online: onlineCount,
-                isGridView: _isGridView,
-                onToggleView: () => setState(() => _isGridView = !_isGridView),
+              Expanded(
+                child: SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    color: AppColors.accent,
+                    backgroundColor: AppColors.card,
+                    child: cameras.isEmpty
+                        ? const _EmptyState()
+                        : _isGridView
+                        ? _CameraGrid(cameras: cameras)
+                        : _CameraList(cameras: cameras),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: RefreshIndicator(
-                onRefresh: _handleRefresh,
-                color: AppColors.accent,
-                backgroundColor: AppColors.card,
-                child: _isGridView
-                    ? const _CameraGrid(cameras: _cameras)
-                    : const _CameraList(cameras: _cameras),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -133,6 +118,8 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+          const NotificationBellButton(),
+          const SizedBox(width: 10),
           _SquareIconButton(
             icon: isGridView
                 ? Icons.view_list_rounded
@@ -140,27 +127,61 @@ class _Header extends StatelessWidget {
             onTap: onToggleView,
           ),
           const SizedBox(width: 10),
-          _SquareIconButton(
-            icon: Icons.add_rounded,
-            onTap: () {},
-            filled: true,
-          ),
+          _AddMenuButton(),
         ],
       ),
     );
   }
 }
 
+class _AddMenuButton extends StatelessWidget {
+  const _AddMenuButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: (value) {
+        switch (value) {
+          case 'camera':
+            showCameraFormSheet(context);
+          case 'group':
+            _promptAddGroup(context);
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'camera', child: Text('Thêm camera')),
+        PopupMenuItem(value: 'group', child: Text('Thêm nhóm camera')),
+      ],
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          gradient: AppColors.accentGradient,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(Icons.add_rounded, size: 21, color: Colors.white),
+      ),
+    );
+  }
+}
+
+Future<void> _promptAddGroup(BuildContext context) async {
+  final name = await showTextPromptDialog(
+    context,
+    title: 'Thêm nhóm camera',
+    hint: 'VD: Phòng ngủ',
+    confirmLabel: 'Thêm',
+  );
+  if (name != null) CameraStore.instance.addGroup(name);
+}
+
 class _SquareIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final bool filled;
 
-  const _SquareIconButton({
-    required this.icon,
-    required this.onTap,
-    this.filled = false,
-  });
+  const _SquareIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -173,16 +194,11 @@ class _SquareIconButton extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            gradient: filled ? AppColors.accentGradient : null,
-            color: filled ? null : AppColors.card,
+            color: AppColors.card,
             borderRadius: BorderRadius.circular(14),
-            border: filled ? null : Border.all(color: AppColors.divider),
+            border: Border.all(color: AppColors.divider),
           ),
-          child: Icon(
-            icon,
-            size: 21,
-            color: filled ? Colors.white : AppColors.textSecondary,
-          ),
+          child: Icon(icon, size: 21, color: AppColors.textSecondary),
         ),
       ),
     );
@@ -190,7 +206,7 @@ class _SquareIconButton extends StatelessWidget {
 }
 
 class _CameraGrid extends StatelessWidget {
-  final List<_Camera> cameras;
+  final List<Camera> cameras;
 
   const _CameraGrid({required this.cameras});
 
@@ -212,23 +228,9 @@ class _CameraGrid extends StatelessWidget {
 }
 
 class _CameraGridCard extends StatelessWidget {
-  final _Camera camera;
+  final Camera camera;
 
   const _CameraGridCard({required this.camera});
-
-  void _openDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CameraDetailScreen(
-          name: camera.name,
-          location: camera.location,
-          online: camera.online,
-          resolution: camera.resolution,
-          recording: camera.recording,
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +238,11 @@ class _CameraGridCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () => _openDetail(context),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CameraDetailScreen(cameraId: camera.id),
+          ),
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Stack(
@@ -268,7 +274,7 @@ class _CameraGridCard extends StatelessWidget {
 }
 
 class _CameraList extends StatelessWidget {
-  final List<_Camera> cameras;
+  final List<Camera> cameras;
 
   const _CameraList({required this.cameras});
 
@@ -285,31 +291,23 @@ class _CameraList extends StatelessWidget {
 }
 
 class _CameraListTile extends StatelessWidget {
-  final _Camera camera;
+  final Camera camera;
 
   const _CameraListTile({required this.camera});
 
-  void _openDetail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CameraDetailScreen(
-          name: camera.name,
-          location: camera.location,
-          online: camera.online,
-          resolution: camera.resolution,
-          recording: camera.recording,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final groupName = CameraStore.instance.groupById(camera.groupId)?.name ?? '';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _openDetail(context),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CameraDetailScreen(cameraId: camera.id),
+          ),
+        ),
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -374,7 +372,7 @@ class _CameraListTile extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            camera.location,
+                            groupName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -483,6 +481,65 @@ class _RecordingDot extends StatelessWidget {
         color: AppColors.danger,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 1.2),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.card,
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: Icon(
+                      Icons.videocam_off_outlined,
+                      size: 30,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Chưa có camera nào',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Nhấn nút + phía trên để thêm camera đầu tiên.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

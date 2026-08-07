@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/auth_store.dart';
 import '../../theme/app_colors.dart';
 import '../home/home_shell.dart';
 
@@ -66,6 +67,7 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text;
 
     if (username == 'admin' && password == 'admin') {
+      AuthStore.instance.login(username);
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
@@ -246,9 +248,13 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
               ),
-              const Text(
-                'Ghi nhớ đăng nhập',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              Flexible(
+                child: Text(
+                  'Ghi nhớ đăng nhập',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
               ),
               const Spacer(),
               TextButton(
