@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 const kCameraTypes = [
   'Camera Dome',
@@ -26,6 +29,11 @@ class Camera {
   String resolution;
   bool recording;
   final String lastSeen;
+  
+  // API specific fields
+  String? app;
+  String? hlsUrl;
+  String? targetUrl;
 
   Camera({
     required this.id,
@@ -39,22 +47,19 @@ class Camera {
     this.resolution = '1080p',
     this.recording = false,
     this.lastSeen = '--:--',
+    this.app,
+    this.hlsUrl,
+    this.targetUrl,
   });
 }
 
-/// Single in-memory source of truth for camera groups (rooms) and cameras,
-/// shared by the Home and Camera tabs so add/edit/delete reflects everywhere.
 class CameraStore extends ChangeNotifier {
   static final CameraStore instance = CameraStore._();
 
   final List<CameraGroup> _groups = [];
-  final List<Camera> _cameras = [];
-  int _groupSeq = 0;
-  int _cameraSeq = 0;
+  List<Camera> _cameras = [];
 
-  CameraStore._() {
-    _seedInitialData();
-  }
+  CameraStore._();
 
   List<CameraGroup> get groups => List.unmodifiable(_groups);
   List<Camera> get cameras => List.unmodifiable(_cameras);
@@ -75,38 +80,128 @@ class CameraStore extends ChangeNotifier {
     }
     return null;
   }
-
-  String _nextGroupId() => 'group_${_groupSeq++}';
-  String _nextCameraId() => 'camera_${_cameraSeq++}';
-
-  /// Suggests the next free device code/IP so the add-camera form starts
-  /// pre-filled with something plausible instead of forcing manual entry.
-  String suggestCameraCode() =>
-      'CAM-${(_cameraSeq + 1).toString().padLeft(4, '0')}';
-
-  String suggestIpAddress() => '192.168.1.${100 + _cameraSeq}';
-
-  CameraGroup addGroup(String name) {
-    final group = CameraGroup(id: _nextGroupId(), name: name.trim());
-    _groups.add(group);
-    notifyListeners();
-    return group;
+  
+  String get _baseUrl {
+    if (kIsWeb) {
+      final port = Uri.base.port;
+      final host = Uri.base.host.isNotEmpty ? Uri.base.host : "localhost";
+      if (port != 3002 && (host == 'localhost' || host == '127.0.0.1')) {
+        return "http://$host:3002/api";
+      }
+      return "${Uri.base.scheme}://${Uri.base.authority}/api";
+    }
+    return "https://api.aqvision.net/api";
+  }
+  
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("token");
   }
 
-  void renameGroup(String groupId, String newName) {
+  Future<void> fetchGroups() async {
+    final token = await _getToken();
+    if (token == null) return;
+    
+    final uri = Uri.parse("$_baseUrl/groups");
+    final res = await http.get(uri, headers: {
+      "Authorization": "Bearer $token",
+    }).timeout(const Duration(seconds: 10));
+    
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      final List data = json["data"] ?? [];
+      _groups.clear();
+      for (final item in data) {
+        _groups.add(CameraGroup(
+          id: item["id"].toString(),
+          name: item["name"] ?? "Nhóm",
+        ));
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchCameras() async {
+    final token = await _getToken();
+    if (token == null) return;
+    
+    final uri = Uri.parse("$_baseUrl/v1/streams");
+    final res = await http.get(uri, headers: {
+      "Authorization": "Bearer $token",
+    }).timeout(const Duration(seconds: 10));
+    
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      final List data = json["data"] ?? [];
+      
+      _cameras = data.map((item) => Camera(
+        id: (item["id"] ?? 0).toString(),
+        name: item["name"] ?? "Camera",
+        cameraCode: item["stream"] ?? "CAM-0000",
+        type: kCameraTypes[0],
+        ipAddress: item["targetUrl"] ?? "", // Map targetUrl to ipAddress just for UI
+        location: "Góc camera", // Mocked for UI
+        groupId: (item["groupId"] ?? 0).toString(),
+        online: item["status"] == "Online",
+        resolution: "1080p",
+        recording: true,
+        lastSeen: "Vừa mới",
+        app: item["app"] ?? "live",
+        hlsUrl: item["playbackUrls"]?["hls"],
+        targetUrl: item["sourceUrl"] ?? item["targetUrl"],
+      )).toList();
+      notifyListeners();
+    }
+  }
+
+  String suggestCameraCode() => 'live'; // Usually the 'app' or stream prefix in API
+  String suggestIpAddress() => 'rtsp://';
+
+  Future<CameraGroup> addGroup(String name) async {
+    final token = await _getToken();
+    if (token == null) throw Exception("Unauthorized");
+    
+    final uri = Uri.parse("$_baseUrl/groups");
+    final res = await http.post(uri, headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json"
+    }, body: jsonEncode({"name": name.trim()}));
+    
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final json = jsonDecode(res.body);
+      final data = json["data"];
+      final group = CameraGroup(id: data["id"].toString(), name: data["name"]);
+      _groups.add(group);
+      notifyListeners();
+      return group;
+    } else {
+      final json = jsonDecode(res.body);
+      throw Exception(json["error"] ?? "Lỗi thêm nhóm");
+    }
+  }
+
+  Future<void> renameGroup(String groupId, String newName) async {
     final group = groupById(groupId);
     if (group == null || newName.trim().isEmpty) return;
     group.name = newName.trim();
     notifyListeners();
   }
 
-  void deleteGroup(String groupId) {
-    _cameras.removeWhere((c) => c.groupId == groupId);
+  Future<void> deleteGroup(String groupId) async {
+    final token = await _getToken();
+    if (token == null) return;
+    
+    final uri = Uri.parse("$_baseUrl/groups/$groupId");
+    await http.delete(uri, headers: {
+      "Authorization": "Bearer $token",
+    });
+    
     _groups.removeWhere((g) => g.id == groupId);
     notifyListeners();
+    await fetchCameras(); // Cameras might have been unlinked
   }
 
-  Camera addCamera({
+  Future<Camera> addCamera({
     required String name,
     required String groupId,
     required String cameraCode,
@@ -117,26 +212,29 @@ class CameraStore extends ChangeNotifier {
     bool online = true,
     bool recording = false,
     String lastSeen = 'Vừa thêm',
-  }) {
-    final camera = Camera(
-      id: _nextCameraId(),
-      name: name.trim(),
-      cameraCode: cameraCode.trim(),
-      type: type,
-      ipAddress: ipAddress.trim(),
-      location: location.trim(),
-      groupId: groupId,
-      online: online,
-      resolution: resolution,
-      recording: recording,
-      lastSeen: lastSeen,
-    );
-    _cameras.add(camera);
-    notifyListeners();
-    return camera;
+  }) async {
+    final token = await _getToken();
+    final uri = Uri.parse("$_baseUrl/proxies");
+    final res = await http.post(uri, headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    }, body: jsonEncode({
+      "app": "live", // Hardcode for now, or map to cameraCode
+      "stream": cameraCode,
+      "url": ipAddress, // Using ipAddress as RTSP Url in UI mapping
+      "groupId": int.tryParse(groupId) ?? 0,
+    }));
+    
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      await fetchCameras();
+      return _cameras.firstWhere((c) => c.cameraCode == cameraCode, orElse: () => _cameras.last);
+    } else {
+      final json = jsonDecode(res.body);
+      throw Exception(json["error"] ?? "Lỗi thêm camera");
+    }
   }
 
-  void updateCamera(
+  Future<void> updateCamera(
     String cameraId, {
     String? name,
     String? groupId,
@@ -147,129 +245,40 @@ class CameraStore extends ChangeNotifier {
     String? resolution,
     bool? online,
     bool? recording,
-  }) {
+  }) async {
+    final token = await _getToken();
+    final uri = Uri.parse("$_baseUrl/proxies/$cameraId");
     final camera = cameraById(cameraId);
-    if (camera == null) return;
-    if (name != null && name.trim().isNotEmpty) camera.name = name.trim();
-    if (groupId != null) camera.groupId = groupId;
-    if (cameraCode != null && cameraCode.trim().isNotEmpty) {
-      camera.cameraCode = cameraCode.trim();
+    
+    final res = await http.patch(uri, headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    }, body: jsonEncode({
+      "app": camera?.app ?? "live",
+      "stream": cameraCode ?? camera?.cameraCode,
+      "url": ipAddress ?? camera?.targetUrl,
+      "groupId": groupId == "" ? "" : (groupId != null ? (int.tryParse(groupId) ?? 0) : null),
+    }));
+    
+    if (res.statusCode == 200) {
+      await fetchCameras();
+    } else {
+      throw Exception("Lỗi cập nhật camera");
     }
-    if (type != null) camera.type = type;
-    if (ipAddress != null && ipAddress.trim().isNotEmpty) {
-      camera.ipAddress = ipAddress.trim();
-    }
-    if (location != null) camera.location = location.trim();
-    if (resolution != null) camera.resolution = resolution;
-    if (online != null) camera.online = online;
-    if (recording != null) camera.recording = recording;
-    notifyListeners();
   }
 
-  void deleteCamera(String cameraId) {
-    _cameras.removeWhere((c) => c.id == cameraId);
-    notifyListeners();
-  }
-
-  void _seedInitialData() {
-    final livingRoom = addGroup('Phòng khách');
-    final kitchen = addGroup('Nhà bếp');
-    final parking = addGroup('Bãi đỗ xe');
-    final warehouse = addGroup('Kho hàng');
-
-    addCamera(
-      name: 'Cam 1',
-      groupId: livingRoom.id,
-      cameraCode: 'CAM-0001',
-      type: kCameraTypes[0],
-      ipAddress: '192.168.1.101',
-      location: 'Góc trái, gần cửa ra vào',
-      recording: true,
-      lastSeen: '15:45',
-    );
-    addCamera(
-      name: 'Cam 2',
-      groupId: livingRoom.id,
-      cameraCode: 'CAM-0002',
-      type: kCameraTypes[1],
-      ipAddress: '192.168.1.102',
-      location: 'Gần tivi, hướng ra sofa',
-      recording: true,
-      lastSeen: '15:45',
-    );
-    addCamera(
-      name: 'Cam 3',
-      groupId: livingRoom.id,
-      cameraCode: 'CAM-0003',
-      type: kCameraTypes[2],
-      ipAddress: '192.168.1.103',
-      location: 'Trần nhà, giữa phòng',
-      online: false,
-      lastSeen: '15:20',
-    );
-
-    addCamera(
-      name: 'Cam 1',
-      groupId: kitchen.id,
-      cameraCode: 'CAM-0004',
-      type: kCameraTypes[0],
-      ipAddress: '192.168.1.104',
-      location: 'Trên tủ bếp',
-      recording: true,
-      lastSeen: '15:40',
-    );
-    addCamera(
-      name: 'Cam 2',
-      groupId: kitchen.id,
-      cameraCode: 'CAM-0005',
-      type: kCameraTypes[1],
-      ipAddress: '192.168.1.105',
-      location: 'Gần cửa hậu',
-      recording: true,
-      lastSeen: '15:38',
-    );
-    addCamera(
-      name: 'Cam 3',
-      groupId: kitchen.id,
-      cameraCode: 'CAM-0006',
-      type: kCameraTypes[3],
-      ipAddress: '192.168.1.106',
-      location: 'Bàn ăn',
-      resolution: '4K',
-      lastSeen: '15:36',
-    );
-
-    addCamera(
-      name: 'Cổng chính',
-      groupId: parking.id,
-      cameraCode: 'CAM-0007',
-      type: kCameraTypes[1],
-      ipAddress: '192.168.1.107',
-      location: 'Trụ cổng, hướng ra đường',
-      resolution: '4K',
-      recording: true,
-      lastSeen: '15:30',
-    );
-    addCamera(
-      name: 'Bãi đỗ xe ngoài',
-      groupId: parking.id,
-      cameraCode: 'CAM-0008',
-      type: kCameraTypes[2],
-      ipAddress: '192.168.1.108',
-      location: 'Mái hiên, bao quát bãi xe',
-      online: false,
-      lastSeen: '14:58',
-    );
-
-    addCamera(
-      name: 'Kho A',
-      groupId: warehouse.id,
-      cameraCode: 'CAM-0009',
-      type: kCameraTypes[0],
-      ipAddress: '192.168.1.109',
-      location: 'Góc kho, gần kệ hàng A',
-      resolution: '720p',
-      lastSeen: '13:12',
-    );
+  Future<void> deleteCamera(String cameraId) async {
+    final token = await _getToken();
+    final uri = Uri.parse("$_baseUrl/proxies/$cameraId");
+    final res = await http.delete(uri, headers: {
+      "Authorization": "Bearer $token",
+    });
+    
+    if (res.statusCode == 200) {
+      _cameras.removeWhere((c) => c.id == cameraId);
+      notifyListeners();
+    } else {
+      throw Exception("Lỗi xóa camera");
+    }
   }
 }

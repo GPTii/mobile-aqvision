@@ -57,43 +57,45 @@ class _LoginScreenState extends State<LoginScreen>
     FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
 
-    // Simulated authentication call.
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
     final username = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (username == 'admin' && password == 'admin') {
-      AuthStore.instance.login(username);
+    try {
+      await AuthStore.instance.login(username, password);
+      
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
       Navigator.of(
         context,
       ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.textPrimary,
-        content: Row(
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.danger,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Sai tài khoản hoặc mật khẩu',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.textPrimary,
+          content: Row(
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.danger,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  e.toString().replaceAll("Exception: ", ""),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -116,8 +118,8 @@ class _LoginScreenState extends State<LoginScreen>
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.accent.withValues(alpha: 0.07),
-                      AppColors.accent.withValues(alpha: 0),
+                      AppColors.accent.withOpacity(0.07),
+                      AppColors.accent.withOpacity(0),
                     ],
                   ),
                 ),
@@ -165,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen>
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 32,
             offset: const Offset(0, 16),
           ),
@@ -354,7 +356,7 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: AppColors.accentGradient,
           boxShadow: [
             BoxShadow(
-              color: AppColors.accent.withValues(alpha: 0.28),
+              color: AppColors.accent.withOpacity(0.28),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),

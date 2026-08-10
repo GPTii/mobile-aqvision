@@ -48,6 +48,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
 
   String? _selectedGroupId;
   static const _newGroupSentinel = '__new_group__';
+  bool _isLoading = false;
   late String _type;
   late String _resolution;
   late bool _online;
@@ -90,43 +91,51 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     var groupId = _selectedGroupId;
     if (groupId == _newGroupSentinel) {
-      final newGroup = CameraStore.instance.addGroup(_newGroupController.text);
+      final newGroup = await CameraStore.instance.addGroup(_newGroupController.text);
       groupId = newGroup.id;
     }
     if (groupId == null) return;
 
-    if (_isEditing) {
-      CameraStore.instance.updateCamera(
-        widget.camera!.id,
-        name: _nameController.text,
-        cameraCode: _codeController.text,
-        type: _type,
-        ipAddress: _ipController.text,
-        location: _locationController.text,
-        groupId: groupId,
-        resolution: _resolution,
-        online: _online,
-        recording: _recording,
-      );
-    } else {
-      CameraStore.instance.addCamera(
-        name: _nameController.text,
-        cameraCode: _codeController.text,
-        type: _type,
-        ipAddress: _ipController.text,
-        location: _locationController.text,
-        groupId: groupId,
-        resolution: _resolution,
-        online: _online,
-        recording: _recording,
-      );
+    setState(() => _isLoading = true);
+    try {
+      if (_isEditing) {
+        await CameraStore.instance.updateCamera(
+          widget.camera!.id,
+          name: _nameController.text,
+          cameraCode: _codeController.text,
+          type: _type,
+          ipAddress: _ipController.text,
+          location: _locationController.text,
+          groupId: groupId,
+          resolution: _resolution,
+          online: _online,
+          recording: _recording,
+        );
+      } else {
+        await CameraStore.instance.addCamera(
+          name: _nameController.text,
+          cameraCode: _codeController.text,
+          type: _type,
+          ipAddress: _ipController.text,
+          location: _locationController.text,
+          groupId: groupId,
+          resolution: _resolution,
+          online: _online,
+          recording: _recording,
+        );
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     }
-    Navigator.of(context).pop();
   }
 
   @override
@@ -236,7 +245,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                     _FieldLabel('Loại camera'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: _type,
+                      value: _type,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
                       dropdownColor: AppColors.card,
                       decoration: _fieldDecoration(null),
@@ -263,7 +272,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                     _FieldLabel('Nhóm / phòng'),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      initialValue: _selectedGroupId,
+                      value: _selectedGroupId,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
                       dropdownColor: AppColors.card,
                       decoration: _fieldDecoration(null),
@@ -311,7 +320,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                     const SizedBox(height: 8),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
-                      activeThumbColor: AppColors.accent,
+                      activeColor: AppColors.accent,
                       title: const Text(
                         'Trạng thái: Online',
                         style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
@@ -325,7 +334,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                     ),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
-                      activeThumbColor: AppColors.accent,
+                      activeColor: AppColors.accent,
                       title: const Text(
                         'Đang ghi hình',
                         style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
@@ -345,10 +354,10 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(14),
-                            onTap: _save,
+                            onTap: _isLoading ? null : _save,
                             child: Center(
                               child: Text(
-                                _isEditing ? 'Lưu thay đổi' : 'Thêm camera',
+                                _isLoading ? 'Đang lưu...' : (_isEditing ? 'Lưu thay đổi' : 'Thêm camera'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -437,7 +446,7 @@ class _ResolutionChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.accent.withValues(alpha: 0.12) : AppColors.surface,
+            color: selected ? AppColors.accent.withOpacity(0.12) : AppColors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: selected ? AppColors.accent : AppColors.border),
           ),

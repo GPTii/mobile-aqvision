@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+
 
 import '../../../data/camera_store.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/camera_selection_sheet.dart';
 import '../../../widgets/camera_form_sheet.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
@@ -151,7 +154,7 @@ class _EmptyRoomHint extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () => showCameraFormSheet(context, initialGroupId: groupId),
+          onTap: () => showCameraSelectionSheet(context, groupId: groupId),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -194,7 +197,13 @@ class _RoomHeader extends StatelessWidget {
       title: 'Xoá nhóm "${group.name}"?',
       message: 'Toàn bộ camera trong nhóm này ($cameraCount camera) sẽ bị xoá theo.',
     );
-    if (confirmed) CameraStore.instance.deleteGroup(group.id);
+    if (confirmed) {
+      try {
+        await CameraStore.instance.deleteGroup(group.id);
+      } catch (e) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   @override
@@ -249,6 +258,8 @@ class _RoomHeader extends StatelessWidget {
               switch (value) {
                 case 'add':
                   showCameraFormSheet(context, initialGroupId: group.id);
+                case 'add_existing':
+                  showCameraSelectionSheet(context, groupId: group.id);
                 case 'rename':
                   _rename(context);
                 case 'delete':
@@ -256,7 +267,8 @@ class _RoomHeader extends StatelessWidget {
               }
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(value: 'add', child: Text('Thêm camera')),
+              PopupMenuItem(value: 'add', child: Text('Thêm camera mới')),
+              PopupMenuItem(value: 'add_existing', child: Text('Thêm camera có sẵn')),
               PopupMenuItem(value: 'rename', child: Text('Đổi tên nhóm')),
               PopupMenuItem(
                 value: 'delete',
@@ -280,7 +292,13 @@ class _AddRoomCard extends StatelessWidget {
       hint: 'VD: Phòng ngủ',
       confirmLabel: 'Thêm',
     );
-    if (name != null) CameraStore.instance.addGroup(name);
+    if (name != null) {
+      try {
+        await CameraStore.instance.addGroup(name);
+      } catch (e) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
   }
 
   @override
@@ -346,23 +364,25 @@ class _CameraTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const DecoratedBox(
-                  decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-                ),
-                const Center(
-                  child: Icon(
-                    Icons.videocam_rounded,
-                    color: AppColors.mediaPlaceholderIcon,
-                    size: 30,
-                  ),
-                ),
+                Positioned.fill(child: _VideoThumbnail(hlsUrl: camera.hlsUrl ?? '')),
                 Positioned(
                   top: 8,
                   left: 8,
                   child: _Chip(text: camera.name),
                 ),
-                if (camera.online)
-                  const Positioned(top: 8, right: 8, child: _LiveBadge()),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (camera.online) const _LiveBadge(),
+                      const SizedBox(width: 4),
+                      if (camera.groupId != '0' && camera.groupId.isNotEmpty)
+                        _CameraOptionsMenu(camera: camera),
+                    ],
+                  ),
+                ),
                 Positioned(
                   left: 0,
                   right: 0,
@@ -374,8 +394,8 @@ class _CameraTile extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withValues(alpha: 0),
-                          Colors.black.withValues(alpha: 0.55),
+                          Colors.black.withOpacity(0),
+                          Colors.black.withOpacity(0.55),
                         ],
                       ),
                     ),
@@ -403,7 +423,7 @@ class _CameraTile extends StatelessWidget {
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
+                        color: Colors.black.withOpacity(0.55),
                       ),
                       child: Center(
                         child: Text(
@@ -436,7 +456,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black.withOpacity(0.5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: ConstrainedBox(
@@ -464,7 +484,7 @@ class _LiveBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.danger.withValues(alpha: 0.92),
+        color: AppColors.danger.withOpacity(0.92),
         borderRadius: BorderRadius.circular(6),
       ),
       child: const Row(
@@ -483,6 +503,111 @@ class _LiveBadge extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VideoThumbnail extends StatefulWidget {
+  final String hlsUrl;
+  const _VideoThumbnail({required this.hlsUrl});
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail> {
+  VideoPlayerController? _controller;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.hlsUrl.isNotEmpty) {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {});
+            _controller!.setVolume(0);
+            _controller!.play();
+          }
+        }).catchError((_) {
+          if (mounted) setState(() => _hasError = true);
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller != null && _controller!.value.isInitialized) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+        ),
+        Center(
+          child: _hasError
+              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+              : const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CameraOptionsMenu extends StatelessWidget {
+  final Camera camera;
+  const _CameraOptionsMenu({required this.camera});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      padding: EdgeInsets.zero,
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      icon: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.more_horiz_rounded, size: 16, color: Colors.white),
+      ),
+      onSelected: (value) async {
+        if (value == 'remove') {
+          try {
+            await CameraStore.instance.updateCamera(camera.id, groupId: "");
+          } catch (e) {
+            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+          }
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'remove',
+          child: Text('Xoá khỏi nhóm', style: TextStyle(color: AppColors.danger)),
+        ),
+      ],
     );
   }
 }

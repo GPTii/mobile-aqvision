@@ -115,8 +115,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _emailController,
+                    readOnly: true,
                     keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: const TextStyle(color: AppColors.textMuted),
                     decoration: _decoration('you@example.com'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';

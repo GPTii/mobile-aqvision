@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+
 
 import '../../../data/camera_store.dart';
 import '../../../theme/app_colors.dart';
@@ -174,7 +176,13 @@ Future<void> _promptAddGroup(BuildContext context) async {
     hint: 'VD: Phòng ngủ',
     confirmLabel: 'Thêm',
   );
-  if (name != null) CameraStore.instance.addGroup(name);
+  if (name != null) {
+      try {
+        await CameraStore.instance.addGroup(name);
+      } catch (e) {
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
 }
 
 class _SquareIconButton extends StatelessWidget {
@@ -248,14 +256,21 @@ class _CameraGridCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const DecoratedBox(
-                decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-              ),
-              const Center(
-                child: Icon(
-                  Icons.videocam_rounded,
-                  color: AppColors.mediaPlaceholderIcon,
-                  size: 34,
+              _VideoThumbnail(hlsUrl: camera.hlsUrl ?? ''),
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Text(
+                  camera.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
+                  ),
                 ),
               ),
               Positioned(
@@ -324,18 +339,7 @@ class _CameraListTile extends StatelessWidget {
                   height: 68,
                   child: Stack(
                     children: [
-                      const Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-                        ),
-                      ),
-                      const Center(
-                        child: Icon(
-                          Icons.videocam_rounded,
-                          color: AppColors.mediaPlaceholderIcon,
-                          size: 26,
-                        ),
-                      ),
+                      Positioned.fill(child: _VideoThumbnail(hlsUrl: camera.hlsUrl ?? '')),
                       if (camera.recording)
                         const Positioned(
                           top: 5,
@@ -434,8 +438,7 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: (online ? AppColors.danger : Colors.black).withValues(
-          alpha: 0.85,
+        color: (online ? AppColors.danger : Colors.black).withOpacity(0.85,
         ),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -541,6 +544,74 @@ class _EmptyState extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _VideoThumbnail extends StatefulWidget {
+  final String hlsUrl;
+  const _VideoThumbnail({required this.hlsUrl});
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail> {
+  VideoPlayerController? _controller;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.hlsUrl.isNotEmpty) {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {});
+            _controller!.setVolume(0);
+            _controller!.play();
+          }
+        }).catchError((_) {
+          if (mounted) setState(() => _hasError = true);
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller != null && _controller!.value.isInitialized) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+        ),
+        Center(
+          child: _hasError
+              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+              : const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                ),
+        ),
+      ],
     );
   }
 }

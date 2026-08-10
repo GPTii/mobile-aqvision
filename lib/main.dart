@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'screens/auth/login_screen.dart';
+import 'data/auth_store.dart';
+import 'screens/home/home_shell.dart';
 import 'theme/app_colors.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AuthStore.instance.init();
   runApp(const RapidMediaApp());
 }
 
@@ -25,7 +29,7 @@ class RapidMediaApp extends StatelessWidget {
         ),
         fontFamily: 'Roboto',
       ),
-      home: const LoginScreen(),
+      home: AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen(),
     );
   }
 }
