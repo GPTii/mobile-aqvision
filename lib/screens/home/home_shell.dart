@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../data/camera_store.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
 import 'tabs/profile_tab.dart';
@@ -15,6 +16,13 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    CameraStore.instance.fetchCameras();
+    CameraStore.instance.fetchGroups();
+  }
 
   static const _tabs = [
     HomeTab(),
@@ -76,7 +84,7 @@ class _BottomNav extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.border)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, -2),
           ),

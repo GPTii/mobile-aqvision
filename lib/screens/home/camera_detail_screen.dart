@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
+
 
 import '../../data/camera_store.dart';
 import '../../theme/app_colors.dart';
@@ -189,7 +191,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
+                color: Colors.black.withOpacity(0.12),
                 blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
@@ -199,19 +201,26 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             borderRadius: BorderRadius.circular(20),
             child: Stack(
               children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: AppColors.mediaPlaceholderGradient,
-                    ),
-                  ),
-                ),
-                const Center(
-                  child: Icon(
-                    Icons.videocam_rounded,
-                    color: AppColors.mediaPlaceholderIcon,
-                    size: 56,
-                  ),
+                Positioned.fill(
+                  child: camera.online && (camera.hlsUrl?.isNotEmpty ?? false)
+                      ? _DetailVideoPlayer(hlsUrl: camera.hlsUrl!)
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: AppColors.mediaPlaceholderGradient,
+                              ),
+                            ),
+                            const Center(
+                              child: Icon(
+                                Icons.videocam_rounded,
+                                color: AppColors.mediaPlaceholderIcon,
+                                size: 56,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
                 Positioned(
                   top: 12,
@@ -222,7 +231,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -245,7 +254,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.danger.withValues(alpha: 0.9),
+                        color: AppColors.danger.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -272,22 +281,46 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       ),
                     ),
                   ),
-                Positioned(
-                  bottom: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.fullscreen_rounded,
-                      color: Colors.white,
-                      size: 18,
+                if (camera.online && (camera.hlsUrl?.isNotEmpty ?? false))
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => Scaffold(
+                            backgroundColor: Colors.black,
+                            body: SafeArea(
+                              child: Center(
+                                child: AspectRatio(
+                                  aspectRatio: 16/9,
+                                  child: _DetailVideoPlayer(hlsUrl: camera.hlsUrl!),
+                                ),
+                              ),
+                            ),
+                            floatingActionButton: FloatingActionButton(
+                              backgroundColor: Colors.white24,
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white),
+                            ),
+                            floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+                          ),
+                        ));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.fullscreen_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -304,16 +337,28 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             : Icons.fiber_manual_record_rounded,
         label: 'Record',
         active: camera.recording,
-        onTap: () => CameraStore.instance.updateCamera(
-          camera.id,
-          recording: !camera.recording,
-        ),
+        onTap: () async {
+          final newState = !camera.recording;
+          await CameraStore.instance.updateCamera(
+            camera.id,
+            recording: newState,
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(newState ? 'Đang ghi hình...' : 'Đã dừng ghi hình')),
+            );
+          }
+        },
       ),
       (
         icon: Icons.camera_alt_rounded,
         label: 'Capture',
         active: false,
-        onTap: () {},
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
+          );
+        },
       ),
       (
         icon: _isAlarmArmed
@@ -362,7 +407,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.info.withValues(alpha: 0.3),
+                  color: AppColors.info.withOpacity(0.3),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -546,7 +591,7 @@ class _ControlButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             color: active
-                ? AppColors.accent.withValues(alpha: 0.12)
+                ? AppColors.accent.withOpacity(0.12)
                 : AppColors.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
@@ -593,7 +638,7 @@ class _MotionTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.14),
+              color: AppColors.warning.withOpacity(0.14),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -629,7 +674,7 @@ class _MotionTile extends StatelessWidget {
             width: 44,
             height: 32,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.14),
+              color: AppColors.accent.withOpacity(0.14),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -640,6 +685,74 @@ class _MotionTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DetailVideoPlayer extends StatefulWidget {
+  final String hlsUrl;
+  const _DetailVideoPlayer({required this.hlsUrl});
+  @override
+  State<_DetailVideoPlayer> createState() => _DetailVideoPlayerState();
+}
+
+class _DetailVideoPlayerState extends State<_DetailVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.hlsUrl.isNotEmpty) {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {});
+            _controller!.setVolume(1);
+            _controller!.play();
+          }
+        }).catchError((_) {
+          if (mounted) setState(() => _hasError = true);
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller != null && _controller!.value.isInitialized) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+        ),
+        Center(
+          child: _hasError
+              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+              : const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                ),
+        ),
+      ],
     );
   }
 }

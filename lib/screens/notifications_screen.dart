@@ -184,7 +184,7 @@ class _SettingRow extends StatelessWidget {
             ),
           ),
           Switch.adaptive(
-            activeThumbColor: AppColors.accent,
+            activeColor: AppColors.accent,
             value: value,
             onChanged: onChanged,
           ),
@@ -264,7 +264,7 @@ class _NotificationTile extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: _color.withValues(alpha: 0.14),
+                  color: _color.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(_icon, size: 18, color: _color),

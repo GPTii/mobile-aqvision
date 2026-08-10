@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../data/auth_store.dart';
 
 Future<void> showChangePasswordSheet(BuildContext context) {
   return showModalBottomSheet(
@@ -24,6 +25,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscure = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,16 +35,25 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.textPrimary,
-        content: Text('Đổi mật khẩu thành công', style: TextStyle(color: Colors.white)),
-      ),
-    );
+    setState(() => _isLoading = true);
+    try {
+      await AuthStore.instance.changePassword(_currentController.text, _newController.text);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.textPrimary,
+          content: Text('Đổi mật khẩu thành công', style: TextStyle(color: Colors.white)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   @override
@@ -78,8 +89,8 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                       ),
                     ),
                   ),
-                  const Text(
-                    'Đổi mật khẩu',
+                  Text(
+                    _isLoading ? 'Đang đổi...' : 'Đổi mật khẩu',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -92,7 +103,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                     hint: 'Mật khẩu hiện tại',
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu hiện tại';
-                      if (value != 'admin') return 'Mật khẩu hiện tại không đúng';
+                      
                       return null;
                     },
                   ),
@@ -127,10 +138,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                         color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          onTap: _submit,
-                          child: const Center(
+                          onTap: _isLoading ? null : _submit,
+                          child: Center(
                             child: Text(
-                              'Đổi mật khẩu',
+                              _isLoading ? 'Đang đổi...' : 'Đổi mật khẩu',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
