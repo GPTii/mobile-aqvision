@@ -24,7 +24,7 @@ class Camera {
   String type;
   String ipAddress;
   String location;
-  String groupId;
+  List<String> groupIds;
   bool online;
   String resolution;
   bool recording;
@@ -42,7 +42,7 @@ class Camera {
     required this.type,
     required this.ipAddress,
     required this.location,
-    required this.groupId,
+    required this.groupIds,
     this.online = true,
     this.resolution = '1080p',
     this.recording = false,
@@ -65,7 +65,7 @@ class CameraStore extends ChangeNotifier {
   List<Camera> get cameras => List.unmodifiable(_cameras);
 
   List<Camera> camerasInGroup(String groupId) =>
-      _cameras.where((c) => c.groupId == groupId).toList();
+      _cameras.where((c) => c.groupIds.contains(groupId)).toList();
 
   CameraGroup? groupById(String id) {
     for (final group in _groups) {
@@ -141,7 +141,7 @@ class CameraStore extends ChangeNotifier {
         type: kCameraTypes[0],
         ipAddress: item["targetUrl"] ?? "", // Map targetUrl to ipAddress just for UI
         location: "Góc camera", // Mocked for UI
-        groupId: (item["groupId"] ?? 0).toString(),
+        groupIds: (item["groupIds"] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
         online: item["status"] == "Online",
         resolution: "1080p",
         recording: true,
@@ -203,7 +203,7 @@ class CameraStore extends ChangeNotifier {
 
   Future<Camera> addCamera({
     required String name,
-    required String groupId,
+    required List<String> groupIds,
     required String cameraCode,
     required String type,
     required String ipAddress,
@@ -222,7 +222,7 @@ class CameraStore extends ChangeNotifier {
       "app": "live", // Hardcode for now, or map to cameraCode
       "stream": cameraCode,
       "url": ipAddress, // Using ipAddress as RTSP Url in UI mapping
-      "groupId": int.tryParse(groupId) ?? 0,
+      "groupIds": groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
     }));
     
     if (res.statusCode == 200 || res.statusCode == 201) {
@@ -237,7 +237,7 @@ class CameraStore extends ChangeNotifier {
   Future<void> updateCamera(
     String cameraId, {
     String? name,
-    String? groupId,
+    List<String>? groupIds,
     String? cameraCode,
     String? type,
     String? ipAddress,
@@ -257,7 +257,7 @@ class CameraStore extends ChangeNotifier {
       "app": camera?.app ?? "live",
       "stream": cameraCode ?? camera?.cameraCode,
       "url": ipAddress ?? camera?.targetUrl,
-      "groupId": groupId == "" ? "" : (groupId != null ? (int.tryParse(groupId) ?? 0) : null),
+      if (groupIds != null) "groupIds": groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
     }));
     
     if (res.statusCode == 200) {

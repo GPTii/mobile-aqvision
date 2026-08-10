@@ -110,7 +110,7 @@ class _RoomSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  _CameraTile(camera: cameras.first, aspectRatio: 16 / 10),
+                  _CameraTile(camera: cameras.first, groupId: group.id, aspectRatio: 16 / 10),
                   if (extras.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Row(
@@ -122,8 +122,8 @@ class _RoomSection extends StatelessWidget {
                             padding: EdgeInsets.only(
                               right: index == extras.length - 1 ? 0 : 10,
                             ),
-                            child: _CameraTile(
                               camera: extras[index],
+                              groupId: group.id,
                               aspectRatio: 1.3,
                               overflowCount: showOverflow ? overflowCount : 0,
                             ),
@@ -337,11 +337,13 @@ class _AddRoomCard extends StatelessWidget {
 
 class _CameraTile extends StatelessWidget {
   final Camera camera;
+  final String groupId;
   final double aspectRatio;
   final int overflowCount;
 
   const _CameraTile({
     required this.camera,
+    required this.groupId,
     required this.aspectRatio,
     this.overflowCount = 0,
   });
@@ -378,8 +380,8 @@ class _CameraTile extends StatelessWidget {
                     children: [
                       if (camera.online) const _LiveBadge(),
                       const SizedBox(width: 4),
-                      if (camera.groupId != '0' && camera.groupId.isNotEmpty)
-                        _CameraOptionsMenu(camera: camera),
+                      if (groupId.isNotEmpty && groupId != '0')
+                        _CameraOptionsMenu(camera: camera, groupId: groupId),
                     ],
                   ),
                 ),
@@ -577,7 +579,8 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
 
 class _CameraOptionsMenu extends StatelessWidget {
   final Camera camera;
-  const _CameraOptionsMenu({required this.camera});
+  final String groupId;
+  const _CameraOptionsMenu({required this.camera, required this.groupId});
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +599,8 @@ class _CameraOptionsMenu extends StatelessWidget {
       onSelected: (value) async {
         if (value == 'remove') {
           try {
-            await CameraStore.instance.updateCamera(camera.id, groupId: "");
+            final newGroupIds = camera.groupIds.where((id) => id != groupId).toList();
+            await CameraStore.instance.updateCamera(camera.id, groupIds: newGroupIds);
           } catch (e) {
             if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
           }

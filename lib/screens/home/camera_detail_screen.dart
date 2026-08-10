@@ -53,7 +53,11 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
         if (camera == null) {
           return const Scaffold(backgroundColor: AppColors.background);
         }
-        final group = CameraStore.instance.groupById(camera.groupId);
+        final groupNames = camera.groupIds
+            .map((id) => CameraStore.instance.groupById(id)?.name)
+            .where((name) => name != null)
+            .join(', ');
+        final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -68,7 +72,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       bottomRight: Radius.circular(24),
                     ),
                   ),
-                  child: _buildHeader(context, camera, group?.name ?? ''),
+                  child: _buildHeader(context, camera, displayGroupName),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -81,7 +85,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         _buildControls(camera),
                         const SizedBox(height: 8),
                         _buildSpeakButton(),
-                        _buildDeviceInfoSection(camera, group?.name ?? ''),
+                        _buildDeviceInfoSection(camera, displayGroupName),
                         _buildMotionSection(camera),
                       ],
                     ),

@@ -312,7 +312,11 @@ class _CameraListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groupName = CameraStore.instance.groupById(camera.groupId)?.name ?? '';
+    final groupNames = camera.groupIds
+        .map((id) => CameraStore.instance.groupById(id)?.name)
+        .where((name) => name != null)
+        .join(', ');
+    final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
 
     return Material(
       color: Colors.transparent,
@@ -376,7 +380,7 @@ class _CameraListTile extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            groupName,
+                            displayGroupName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
