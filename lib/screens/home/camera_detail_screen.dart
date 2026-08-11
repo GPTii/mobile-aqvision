@@ -3,6 +3,7 @@ import 'package:video_player/video_player.dart';
 
 
 import '../../data/camera_store.dart';
+import '../../data/recording_store.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
@@ -85,6 +86,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         _buildControls(camera),
                         const SizedBox(height: 8),
                         _buildSpeakButton(),
+                        _buildRecordingSection(context, camera),
                         _buildDeviceInfoSection(camera, displayGroupName),
                         _buildMotionSection(camera),
                       ],
@@ -148,7 +150,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 case 'history':
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => RecordListScreen(cameraName: camera.name),
+                      builder: (_) => RecordingListScreen(cameraId: camera.id),
                     ),
                   );
                 case 'edit':
@@ -437,6 +439,106 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       ),
     );
   }
+
+  Widget _buildRecordingSection(BuildContext context, Camera camera) {
+    return ListenableBuilder(
+      listenable: RecordingStore.instance,
+      builder: (ctx, _) {
+        final isRec = RecordingStore.instance.isRecording(camera.id);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Ghi hình',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const Spacer(),
+                  if (isRec)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fiber_manual_record_rounded,
+                              size: 8, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('REC',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => RecordingListScreen(cameraId: camera.id)),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.danger.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.video_library_rounded,
+                              color: AppColors.danger, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Xem bản ghi',
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                              SizedBox(height: 2),
+                              Text('Tìm kiếm, xem và xóa video đã ghi',
+                                  style: TextStyle(
+                                      fontSize: 11.5, color: AppColors.textMuted)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppColors.textMuted, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildDeviceInfoSection(Camera camera, String groupName) {
     final rows = [

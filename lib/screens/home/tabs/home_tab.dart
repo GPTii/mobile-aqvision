@@ -122,6 +122,7 @@ class _RoomSection extends StatelessWidget {
                             padding: EdgeInsets.only(
                               right: index == extras.length - 1 ? 0 : 10,
                             ),
+                            child: _CameraTile(
                               camera: extras[index],
                               groupId: group.id,
                               aspectRatio: 1.3,

@@ -159,7 +159,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                   final id = g["id"] as int;
                   final isSelected = _selectedGroupIds.contains(id);
                   return FilterChip(
-                    label: Text(g["name"], style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+                    label: Text(g["name"], style: TextStyle(color: isSelected ? AppColors.accent : AppColors.textPrimary)),
                     selected: isSelected,
                     onSelected: (selected) {
                       setState(() {
@@ -170,8 +170,8 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                         }
                       });
                     },
-                    selectedColor: AppColors.primary.withOpacity(0.2),
-                    checkmarkColor: AppColors.primary,
+                    selectedColor: AppColors.accent.withOpacity(0.2),
+                    checkmarkColor: AppColors.accent,
                     backgroundColor: AppColors.surface,
                   );
                 }).toList(),
