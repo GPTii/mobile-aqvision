@@ -24,6 +24,9 @@ class HomeTab extends StatelessWidget {
       listenable: CameraStore.instance,
       builder: (context, _) {
         final groups = CameraStore.instance.groups;
+        final ungrouped = CameraStore.instance.cameras
+            .where((c) => c.groupIds.isEmpty)
+            .toList();
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -72,6 +75,8 @@ class HomeTab extends StatelessWidget {
                         const SliverToBoxAdapter(child: SizedBox(height: 12)),
                         for (final group in groups)
                           SliverToBoxAdapter(child: _RoomSection(group: group)),
+                        if (ungrouped.isNotEmpty)
+                          SliverToBoxAdapter(child: _UngroupedSection(cameras: ungrouped)),
                         const SliverToBoxAdapter(child: _AddRoomCard()),
                         const SliverToBoxAdapter(child: SizedBox(height: 24)),
                       ],
@@ -95,8 +100,6 @@ class _RoomSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cameras = CameraStore.instance.camerasInGroup(group.id);
-    final extras = cameras.skip(1).take(2).toList();
-    final overflowCount = cameras.length - 3;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 22),
@@ -107,36 +110,120 @@ class _RoomSection extends StatelessWidget {
           if (cameras.isEmpty)
             _EmptyRoomHint(groupId: group.id)
           else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  _CameraTile(camera: cameras.first, groupId: group.id, aspectRatio: 16 / 10),
-                  if (extras.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: List.generate(extras.length, (index) {
-                        final isLast = index == extras.length - 1;
-                        final showOverflow = isLast && overflowCount > 0;
-                        return Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              right: index == extras.length - 1 ? 0 : 10,
-                            ),
-                            child: _CameraTile(
-                              camera: extras[index],
-                              groupId: group.id,
-                              aspectRatio: 1.3,
-                              overflowCount: showOverflow ? overflowCount : 0,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
-                ],
-              ),
+            _CameraGrid(cameras: cameras, groupId: group.id),
+        ],
+      ),
+    );
+  }
+}
+
+class _UngroupedSection extends StatelessWidget {
+  final List<Camera> cameras;
+
+  const _UngroupedSection({required this.cameras});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _UngroupedHeader(cameraCount: cameras.length),
+          _CameraGrid(cameras: cameras, groupId: ''),
+        ],
+      ),
+    );
+  }
+}
+
+class _UngroupedHeader extends StatelessWidget {
+  final int cameraCount;
+
+  const _UngroupedHeader({required this.cameraCount});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Chưa phân nhóm',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.textMuted,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$cameraCount camera · chưa xếp vào nhóm nào',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraGrid extends StatelessWidget {
+  final List<Camera> cameras;
+  final String groupId;
+
+  const _CameraGrid({required this.cameras, required this.groupId});
+
+  @override
+  Widget build(BuildContext context) {
+    final extras = cameras.skip(1).take(2).toList();
+    final overflowCount = cameras.length - 3;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          _CameraTile(camera: cameras.first, groupId: groupId, aspectRatio: 16 / 10),
+          if (extras.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: List.generate(extras.length, (index) {
+                final isLast = index == extras.length - 1;
+                final showOverflow = isLast && overflowCount > 0;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: index == extras.length - 1 ? 0 : 10,
+                    ),
+                    child: _CameraTile(
+                      camera: extras[index],
+                      groupId: groupId,
+                      aspectRatio: 1.3,
+                      overflowCount: showOverflow ? overflowCount : 0,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ],
         ],
       ),
     );
