@@ -46,8 +46,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   late final TextEditingController _locationController;
   late final TextEditingController _newGroupController;
 
-  String? _selectedGroupId;
-  static const _newGroupSentinel = '__new_group__';
+  List<String> _selectedGroupIds = [];
+  bool _creatingNewGroup = false;
   bool _isLoading = false;
   late String _type;
   late String _resolution;
@@ -75,10 +75,11 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
     _recording = camera?.recording ?? false;
 
     final groups = CameraStore.instance.groups;
-    final preselect = camera?.groupId ?? widget.initialGroupId;
-    _selectedGroupId = groups.any((g) => g.id == preselect)
-        ? preselect
-        : (groups.isNotEmpty ? groups.first.id : _newGroupSentinel);
+    final preselect = widget.initialGroupId;
+    _selectedGroupIds = camera?.groupIds.toList() ?? [];
+    if (_selectedGroupIds.isEmpty && preselect != null && groups.any((g) => g.id == preselect)) {
+      _selectedGroupIds.add(preselect);
+    }
   }
 
   @override
@@ -94,12 +95,11 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    var groupId = _selectedGroupId;
-    if (groupId == _newGroupSentinel) {
+    final groupIdsToSave = List<String>.from(_selectedGroupIds);
+    if (_creatingNewGroup && _newGroupController.text.trim().isNotEmpty) {
       final newGroup = await CameraStore.instance.addGroup(_newGroupController.text);
-      groupId = newGroup.id;
+      groupIdsToSave.add(newGroup.id);
     }
-    if (groupId == null) return;
 
     setState(() => _isLoading = true);
     try {
@@ -111,7 +111,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
           type: _type,
           ipAddress: _ipController.text,
           location: _locationController.text,
-          groupId: groupId,
+          groupIds: groupIdsToSave,
           resolution: _resolution,
           online: _online,
           recording: _recording,
@@ -123,7 +123,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
           type: _type,
           ipAddress: _ipController.text,
           location: _locationController.text,
-          groupId: groupId,
+          groupIds: groupIdsToSave,
           resolution: _resolution,
           online: _online,
           recording: _recording,
@@ -271,29 +271,44 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                     const SizedBox(height: 16),
                     _FieldLabel('Nhóm / phòng'),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGroupId,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
-                      dropdownColor: AppColors.card,
-                      decoration: _fieldDecoration(null),
-                      items: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
                         for (final group in groups)
-                          DropdownMenuItem(value: group.id, child: Text(group.name)),
-                        const DropdownMenuItem(
-                          value: _newGroupSentinel,
-                          child: Text('+ Tạo nhóm mới'),
+                          FilterChip(
+                            label: Text(group.name, style: TextStyle(color: _selectedGroupIds.contains(group.id) ? AppColors.accent : AppColors.textPrimary)),
+                            selected: _selectedGroupIds.contains(group.id),
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedGroupIds.add(group.id);
+                                } else {
+                                  _selectedGroupIds.remove(group.id);
+                                }
+                              });
+                            },
+                            selectedColor: AppColors.accent.withOpacity(0.15),
+                            checkmarkColor: AppColors.accent,
+                            backgroundColor: AppColors.card,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ActionChip(
+                          label: Text('+ Tạo nhóm mới', style: TextStyle(color: _creatingNewGroup ? AppColors.accent : AppColors.textSecondary)),
+                          backgroundColor: AppColors.card,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          onPressed: () => setState(() => _creatingNewGroup = !_creatingNewGroup),
                         ),
                       ],
-                      onChanged: (value) => setState(() => _selectedGroupId = value),
                     ),
-                    if (_selectedGroupId == _newGroupSentinel) ...[
+                    if (_creatingNewGroup) ...[
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _newGroupController,
                         style: const TextStyle(color: AppColors.textPrimary),
                         decoration: _fieldDecoration('Tên nhóm mới'),
                         validator: (value) {
-                          if (_selectedGroupId != _newGroupSentinel) return null;
+                          if (!_creatingNewGroup) return null;
                           return (value == null || value.trim().isEmpty)
                               ? 'Vui lòng nhập tên nhóm'
                               : null;

@@ -26,7 +26,7 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final cameras = CameraStore.instance.cameras.where((c) => c.groupId != widget.groupId).toList();
+    final cameras = CameraStore.instance.cameras.where((c) => !c.groupIds.contains(widget.groupId)).toList();
 
     return Container(
       decoration: const BoxDecoration(
@@ -121,7 +121,11 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
     setState(() => _isLoading = true);
     try {
       for (final id in _selectedIds) {
-        await CameraStore.instance.updateCamera(id, groupId: widget.groupId);
+        final camera = CameraStore.instance.cameraById(id);
+        if (camera != null) {
+          final newGroupIds = [...camera.groupIds, widget.groupId];
+          await CameraStore.instance.updateCamera(id, groupIds: newGroupIds);
+        }
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

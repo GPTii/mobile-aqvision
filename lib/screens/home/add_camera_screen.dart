@@ -21,7 +21,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
   
   bool _isLoading = false;
   List<dynamic> _groups = [];
-  int? _selectedGroupId;
+  List<int> _selectedGroupIds = [];
 
   String get _apiBase {
     if (kIsWeb) {
@@ -42,7 +42,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       _appController.text = widget.cameraToEdit!["app"] ?? "live";
       _streamController.text = widget.cameraToEdit!["stream"] ?? "";
       _urlController.text = widget.cameraToEdit!["targetUrl"] ?? "";
-      _selectedGroupId = widget.cameraToEdit!["groupId"];
+      _selectedGroupIds = List<int>.from(widget.cameraToEdit!["groupIds"] ?? []);
     }
     _fetchGroups();
   }
@@ -85,7 +85,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
         "app": _appController.text,
         "stream": _streamController.text,
         "targetUrl": _urlController.text,
-        "groupId": _selectedGroupId,
+        "groupIds": _selectedGroupIds,
       });
       
       final res = widget.cameraToEdit == null
@@ -150,21 +150,31 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                 validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập URL nguồn" : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                value: _selectedGroupId,
-                dropdownColor: AppColors.surface,
-                style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: "Nhóm", filled: true, fillColor: AppColors.surface),
-                items: [
-                  const DropdownMenuItem<int>(value: null, child: Text("Không có nhóm")),
-                  ..._groups.map((g) => DropdownMenuItem<int>(
-                    value: g["id"],
-                    child: Text(g["name"]),
-                  )),
-                ],
-                onChanged: (val) {
-                  setState(() => _selectedGroupId = val);
-                },
+              const Text("Nhóm (Có thể chọn nhiều)", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _groups.map((g) {
+                  final id = g["id"] as int;
+                  final isSelected = _selectedGroupIds.contains(id);
+                  return FilterChip(
+                    label: Text(g["name"], style: TextStyle(color: isSelected ? AppColors.accent : AppColors.textPrimary)),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedGroupIds.add(id);
+                        } else {
+                          _selectedGroupIds.remove(id);
+                        }
+                      });
+                    },
+                    selectedColor: AppColors.accent.withOpacity(0.2),
+                    checkmarkColor: AppColors.accent,
+                    backgroundColor: AppColors.surface,
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 32),
               ElevatedButton(

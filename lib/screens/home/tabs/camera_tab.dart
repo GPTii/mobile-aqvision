@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-
 import '../../../data/camera_store.dart';
+import '../../../data/recording_store.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/camera_form_sheet.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
 import '../camera_detail_screen.dart';
+import '../groups_screen.dart';
 
 class CameraTab extends StatefulWidget {
   const CameraTab({super.key});
@@ -18,9 +19,11 @@ class CameraTab extends StatefulWidget {
 
 class _CameraTabState extends State<CameraTab> {
   bool _isGridView = true;
+  String? _selectedGroupId; // null = All
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(milliseconds: 900));
+    await CameraStore.instance.fetchCameras();
+    await CameraStore.instance.fetchGroups();
   }
 
   @override
@@ -28,7 +31,12 @@ class _CameraTabState extends State<CameraTab> {
     return ListenableBuilder(
       listenable: CameraStore.instance,
       builder: (context, _) {
-        final cameras = CameraStore.instance.cameras;
+        final allCameras = CameraStore.instance.cameras;
+        final groups = CameraStore.instance.groups;
+        // Filter by selected group
+        final cameras = _selectedGroupId == null
+            ? allCameras
+            : allCameras.where((c) => c.groupIds.contains(_selectedGroupId)).toList();
         final onlineCount = cameras.where((c) => c.online).length;
 
         return Scaffold(
@@ -45,11 +53,37 @@ class _CameraTabState extends State<CameraTab> {
                 ),
                 child: SafeArea(
                   bottom: false,
-                  child: _Header(
-                    total: cameras.length,
-                    online: onlineCount,
-                    isGridView: _isGridView,
-                    onToggleView: () => setState(() => _isGridView = !_isGridView),
+                  child: Column(
+                    children: [
+                      _Header(
+                        total: allCameras.length,
+                        online: allCameras.where((c) => c.online).length,
+                        isGridView: _isGridView,
+                        onToggleView: () => setState(() => _isGridView = !_isGridView),
+                      ),
+                      // Group filter chips
+                      if (groups.isNotEmpty)
+                        SizedBox(
+                          height: 36,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              _GroupChip(
+                                label: 'Tất cả',
+                                selected: _selectedGroupId == null,
+                                onTap: () => setState(() => _selectedGroupId = null),
+                              ),
+                              ...groups.map((g) => _GroupChip(
+                                    label: g.name,
+                                    selected: _selectedGroupId == g.id,
+                                    onTap: () => setState(() => _selectedGroupId =
+                                        _selectedGroupId == g.id ? null : g.id),
+                                  )),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -73,6 +107,40 @@ class _CameraTabState extends State<CameraTab> {
           ),
         );
       },
+    );
+  }
+}
+
+class _GroupChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _GroupChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -149,12 +217,14 @@ class _AddMenuButton extends StatelessWidget {
           case 'camera':
             showCameraFormSheet(context);
           case 'group':
-            _promptAddGroup(context);
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GroupsScreen()),
+            );
         }
       },
       itemBuilder: (context) => const [
         PopupMenuItem(value: 'camera', child: Text('Thêm camera')),
-        PopupMenuItem(value: 'group', child: Text('Thêm nhóm camera')),
+        PopupMenuItem(value: 'group', child: Text('Quản lý nhóm')),
       ],
       child: Container(
         width: 44,
@@ -167,22 +237,6 @@ class _AddMenuButton extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<void> _promptAddGroup(BuildContext context) async {
-  final name = await showTextPromptDialog(
-    context,
-    title: 'Thêm nhóm camera',
-    hint: 'VD: Phòng ngủ',
-    confirmLabel: 'Thêm',
-  );
-  if (name != null) {
-      try {
-        await CameraStore.instance.addGroup(name);
-      } catch (e) {
-        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    }
 }
 
 class _SquareIconButton extends StatelessWidget {
@@ -312,7 +366,11 @@ class _CameraListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groupName = CameraStore.instance.groupById(camera.groupId)?.name ?? '';
+    final groupNames = camera.groupIds
+        .map((id) => CameraStore.instance.groupById(id)?.name)
+        .where((name) => name != null)
+        .join(', ');
+    final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
 
     return Material(
       color: Colors.transparent,
@@ -376,7 +434,7 @@ class _CameraListTile extends StatelessWidget {
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
-                            groupName,
+                            displayGroupName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
