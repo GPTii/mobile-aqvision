@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-
+import '../../../main.dart' as import_main;
 
 import '../../data/camera_store.dart';
 import '../../data/recording_store.dart';
@@ -33,6 +33,7 @@ class CameraDetailScreen extends StatefulWidget {
 
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
+  bool _isManualRecording = false;
 
   Future<void> _confirmDelete(BuildContext context, Camera camera) async {
     final confirmed = await showConfirmDialog(
@@ -174,13 +175,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
               ),
             ],
           ),
-          Icon(
-            camera.online
-                ? Icons.power_settings_new_rounded
-                : Icons.power_off_rounded,
-            color: camera.online ? AppColors.success : AppColors.textMuted,
-            size: 22,
-          ),
+          _ConnectionToggleButton(camera: camera),
           const SizedBox(width: 4),
         ],
       ),
@@ -338,21 +333,28 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   Widget _buildControls(Camera camera) {
     final controls = [
       (
-        icon: camera.recording
+        icon: _isManualRecording
             ? Icons.stop_circle_rounded
             : Icons.fiber_manual_record_rounded,
         label: 'Record',
-        active: camera.recording,
+        active: _isManualRecording,
         onTap: () async {
-          final newState = !camera.recording;
-          await CameraStore.instance.updateCamera(
-            camera.id,
-            recording: newState,
-          );
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(newState ? 'Đang ghi hình...' : 'Đã dừng ghi hình')),
-            );
+          final newState = !_isManualRecording;
+          setState(() => _isManualRecording = newState);
+          try {
+            await CameraStore.instance.toggleManualRecording(camera.app ?? 'live', camera.cameraCode, newState);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(newState ? 'Bắt đầu ghi hình...' : 'Đã lưu bản ghi vào hệ thống')),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              setState(() => _isManualRecording = !newState);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(e.toString())),
+              );
+            }
           }
         },
       ),
@@ -802,14 +804,23 @@ class _DetailVideoPlayer extends StatefulWidget {
   State<_DetailVideoPlayer> createState() => _DetailVideoPlayerState();
 }
 
-class _DetailVideoPlayerState extends State<_DetailVideoPlayer> {
+class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware {
   VideoPlayerController? _controller;
   bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
+    _initializeVideo();
+  }
+
+  void _initializeVideo() async {
     if (widget.hlsUrl.isNotEmpty) {
+      // Delay initialization slightly to let background routes release their decoders
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+
+      _hasError = false;
       _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
         ..initialize().then((_) {
           if (mounted) {
@@ -823,8 +834,33 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> {
     }
   }
 
+  void _disposeVideo() {
+    _controller?.dispose();
+    _controller = null;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    import_main.routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void didPushNext() {
+    _disposeVideo();
+  }
+
+  @override
+  void didPopNext() {
+    _initializeVideo();
+  }
+
   @override
   void dispose() {
+    import_main.routeObserver.unsubscribe(this);
     _controller?.dispose();
     super.dispose();
   }
@@ -859,6 +895,86 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// Interactive connect / disconnect toggle button shown in the camera detail
+/// header. Mirrors the web dashboard's "Kết Nối Lại" / "Ngắt Kết Nối" buttons.
+class _ConnectionToggleButton extends StatefulWidget {
+  final Camera camera;
+  const _ConnectionToggleButton({required this.camera});
+
+  @override
+  State<_ConnectionToggleButton> createState() => _ConnectionToggleButtonState();
+}
+
+class _ConnectionToggleButtonState extends State<_ConnectionToggleButton> {
+  bool _loading = false;
+
+  Future<void> _toggle() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      await CameraStore.instance.toggleConnection(widget.camera.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOnline = widget.camera.online;
+    return GestureDetector(
+      onTap: _toggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isOnline
+              ? AppColors.success.withOpacity(0.12)
+              : AppColors.danger.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isOnline
+                ? AppColors.success.withOpacity(0.4)
+                : AppColors.danger.withOpacity(0.4),
+          ),
+        ),
+        child: _loading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isOnline
+                        ? Icons.power_settings_new_rounded
+                        : Icons.power_off_rounded,
+                    color: isOnline ? AppColors.success : AppColors.danger,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isOnline ? 'Ngắt' : 'Kết nối',
+                    style: TextStyle(
+                      color: isOnline ? AppColors.success : AppColors.danger,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }

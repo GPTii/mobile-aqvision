@@ -170,9 +170,20 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       _vpController = ctrl;
       _playing = file;
     });
-    await ctrl.initialize();
-    ctrl.play();
-    setState(() {});
+    try {
+      await ctrl.initialize();
+      ctrl.play();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _showSnack('Không thể phát video: $e', error: true);
+      _vpController?.dispose();
+      if (mounted) {
+        setState(() {
+          _vpController = null;
+          _playing = null;
+        });
+      }
+    }
   }
 
   void _showSnack(String msg, {bool error = false}) {
@@ -183,6 +194,49 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
+  }
+
+  Future<void> _changeSpeed() async {
+    if (_vpController == null) return;
+    final speed = await showModalBottomSheet<double>(
+      context: context,
+      backgroundColor: AppColors.card,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Tốc độ phát', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          ListTile(title: const Text('1.0x (Bình thường)'), onTap: () => Navigator.pop(ctx, 1.0)),
+          ListTile(title: const Text('1.5x'), onTap: () => Navigator.pop(ctx, 1.5)),
+          ListTile(title: const Text('2.0x'), onTap: () => Navigator.pop(ctx, 2.0)),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+    if (speed != null && mounted) {
+      await _vpController!.setPlaybackSpeed(speed);
+      setState(() {});
+    }
+  }
+
+  Future<void> _cutVideo() async {
+    final file = _playing;
+    final cam = _camera;
+    if (file == null || cam == null || _vpController == null) return;
+
+    final pos = _vpController!.value.position.inSeconds;
+    final ok = await _confirmDialog('Cắt đoạn video', 'Hệ thống sẽ tạo 1 đoạn video dài 30 giây bắt đầu từ giây thứ $pos của bản ghi hiện tại. Tiếp tục?');
+    if (!ok) return;
+
+    _showSnack('Đang xử lý cắt video...');
+    try {
+      final clipUrl = await RecordingStore.instance.requestClip(file, pos, 30);
+      _showSnack('Cắt thành công! Đã lưu tại: $clipUrl');
+    } catch (e) {
+      _showSnack('Lỗi: $e', error: true);
+    }
   }
 
   @override
@@ -346,6 +400,36 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                
+                // Advanced Controls
+                if (_vpController != null && _vpController!.value.isInitialized)
+                  Container(
+                    color: AppColors.headerBackground,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _changeSpeed,
+                          icon: const Icon(Icons.speed_rounded, size: 18),
+                          label: Text('${_vpController!.value.playbackSpeed}x'),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _cutVideo,
+                          icon: const Icon(Icons.content_cut_rounded, size: 16),
+                          label: const Text('Cắt 30s'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            minimumSize: const Size(0, 36),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 

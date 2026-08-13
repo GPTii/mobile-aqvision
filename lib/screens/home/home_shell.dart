@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
 import '../../data/camera_store.dart';
+import '../../data/notification_store.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
 import 'tabs/profile_tab.dart';
@@ -20,8 +21,17 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
-    CameraStore.instance.fetchCameras();
+    CameraStore.instance.fetchCameras().then((_) {
+      CameraStore.instance.connectRealtime();
+    });
     CameraStore.instance.fetchGroups();
+    NotificationStore.instance.fetchAlerts();
+  }
+
+  @override
+  void dispose() {
+    CameraStore.instance.disconnectRealtime();
+    super.dispose();
   }
 
   static const _tabs = [
@@ -42,7 +52,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(index: _currentIndex, children: _tabs),
+      body: _tabs[_currentIndex],
       bottomNavigationBar: _BottomNav(
         currentIndex: _currentIndex,
         items: _navItems,

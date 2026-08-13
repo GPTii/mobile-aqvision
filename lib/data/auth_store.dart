@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class UserAccount {
   final String id;
@@ -100,10 +101,33 @@ class AuthStore extends ChangeNotifier {
         agencyId: agency != null ? agency["agencyId"] : null,
         apiSecret: agency != null ? agency["apiSecret"] : null,
       );
+      
+      // Register device token for push notifications
+      _registerDeviceToken();
+      
       notifyListeners();
     } else {
       // Token may be expired
       await logout();
+    }
+  }
+
+  Future<void> _registerDeviceToken() async {
+    if (kIsWeb) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && _token != null) {
+        await http.post(
+          Uri.parse("$_baseUrl/devices/register"),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $_token",
+          },
+          body: jsonEncode({"token": token, "platform": defaultTargetPlatform.name}),
+        );
+      }
+    } catch (e) {
+      print("Register device token error: $e");
     }
   }
 

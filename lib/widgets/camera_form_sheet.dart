@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../data/camera_store.dart';
 import '../theme/app_colors.dart';
 
-const _resolutions = ['720p', '1080p', '4K'];
-final _ipRegExp = RegExp(
-  r'^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$',
-);
 
 /// Opens the shared add/edit camera form. Pass [camera] to edit an existing
 /// one, or omit it to create a new camera (optionally pre-selecting
@@ -40,18 +35,13 @@ class _CameraFormSheet extends StatefulWidget {
 
 class _CameraFormSheetState extends State<_CameraFormSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
   late final TextEditingController _codeController;
   late final TextEditingController _ipController;
-  late final TextEditingController _locationController;
   late final TextEditingController _newGroupController;
 
   List<String> _selectedGroupIds = [];
   bool _creatingNewGroup = false;
   bool _isLoading = false;
-  late String _type;
-  late String _resolution;
-  late bool _online;
   late bool _recording;
 
   bool get _isEditing => widget.camera != null;
@@ -60,18 +50,13 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   void initState() {
     super.initState();
     final camera = widget.camera;
-    _nameController = TextEditingController(text: camera?.name ?? '');
     _codeController = TextEditingController(
-      text: camera?.cameraCode ?? CameraStore.instance.suggestCameraCode(),
+      text: camera?.cameraCode ?? '',
     );
     _ipController = TextEditingController(
-      text: camera?.ipAddress ?? CameraStore.instance.suggestIpAddress(),
+      text: camera?.ipAddress ?? 'rtsp://',
     );
-    _locationController = TextEditingController(text: camera?.location ?? '');
     _newGroupController = TextEditingController();
-    _type = camera?.type ?? kCameraTypes.first;
-    _resolution = camera?.resolution ?? _resolutions[1];
-    _online = camera?.online ?? true;
     _recording = camera?.recording ?? false;
 
     final groups = CameraStore.instance.groups;
@@ -84,10 +69,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _codeController.dispose();
     _ipController.dispose();
-    _locationController.dispose();
     _newGroupController.dispose();
     super.dispose();
   }
@@ -95,37 +78,31 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final groupIdsToSave = List<String>.from(_selectedGroupIds);
-    if (_creatingNewGroup && _newGroupController.text.trim().isNotEmpty) {
-      final newGroup = await CameraStore.instance.addGroup(_newGroupController.text);
-      groupIdsToSave.add(newGroup.id);
-    }
-
     setState(() => _isLoading = true);
     try {
+      final groupIdsToSave = List<String>.from(_selectedGroupIds);
+      if (_creatingNewGroup && _newGroupController.text.trim().isNotEmpty) {
+        final newGroup = await CameraStore.instance.addGroup(_newGroupController.text);
+        groupIdsToSave.add(newGroup.id);
+      }
+
       if (_isEditing) {
         await CameraStore.instance.updateCamera(
           widget.camera!.id,
-          name: _nameController.text,
+          name: _codeController.text,
           cameraCode: _codeController.text,
-          type: _type,
           ipAddress: _ipController.text,
-          location: _locationController.text,
           groupIds: groupIdsToSave,
-          resolution: _resolution,
-          online: _online,
           recording: _recording,
         );
       } else {
         await CameraStore.instance.addCamera(
-          name: _nameController.text,
+          name: _codeController.text,
           cameraCode: _codeController.text,
-          type: _type,
+          type: kCameraTypes.first,
           ipAddress: _ipController.text,
-          location: _locationController.text,
+          location: '',
           groupIds: groupIdsToSave,
-          resolution: _resolution,
-          online: _online,
           recording: _recording,
         );
       }
@@ -184,89 +161,28 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _FieldLabel('Tên camera'),
+                    _FieldLabel('Tên luồng (Stream ID)'),
                     const SizedBox(height: 8),
                     TextFormField(
-                      controller: _nameController,
+                      controller: _codeController,
                       style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: _fieldDecoration('VD: Cam cổng chính'),
+                      decoration: _fieldDecoration('VD: cam_cong_chinh'),
                       validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập tên camera'
+                          ? 'Vui lòng nhập Stream ID'
                           : null,
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _FieldLabel('Camera ID'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _codeController,
-                                style: const TextStyle(color: AppColors.textPrimary),
-                                decoration: _fieldDecoration('VD: CAM-0001'),
-                                validator: (value) => (value == null || value.trim().isEmpty)
-                                    ? 'Bắt buộc'
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _FieldLabel('Địa chỉ IP'),
-                              const SizedBox(height: 8),
-                              TextFormField(
-                                controller: _ipController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                                ],
-                                style: const TextStyle(color: AppColors.textPrimary),
-                                decoration: _fieldDecoration('VD: 192.168.1.101'),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) return 'Bắt buộc';
-                                  if (!_ipRegExp.hasMatch(value.trim())) return 'IP không hợp lệ';
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _FieldLabel('Loại camera'),
+                    _FieldLabel('Nguồn RTSP / URL'),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _type,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
-                      dropdownColor: AppColors.card,
-                      decoration: _fieldDecoration(null),
-                      items: [
-                        for (final type in kCameraTypes)
-                          DropdownMenuItem(value: type, child: Text(type)),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => _type = value);
+                    TextFormField(
+                      controller: _ipController,
+                      keyboardType: TextInputType.url,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: _fieldDecoration('rtsp://user:pass@192.168.1.100/stream'),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) return 'Vui lòng nhập URL nguồn';
+                        return null;
                       },
-                    ),
-                    const SizedBox(height: 16),
-                    _FieldLabel('Vị trí lắp đặt'),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _locationController,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: _fieldDecoration('VD: Góc trái, gần cửa ra vào'),
-                      validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập vị trí lắp đặt'
-                          : null,
                     ),
                     const SizedBox(height: 16),
                     _FieldLabel('Nhóm / phòng'),
@@ -316,43 +232,16 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    _FieldLabel('Độ phân giải'),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        for (final res in _resolutions) ...[
-                          Expanded(
-                            child: _ResolutionChip(
-                              label: res,
-                              selected: _resolution == res,
-                              onTap: () => setState(() => _resolution = res),
-                            ),
-                          ),
-                          if (res != _resolutions.last) const SizedBox(width: 8),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 8),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
                       activeColor: AppColors.accent,
                       title: const Text(
-                        'Trạng thái: Online',
+                        'Ghi hình (MP4)',
                         style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        _online ? 'Camera đang hoạt động' : 'Camera đang offline',
+                        _recording ? 'Đang bật ghi hình' : 'Tắt ghi hình',
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      ),
-                      value: _online,
-                      onChanged: (value) => setState(() => _online = value),
-                    ),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.accent,
-                      title: const Text(
-                        'Đang ghi hình',
-                        style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       value: _recording,
                       onChanged: (value) => setState(() => _recording = value),
@@ -434,46 +323,6 @@ class _FieldLabel extends StatelessWidget {
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
-      ),
-    );
-  }
-}
-
-class _ResolutionChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ResolutionChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.accent.withOpacity(0.12) : AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: selected ? AppColors.accent : AppColors.border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? AppColors.accent : AppColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
       ),
     );
   }
