@@ -58,6 +58,7 @@ class CameraStore extends ChangeNotifier {
 
   final List<CameraGroup> _groups = [];
   List<Camera> _cameras = [];
+  http.Client? _sseClient;
 
   CameraStore._();
 
@@ -125,7 +126,7 @@ class CameraStore extends ChangeNotifier {
     final token = await _getToken();
     if (token == null) return;
     
-    final uri = Uri.parse("$_baseUrl/v1/streams");
+    final uri = Uri.parse("$_baseUrl/proxies");
     final res = await http.get(uri, headers: {
       "Authorization": "Bearer $token",
     }).timeout(const Duration(seconds: 10));
@@ -134,22 +135,38 @@ class CameraStore extends ChangeNotifier {
       final json = jsonDecode(res.body);
       final List data = json["data"] ?? [];
       
-      _cameras = data.map((item) => Camera(
-        id: (item["id"] ?? 0).toString(),
-        name: item["name"] ?? "Camera",
-        cameraCode: item["stream"] ?? "CAM-0000",
-        type: kCameraTypes[0],
-        ipAddress: item["targetUrl"] ?? "", // Map targetUrl to ipAddress just for UI
-        location: "Góc camera", // Mocked for UI
-        groupIds: (item["groupIds"] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-        online: item["status"] == "Online",
-        resolution: "1080p",
-        recording: true,
-        lastSeen: "Vừa mới",
-        app: item["app"] ?? "live",
-        hlsUrl: item["playbackUrls"]?["hls"],
-        targetUrl: item["sourceUrl"] ?? item["targetUrl"],
-      )).toList();
+      final mediaHost = uri.host.isNotEmpty ? uri.host : "api.aqvision.net";
+      final mediaBaseUrl = uri.port == 3002 ? "http://$mediaHost:3002/api/media" : "https://$mediaHost/api/media";
+      
+      _cameras = data.map((item) {
+        final app = item["app"] ?? "live";
+        final stream = item["stream"] ?? "cam";
+        final itemUrl = (item["url"] ?? "").toString().trim();
+        
+        String hlsUrl = "";
+        if (itemUrl.contains(".m3u8") || itemUrl.startsWith("http")) {
+          hlsUrl = itemUrl;
+        } else {
+          hlsUrl = "$mediaBaseUrl/$app/$stream/hls.m3u8?access_token=$token";
+        }
+
+        return Camera(
+          id: (item["id"] ?? 0).toString(),
+          name: item["stream"] ?? "Camera", // Map stream to name for UI
+          cameraCode: item["stream"] ?? "CAM-0000",
+          type: kCameraTypes[0],
+          ipAddress: item["url"] ?? "", // Map url to ipAddress
+          location: "Góc camera", // Mocked for UI
+          groupIds: (item["groupIds"] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+          online: item["status"] == "Online",
+          resolution: "1080p",
+          recording: item["enableMp4"] == true, // Map enableMp4 to recording
+          lastSeen: "Vừa mới",
+          app: app,
+          hlsUrl: hlsUrl,
+          targetUrl: item["url"],
+        );
+      }).toList();
       notifyListeners();
     }
   }
@@ -219,10 +236,12 @@ class CameraStore extends ChangeNotifier {
       "Authorization": "Bearer $token",
       "Content-Type": "application/json",
     }, body: jsonEncode({
-      "app": "live", // Hardcode for now, or map to cameraCode
+      "app": "live",
       "stream": cameraCode,
-      "url": ipAddress, // Using ipAddress as RTSP Url in UI mapping
+      "url": ipAddress,
       "groupIds": groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
+      "enableHls": true,
+      "enableMp4": recording,
     }));
     
     if (res.statusCode == 200 || res.statusCode == 201) {
@@ -254,16 +273,42 @@ class CameraStore extends ChangeNotifier {
       "Authorization": "Bearer $token",
       "Content-Type": "application/json",
     }, body: jsonEncode({
-      "app": camera?.app ?? "live",
-      "stream": cameraCode ?? camera?.cameraCode,
-      "url": ipAddress ?? camera?.targetUrl,
+      if (cameraCode != null) "stream": cameraCode,
+      if (ipAddress != null) "url": ipAddress,
       if (groupIds != null) "groupIds": groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
+      if (recording != null) "enableMp4": recording,
     }));
     
     if (res.statusCode == 200) {
       await fetchCameras();
     } else {
       throw Exception("Lỗi cập nhật camera");
+    }
+  }
+
+  Future<void> toggleManualRecording(String app, String stream, bool start) async {
+    final token = await _getToken();
+    final action = start ? "startRecord" : "stopRecord";
+    final baseUrlUri = Uri.parse(_baseUrl);
+    final uri = Uri(
+      scheme: baseUrlUri.scheme,
+      host: baseUrlUri.host,
+      port: baseUrlUri.port,
+      path: "${baseUrlUri.path}/rapidmedia/$action",
+      queryParameters: {
+        "vhost": "__defaultVhost__",
+        "app": app,
+        "stream": stream,
+        "type": "1"
+      }
+    );
+    
+    final res = await http.get(uri, headers: {
+      "Authorization": "Bearer $token",
+    });
+    
+    if (res.statusCode != 200) {
+      throw Exception("Lỗi khi ${start ? "bắt đầu" : "dừng"} ghi hình");
     }
   }
 
@@ -280,5 +325,80 @@ class CameraStore extends ChangeNotifier {
     } else {
       throw Exception("Lỗi xóa camera");
     }
+  }
+
+  /// Toggle camera connection (reconnect / disconnect).
+  /// Uses the same PUT /api/proxies/{id} endpoint as the web dashboard.
+  Future<void> toggleConnection(String cameraId) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Unauthorized');
+
+    final camera = cameraById(cameraId);
+    if (camera == null) throw Exception('Camera not found');
+
+    final action = camera.online ? 'disconnect' : 'reconnect';
+    final uri = Uri.parse("$_baseUrl/proxies/$cameraId");
+    final res = await http.put(uri, headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    }, body: jsonEncode({"action": action}));
+
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      final data = json["data"];
+      if (data != null && data["status"] != null) {
+        camera.online = data["status"] == "Online";
+      } else {
+        camera.online = !camera.online;
+      }
+      notifyListeners();
+    } else {
+      throw Exception('Lỗi khi ${action == "disconnect" ? "ngắt kết nối" : "kết nối lại"} camera');
+    }
+  }
+
+  Future<void> connectRealtime() async {
+    final token = await _getToken();
+    if (token == null) return;
+
+    _sseClient?.close();
+    _sseClient = http.Client();
+
+    try {
+      final req = http.Request("GET", Uri.parse("$_baseUrl/v1/realtime"));
+      req.headers["Authorization"] = "Bearer $token";
+      
+      final res = await _sseClient!.send(req);
+
+      res.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        if (line.startsWith("data: ")) {
+          final dataStr = line.substring(6);
+          try {
+            final data = jsonDecode(dataStr);
+            if (data["id"] != null && data["status"] != null) {
+              final cam = cameraById(data["id"].toString());
+              if (cam != null) {
+                cam.online = data["status"] == "Online";
+                notifyListeners();
+              }
+            }
+          } catch (_) {}
+        }
+      }, onError: (_) {
+        Future.delayed(const Duration(seconds: 5), connectRealtime);
+      }, onDone: () {
+        Future.delayed(const Duration(seconds: 5), connectRealtime);
+      });
+    } catch (e) {
+      Future.delayed(const Duration(seconds: 5), connectRealtime);
+    }
+  }
+
+  void disconnectRealtime() {
+    _sseClient?.close();
+    _sseClient = null;
   }
 }

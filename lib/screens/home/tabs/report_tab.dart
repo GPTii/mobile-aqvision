@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:fl_chart/fl_chart.dart';
+
 import '../../../data/camera_store.dart';
+import '../../../data/stats_store.dart';
 import '../../../data/storage_store.dart';
 import '../../../theme/app_colors.dart';
 import '../groups_screen.dart';
@@ -17,6 +20,7 @@ class _ReportTabState extends State<ReportTab> {
   @override
   void initState() {
     super.initState();
+    StatsStore.instance.fetchStats();
     StorageStore.instance.fetchStorage();
   }
 
@@ -24,6 +28,7 @@ class _ReportTabState extends State<ReportTab> {
     await Future.wait([
       CameraStore.instance.fetchCameras(),
       CameraStore.instance.fetchGroups(),
+      StatsStore.instance.fetchStats(),
       StorageStore.instance.fetchStorage(),
     ]);
   }
@@ -45,8 +50,8 @@ class _ReportTabState extends State<ReportTab> {
               onRefresh: _handleRefresh,
               color: AppColors.accent,
               child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
                 // Header
                 SliverToBoxAdapter(
                   child: DecoratedBox(
@@ -120,13 +125,143 @@ class _ReportTabState extends State<ReportTab> {
                   ),
                 ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // Camera status bar
+                // Dashboard Charts (fl_chart)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _CameraStatusBar(cameras: cameras),
+                    child: ListenableBuilder(
+                      listenable: StatsStore.instance,
+                      builder: (ctx, _) {
+                        final stats = StatsStore.instance.stats;
+                        if (stats == null) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        // Pie Chart Data
+                        final online = stats.onlineCameras.toDouble();
+                        final offline = stats.offlineCameras.toDouble();
+                        final total = online + offline;
+
+                        // Bar Chart Data (Disk in GB)
+                        final diskUsedGB = stats.diskUsed / (1024 * 1024 * 1024);
+                        final diskFreeGB = stats.diskFree / (1024 * 1024 * 1024);
+
+                        return Column(
+                          children: [
+                            // Camera Pie Chart
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Tỷ lệ Camera', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    height: 150,
+                                    child: PieChart(
+                                      PieChartData(
+                                        sectionsSpace: 2,
+                                        centerSpaceRadius: 40,
+                                        sections: [
+                                          PieChartSectionData(
+                                            color: AppColors.success,
+                                            value: online,
+                                            title: '${((online/total)*100).toStringAsFixed(0)}%',
+                                            radius: 30,
+                                            titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                          ),
+                                          if (offline > 0)
+                                            PieChartSectionData(
+                                              color: AppColors.danger,
+                                              value: offline,
+                                              title: '${((offline/total)*100).toStringAsFixed(0)}%',
+                                              radius: 30,
+                                              titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      _Dot(color: AppColors.success), const SizedBox(width: 4), const Text('Online', style: TextStyle(fontSize: 12)),
+                                      const SizedBox(width: 16),
+                                      _Dot(color: AppColors.danger), const SizedBox(width: 4), const Text('Offline', style: TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Storage Bar Chart
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Dung lượng lưu trữ (GB)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 24),
+                                  SizedBox(
+                                    height: 150,
+                                    child: BarChart(
+                                      BarChartData(
+                                        alignment: BarChartAlignment.spaceAround,
+                                        maxY: diskUsedGB + diskFreeGB + 50,
+                                        barTouchData: BarTouchData(enabled: false),
+                                        titlesData: FlTitlesData(
+                                          show: true,
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (value, meta) {
+                                                if (value == 0) return const Text('Đã dùng', style: TextStyle(fontSize: 10));
+                                                if (value == 1) return const Text('Trống', style: TextStyle(fontSize: 10));
+                                                return const Text('');
+                                              },
+                                            ),
+                                          ),
+                                          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        ),
+                                        gridData: const FlGridData(show: false),
+                                        borderData: FlBorderData(show: false),
+                                        barGroups: [
+                                          BarChartGroupData(
+                                            x: 0,
+                                            barRods: [BarChartRodData(toY: diskUsedGB, color: AppColors.danger, width: 20, borderRadius: BorderRadius.circular(4))],
+                                            showingTooltipIndicators: [0],
+                                          ),
+                                          BarChartGroupData(
+                                            x: 1,
+                                            barRods: [BarChartRodData(toY: diskFreeGB, color: AppColors.success, width: 20, borderRadius: BorderRadius.circular(4))],
+                                            showingTooltipIndicators: [0],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
 
@@ -296,8 +431,13 @@ class _ReportTabState extends State<ReportTab> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                     child: () {
+                      // A camera counts as ungrouped if none of its groupIds
+                      // resolve to a group that still exists — matches
+                      // home_tab.dart, so cameras pointing at a deleted/
+                      // unknown group don't silently disappear.
                       final ungrouped = cameras
-                          .where((c) => c.groupIds.isEmpty)
+                          .where((c) => c.groupIds.every(
+                              (id) => CameraStore.instance.groupById(id) == null))
                           .toList();
                       if (ungrouped.isEmpty) return const SizedBox.shrink();
                       return Column(
@@ -330,7 +470,7 @@ class _ReportTabState extends State<ReportTab> {
                 ),
 
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
-              ],
+                ],
               ),
             ),
           ),
@@ -376,70 +516,6 @@ class _StatCard extends StatelessWidget {
           Text(label,
               style: const TextStyle(
                   fontSize: 10.5, color: AppColors.textMuted)),
-        ],
-      ),
-    );
-  }
-}
-
-class _CameraStatusBar extends StatelessWidget {
-  final List cameras;
-
-  const _CameraStatusBar({required this.cameras});
-
-  @override
-  Widget build(BuildContext context) {
-    if (cameras.isEmpty) return const SizedBox.shrink();
-    final online = cameras.where((c) => c.online).length;
-    final pct = online / cameras.length;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('Trạng thái camera',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
-              const Spacer(),
-              Text('${(pct * 100).toStringAsFixed(0)}% online',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: pct,
-              backgroundColor: AppColors.border,
-              color: AppColors.success,
-              minHeight: 8,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _Dot(color: AppColors.success),
-              const SizedBox(width: 4),
-              Text('$online online',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              const SizedBox(width: 14),
-              _Dot(color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Text('${cameras.length - online} offline',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            ],
-          ),
         ],
       ),
     );

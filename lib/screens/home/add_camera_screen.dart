@@ -23,6 +23,10 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
   List<dynamic> _groups = [];
   List<int> _selectedGroupIds = [];
 
+  bool _enableHls = true;
+  bool _enableMp4 = false;
+  bool _enableCloudSync = false;
+
   String get _apiBase {
     if (kIsWeb) {
       final port = Uri.base.port;
@@ -41,8 +45,11 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
     if (widget.cameraToEdit != null) {
       _appController.text = widget.cameraToEdit!["app"] ?? "live";
       _streamController.text = widget.cameraToEdit!["stream"] ?? "";
-      _urlController.text = widget.cameraToEdit!["targetUrl"] ?? "";
+      _urlController.text = widget.cameraToEdit!["url"] ?? widget.cameraToEdit!["targetUrl"] ?? "";
       _selectedGroupIds = List<int>.from(widget.cameraToEdit!["groupIds"] ?? []);
+      _enableHls = widget.cameraToEdit!["enableHls"] ?? true;
+      _enableMp4 = widget.cameraToEdit!["enableMp4"] ?? false;
+      _enableCloudSync = widget.cameraToEdit!["enableCloudSync"] ?? false;
     }
     _fetchGroups();
   }
@@ -84,7 +91,10 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       final body = jsonEncode({
         "app": _appController.text,
         "stream": _streamController.text,
-        "targetUrl": _urlController.text,
+        "url": _urlController.text,
+        "enableHls": _enableHls,
+        "enableMp4": _enableMp4,
+        "enableCloudSync": _enableCloudSync,
         "groupIds": _selectedGroupIds,
       });
       
@@ -146,7 +156,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
               TextFormField(
                 controller: _urlController,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: "Nguồn RTSP / HTTP URL", filled: true, fillColor: AppColors.surface),
+                decoration: const InputDecoration(labelText: "Source URL (RTSP/RTMP/HTTP)", filled: true, fillColor: AppColors.surface),
                 validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập URL nguồn" : null,
               ),
               const SizedBox(height: 16),
@@ -175,6 +185,39 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                     backgroundColor: AppColors.surface,
                   );
                 }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: CheckboxListTile(
+                      title: const Text("Enable HLS", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                      value: _enableHls,
+                      onChanged: (val) => setState(() => _enableHls = val ?? true),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.accent,
+                    ),
+                  ),
+                  Expanded(
+                    child: CheckboxListTile(
+                      title: const Text("Enable MP4", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                      value: _enableMp4,
+                      onChanged: (val) => setState(() => _enableMp4 = val ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+              CheckboxListTile(
+                title: const Text("Cloud Sync", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                value: _enableCloudSync,
+                onChanged: (val) => setState(() => _enableCloudSync = val ?? false),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.accent,
               ),
               const SizedBox(height: 32),
               ElevatedButton(

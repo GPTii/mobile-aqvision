@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-
+import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
 import '../../../theme/app_colors.dart';
@@ -447,11 +447,16 @@ class _CameraTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CameraDetailScreen(cameraId: camera.id),
-          ),
-        ),
+        onTap: () {
+          AppState.isVideoGridActive.value = false;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CameraDetailScreen(cameraId: camera.id),
+            ),
+          ).then((_) {
+            AppState.isVideoGridActive.value = true;
+          });
+        },
         child: AspectRatio(
           aspectRatio: aspectRatio,
           child: ClipRRect(
@@ -616,7 +621,21 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   @override
   void initState() {
     super.initState();
-    if (widget.hlsUrl.isNotEmpty) {
+    _initializeVideo();
+    AppState.isVideoGridActive.addListener(_onGridActiveChange);
+  }
+
+  void _onGridActiveChange() {
+    if (AppState.isVideoGridActive.value) {
+      _initializeVideo();
+    } else {
+      _disposeVideo();
+    }
+  }
+
+  void _initializeVideo() {
+    if (widget.hlsUrl.isNotEmpty && _controller == null) {
+      _hasError = false;
       _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
         ..initialize().then((_) {
           if (mounted) {
@@ -630,8 +649,17 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
     }
   }
 
+  void _disposeVideo() {
+    _controller?.dispose();
+    _controller = null;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    AppState.isVideoGridActive.removeListener(_onGridActiveChange);
     _controller?.dispose();
     super.dispose();
   }

@@ -9,6 +9,7 @@ class RecordingFile {
   final String app;
   final String stream;
   final String serverUrl;  // base URL of media server
+  final String token;      // auth token
 
   RecordingFile({
     required this.date,
@@ -16,10 +17,11 @@ class RecordingFile {
     required this.app,
     required this.stream,
     required this.serverUrl,
+    required this.token,
   });
 
   String get mp4Url =>
-      '$serverUrl/record/$app/$stream/$date/$fileName';
+      '$serverUrl/record/$app/$stream/$date/$fileName?access_token=$token';
 
   String get displayTime {
     final parts = fileName.replaceAll('.mp4', '').split('-');
@@ -99,7 +101,8 @@ class RecordingStore extends ChangeNotifier {
                   fileName: p,
                   app: app,
                   stream: stream,
-                  serverUrl: serverUrl,
+                  serverUrl: '$_baseUrl/media',
+                  token: token,
                 ));
               }
             }
@@ -224,6 +227,40 @@ class RecordingStore extends ChangeNotifier {
       notifyListeners();
     } else {
       throw Exception('Lỗi xóa bản ghi');
+    }
+  }
+
+  /// Request a 30s clip from the backend.
+  Future<String> requestClip(RecordingFile file, int startTime, int duration) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập');
+    
+    final uri = Uri.parse('$_baseUrl/recordings/clip');
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'app': file.app,
+        'stream': file.stream,
+        'date': file.date,
+        'fileName': file.fileName,
+        'startTime': startTime,
+        'duration': duration,
+      }),
+    ).timeout(const Duration(seconds: 30));
+
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      if (json['success'] == true) {
+        return json['url'] as String;
+      }
+      throw Exception('Lỗi tạo bản cắt');
+    } else {
+      final json = jsonDecode(res.body);
+      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt');
     }
   }
 

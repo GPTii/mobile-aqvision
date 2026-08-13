@@ -3,8 +3,19 @@ import 'package:flutter/material.dart';
 import '../data/notification_store.dart';
 import '../theme/app_colors.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    NotificationStore.instance.fetchAlerts();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,20 +40,23 @@ class NotificationsScreen extends StatelessWidget {
                   child: _Header(context: context, hasUnread: NotificationStore.instance.unreadCount > 0),
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    children: [
-                      const _SectionLabel('Cài đặt cảnh báo'),
-                      const SizedBox(height: 10),
-                      const _SettingsCard(),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Gần đây'),
-                      const SizedBox(height: 10),
-                      if (notifications.isEmpty)
-                        const _EmptyNotifications()
-                      else
-                        _NotificationList(notifications: notifications),
-                    ],
+                  child: RefreshIndicator(
+                    onRefresh: () => NotificationStore.instance.fetchAlerts(),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                      children: [
+                        const _SectionLabel('Cài đặt cảnh báo'),
+                        const SizedBox(height: 10),
+                        const _SettingsCard(),
+                        const SizedBox(height: 24),
+                        const _SectionLabel('Gần đây'),
+                        const SizedBox(height: 10),
+                        if (notifications.isEmpty)
+                          const _EmptyNotifications()
+                        else
+                          _NotificationList(notifications: notifications),
+                      ],
+                    ),
                   ),
                 ),
               ],
