@@ -23,8 +23,13 @@ class HomeTab extends StatelessWidget {
       listenable: CameraStore.instance,
       builder: (context, _) {
         final groups = CameraStore.instance.groups;
+        // A camera counts as ungrouped if none of its groupIds resolve to a
+        // group that still exists — matches the "Chưa phân nhóm" logic in
+        // camera_tab.dart, so cameras pointing at a deleted/unknown group
+        // don't silently disappear from both tabs.
         final ungrouped = CameraStore.instance.cameras
-            .where((c) => c.groupIds.isEmpty)
+            .where((c) => c.groupIds.every(
+                (id) => CameraStore.instance.groupById(id) == null))
             .toList();
 
         return Scaffold(

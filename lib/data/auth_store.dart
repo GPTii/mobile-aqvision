@@ -57,19 +57,29 @@ class AuthStore extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     final uri = Uri.parse("$_baseUrl/auth/login");
-    final res = await http.post(uri, 
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: jsonEncode({"username": username, "password": password})
-    ).timeout(const Duration(seconds: 10));
+    final stopwatch = Stopwatch()..start();
+    debugPrint("[LOGIN] POST $uri");
+
+    final http.Response res;
+    try {
+      res = await http.post(uri,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: jsonEncode({"username": username, "password": password})
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint("[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e");
+      rethrow;
+    }
+    debugPrint("[LOGIN] status ${res.statusCode} after ${stopwatch.elapsedMilliseconds}ms");
 
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
       _token = json["data"]["token"];
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("token", _token!);
-      
+
       await fetchProfile();
     } else {
       final json = jsonDecode(res.body);
