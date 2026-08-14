@@ -91,7 +91,7 @@ class CameraStore extends ChangeNotifier {
       }
       return "${Uri.base.scheme}://${Uri.base.authority}/api";
     }
-    return "https://api.aqvision.net/api";
+    return "https://dev1.aqvision.net/api";
   }
   
   Future<String?> _getToken() async {
@@ -135,7 +135,7 @@ class CameraStore extends ChangeNotifier {
       final json = jsonDecode(res.body);
       final List data = json["data"] ?? [];
       
-      final mediaHost = uri.host.isNotEmpty ? uri.host : "api.aqvision.net";
+      final mediaHost = uri.host.isNotEmpty ? uri.host : "dev1.aqvision.net";
       final mediaBaseUrl = uri.port == 3002 ? "http://$mediaHost:3002/api/media" : "https://$mediaHost/api/media";
       
       _cameras = data.map((item) {

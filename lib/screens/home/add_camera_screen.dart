@@ -36,7 +36,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       }
       return "${Uri.base.scheme}://${Uri.base.authority}/api";
     }
-    return "https://api.aqvision.net/api";
+    return "https://dev1.aqvision.net/api";
   }
 
   @override
