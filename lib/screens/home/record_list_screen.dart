@@ -373,12 +373,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                         alignment: Alignment.bottomCenter,
                         children: [
                           VideoPlayer(_vpController!),
-                          VideoProgressIndicator(_vpController!,
-                              allowScrubbing: true,
-                              colors: const VideoProgressColors(
-                                playedColor: AppColors.accent,
-                                backgroundColor: Colors.white24,
-                              )),
+                          _VideoSlider(controller: _vpController!),
                           Positioned(
                             top: 6,
                             right: 6,
