@@ -45,7 +45,7 @@ class AuthStore extends ChangeNotifier {
       }
       return "${Uri.base.scheme}://${Uri.base.authority}/api/v1";
     }
-    return "https://dev1.aqvision.net/api/v1";
+    return "http://dev1.aqvision.net/api/v1";
   }
 
   Future<void> init() async {

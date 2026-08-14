@@ -57,7 +57,7 @@ class RecordingStore extends ChangeNotifier {
       }
       return '${Uri.base.scheme}://${Uri.base.authority}/api';
     }
-    return 'https://dev1.aqvision.net/api';
+    return 'http://dev1.aqvision.net/api';
   }
 
   Future<String?> _getToken() async {

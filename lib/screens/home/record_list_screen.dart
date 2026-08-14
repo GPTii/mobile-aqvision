@@ -467,20 +467,6 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
               ],
             ),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: _loadingToggle ? null : _toggleRecord,
-            backgroundColor: isRec ? AppColors.danger : AppColors.accent,
-            icon: _loadingToggle
-                ? const SizedBox(
-                    width: 18, height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Icon(isRec ? Icons.stop_rounded : Icons.fiber_manual_record_rounded,
-                    color: Colors.white),
-            label: Text(
-              isRec ? 'Dừng ghi' : 'Ghi hình',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-          ),
         );
       },
     );
