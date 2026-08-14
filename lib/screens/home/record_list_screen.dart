@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/rendering.dart';
@@ -41,6 +44,11 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
 
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _vpController?.dispose();
     super.dispose();
   }
@@ -205,25 +213,46 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
   
   Future<void> _takeSnapshot() async {
     try {
+      _showSnack('Đang xử lý ảnh chụp...', error: false);
       final boundary = _videoKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
       final image = await boundary.toImage();
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
-      // In a real app we'd save it to gallery, here we just show a snackbar
-      _showSnack('Đã chụp ảnh màn hình thành công!', error: false);
+      
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+      final result = await ImageGallerySaver.saveImage(
+        pngBytes,
+        quality: 100,
+        name: "snapshot_${DateTime.now().millisecondsSinceEpoch}"
+      );
+      
+      if (result != null && result['isSuccess'] == true) {
+        _showSnack('Đã lưu ảnh vào Thư viện!', error: false);
+      } else {
+        _showSnack('Lưu ảnh thất bại.', error: true);
+      }
     } catch (e) {
       _showSnack('Lỗi chụp ảnh: $e', error: true);
     }
-  }
-
-  Future<void> _toggleVideoRecord() async {
-    _showSnack('Tính năng ghi hình trực tiếp đang phát triển.');
   }
   
   void _toggleFullscreen() {
     setState(() {
       _isFullscreen = !_isFullscreen;
+      if (_isFullscreen) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeRight,
+          DeviceOrientation.landscapeLeft,
+        ]);
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
     });
   }
 
@@ -448,11 +477,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                                     icon: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 28),
                                     onPressed: _takeSnapshot,
                                   ),
-                                  // Record
-                                  IconButton(
-                                    icon: const Icon(Icons.videocam_outlined, color: Colors.white, size: 28),
-                                    onPressed: _toggleVideoRecord,
-                                  ),
+
                                   // Cut
                                   IconButton(
                                     icon: const Icon(Icons.content_cut_rounded, color: Colors.white, size: 28),
