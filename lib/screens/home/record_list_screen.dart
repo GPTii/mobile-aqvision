@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/camera_store.dart';
@@ -650,13 +651,32 @@ class _RecordingTile extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Bắt đầu ${recording.displayTime}',
+                          recording.displayTime,
                           style: TextStyle(
                               color: AppColors.textMuted, fontSize: 11.5),
                         ),
+                        if (recording.durationText.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            recording.durationText,
+                            style: TextStyle(
+                                color: AppColors.accent, fontSize: 11.5, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  // Download button
+                  IconButton(
+                    icon: const Icon(Icons.download_rounded,
+                        size: 20, color: AppColors.accent),
+                    onPressed: () {
+                      launchUrl(Uri.parse(recording.mp4Url), mode: LaunchMode.externalApplication);
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
                   // Delete button
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded,

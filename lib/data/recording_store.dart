@@ -25,8 +25,21 @@ class RecordingFile {
 
   String get displayTime {
     final parts = fileName.replaceAll('.mp4', '').split('-');
-    if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+    if (parts.length >= 6 && parts[0].length == 4) {
+      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}';
+    } else if (parts.length >= 3) {
+      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}';
+    }
     return fileName;
+  }
+
+  String get durationText {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    if (parts.length >= 7 && parts[0].length == 4) {
+      int? dur = int.tryParse(parts[6]);
+      if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
+    }
+    return '';
   }
 
   String get id => '$date/$fileName';
