@@ -52,7 +52,7 @@ class AuthStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString("token");
     if (_token != null) {
-      await fetchProfile();
+      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
     }
   }
 
@@ -71,7 +71,7 @@ class AuthStore extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("token", _token!);
       
-      await fetchProfile();
+      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
     } else {
       final json = jsonDecode(res.body);
       throw Exception(json["error"] ?? "Đăng nhập thất bại");
@@ -145,7 +145,7 @@ class AuthStore extends ChangeNotifier {
     ).timeout(const Duration(seconds: 10));
 
     if (res.statusCode == 200) {
-      await fetchProfile();
+      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
     } else {
       final json = jsonDecode(res.body);
       throw Exception(json["error"] ?? "Lỗi cập nhật thông tin");
