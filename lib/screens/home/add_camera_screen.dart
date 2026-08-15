@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../config/api_config.dart';
 import '../../theme/app_colors.dart';
 
 class AddCameraScreen extends StatefulWidget {
@@ -27,17 +27,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
   bool _enableMp4 = false;
   bool _enableCloudSync = false;
 
-  String get _apiBase {
-    if (kIsWeb) {
-      final port = Uri.base.port;
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : "localhost";
-      if (port != 3002 && (host == 'localhost' || host == '127.0.0.1')) {
-        return "http://$host:3002/api";
-      }
-      return "${Uri.base.scheme}://${Uri.base.authority}/api";
-    }
-    return "http://dev1.aqvision.net/api";
-  }
+  String get _apiBase => ApiConfig.apiBase;
 
   @override
   void initState() {

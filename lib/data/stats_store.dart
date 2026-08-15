@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+
 class SystemStats {
   final int totalCameras;
   final int onlineCameras;
@@ -60,17 +62,7 @@ class StatsStore extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      final port = Uri.base.port;
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : "localhost";
-      if (port != 3002 && (host == 'localhost' || host == '127.0.0.1')) {
-        return "http://$host:3002/api/v1";
-      }
-      return "${Uri.base.scheme}://${Uri.base.authority}/api/v1";
-    }
-    return "http://dev1.aqvision.net/api/v1";
-  }
+  String get _baseUrl => ApiConfig.apiV1Base;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -78,8 +70,10 @@ class StatsStore extends ChangeNotifier {
   }
 
   Future<void> fetchStats() async {
+    final hadData = _stats != null;
     _isLoading = true;
-    notifyListeners();
+    // Avoid wiping charts on refresh — only notify for the empty/loading state.
+    if (!hadData) notifyListeners();
 
     try {
       final token = await _getToken();

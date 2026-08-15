@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import '../../../main.dart';
 import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
-import '../../../data/recording_store.dart';
+import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/camera_form_sheet.dart';
+import '../../../widgets/camera_navigation.dart';
 import '../../../widgets/notification_bell_button.dart';
-import '../../../widgets/prompt_dialog.dart';
-import '../camera_detail_screen.dart';
 import '../groups_screen.dart';
 
 class CameraTab extends StatefulWidget {
@@ -30,85 +28,95 @@ class _CameraTabState extends State<CameraTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: CameraStore.instance,
-      builder: (context, _) {
-        final allCameras = CameraStore.instance.cameras;
-        final groups = CameraStore.instance.groups;
-        // Filter by selected group
-        final cameras = _selectedGroupId == null
-            ? allCameras
-            : allCameras.where((c) => c.groupIds.contains(_selectedGroupId)).toList();
-        final onlineCount = cameras.where((c) => c.online).length;
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: Column(
-            children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: AppColors.headerBackground,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(28),
-                    bottomRight: Radius.circular(28),
-                  ),
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Column(
-                    children: [
-                      _Header(
-                        total: allCameras.length,
-                        online: allCameras.where((c) => c.online).length,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.headerBackground,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  ListenableBuilder(
+                    listenable: CameraStore.instance.listAndStatus,
+                    builder: (context, _) {
+                      final all = CameraStore.instance.cameras;
+                      return _Header(
+                        total: all.length,
+                        online: CameraStore.instance.onlineCount,
                         isGridView: _isGridView,
-                        onToggleView: () => setState(() => _isGridView = !_isGridView),
-                      ),
-                      // Group filter chips
-                      if (groups.isNotEmpty)
-                        SizedBox(
-                          height: 36,
-                          child: ListView(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                            scrollDirection: Axis.horizontal,
-                            children: [
-                              _GroupChip(
-                                label: 'Tất cả',
-                                selected: _selectedGroupId == null,
-                                onTap: () => setState(() => _selectedGroupId = null),
-                              ),
-                              ...groups.map((g) => _GroupChip(
-                                    label: g.name,
-                                    selected: _selectedGroupId == g.id,
-                                    onTap: () => setState(() => _selectedGroupId =
-                                        _selectedGroupId == g.id ? null : g.id),
-                                  )),
-                            ],
-                          ),
+                        onToggleView: () =>
+                            setState(() => _isGridView = !_isGridView),
+                      );
+                    },
+                  ),
+                  ListenableBuilder(
+                    listenable: CameraStore.instance,
+                    builder: (context, _) {
+                      final groups = CameraStore.instance.groups;
+                      if (groups.isEmpty) return const SizedBox.shrink();
+                      return SizedBox(
+                        height: 36,
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _GroupChip(
+                              label: 'Tất cả',
+                              selected: _selectedGroupId == null,
+                              onTap: () =>
+                                  setState(() => _selectedGroupId = null),
+                            ),
+                            ...groups.map((g) => _GroupChip(
+                                  label: g.name,
+                                  selected: _selectedGroupId == g.id,
+                                  onTap: () => setState(() => _selectedGroupId =
+                                      _selectedGroupId == g.id ? null : g.id),
+                                )),
+                          ],
                         ),
-                    ],
+                      );
+                    },
                   ),
-                ),
+                ],
               ),
-              Expanded(
-                child: SafeArea(
-                  top: false,
-                  bottom: false,
-                  child: RefreshIndicator(
-                    onRefresh: _handleRefresh,
-                    color: AppColors.accent,
-                    backgroundColor: AppColors.card,
-                    child: cameras.isEmpty
-                        ? const _EmptyState()
-                        : _isGridView
-                        ? _CameraGrid(cameras: cameras)
-                        : _CameraList(cameras: cameras),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          Expanded(
+            child: SafeArea(
+              top: false,
+              bottom: false,
+              child: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                color: AppColors.accent,
+                backgroundColor: AppColors.card,
+                child: ListenableBuilder(
+                  listenable: CameraStore.instance,
+                  builder: (context, _) {
+                    final allCameras = CameraStore.instance.cameras;
+                    final cameras = _selectedGroupId == null
+                        ? allCameras
+                        : allCameras
+                            .where((c) => c.groupIds.contains(_selectedGroupId))
+                            .toList();
+                    if (cameras.isEmpty) return const _EmptyState();
+                    return _isGridView
+                        ? _CameraGrid(cameras: cameras)
+                        : _CameraList(cameras: cameras);
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -286,7 +294,10 @@ class _CameraGrid extends StatelessWidget {
         childAspectRatio: 1.3,
       ),
       itemCount: cameras.length,
-      itemBuilder: (context, index) => _CameraGridCard(camera: cameras[index]),
+      itemBuilder: (context, index) => _CameraGridCard(
+        key: ValueKey(cameras[index].id),
+        camera: cameras[index],
+      ),
     );
   }
 }
@@ -294,7 +305,7 @@ class _CameraGrid extends StatelessWidget {
 class _CameraGridCard extends StatelessWidget {
   final Camera camera;
 
-  const _CameraGridCard({required this.camera});
+  const _CameraGridCard({super.key, required this.camera});
 
   @override
   Widget build(BuildContext context) {
@@ -302,22 +313,18 @@ class _CameraGridCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          AppState.isVideoGridActive.value = false;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CameraDetailScreen(cameraId: camera.id),
-            ),
-          ).then((_) {
-            AppState.isVideoGridActive.value = true;
-          });
-        },
+        onTap: () => openCameraDetail(context, camera.id),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _VideoThumbnail(hlsUrl: camera.hlsUrl ?? ''),
+              _VideoThumbnail(
+                key: ValueKey('cam-thumb-${camera.id}'),
+                cameraId: camera.id,
+                hlsUrl: camera.hlsUrl ?? '',
+                activeTabIndex: 1,
+              ),
               Positioned(
                 bottom: 8,
                 left: 8,
@@ -337,10 +344,29 @@ class _CameraGridCard extends StatelessWidget {
               Positioned(
                 top: 8,
                 left: 8,
-                child: _StatusBadge(online: camera.online),
+                child: ListenableBuilder(
+                  listenable: CameraStore.instance.cameraListenable(camera.id),
+                  builder: (_, __) {
+                    final online = CameraStore.instance
+                            .cameraById(camera.id)
+                            ?.online ??
+                        camera.online;
+                    return _StatusBadge(online: online);
+                  },
+                ),
               ),
-              if (camera.recording)
-                const Positioned(top: 8, right: 8, child: _RecordingDot()),
+              ListenableBuilder(
+                listenable: CameraStore.instance.cameraListenable(camera.id),
+                builder: (_, __) {
+                  final recording = CameraStore.instance
+                          .cameraById(camera.id)
+                          ?.recording ??
+                      camera.recording;
+                  if (!recording) return const SizedBox.shrink();
+                  return const Positioned(
+                      top: 8, right: 8, child: _RecordingDot());
+                },
+              ),
             ],
           ),
         ),
@@ -361,7 +387,10 @@ class _CameraList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: cameras.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) => _CameraListTile(camera: cameras[index]),
+      itemBuilder: (context, index) => _CameraListTile(
+        key: ValueKey('list-${cameras[index].id}'),
+        camera: cameras[index],
+      ),
     );
   }
 }
@@ -369,7 +398,7 @@ class _CameraList extends StatelessWidget {
 class _CameraListTile extends StatelessWidget {
   final Camera camera;
 
-  const _CameraListTile({required this.camera});
+  const _CameraListTile({super.key, required this.camera});
 
   @override
   Widget build(BuildContext context) {
@@ -383,16 +412,7 @@ class _CameraListTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          AppState.isVideoGridActive.value = false;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CameraDetailScreen(cameraId: camera.id),
-            ),
-          ).then((_) {
-            AppState.isVideoGridActive.value = true;
-          });
-        },
+        onTap: () => openCameraDetail(context, camera.id),
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -409,13 +429,30 @@ class _CameraListTile extends StatelessWidget {
                   height: 68,
                   child: Stack(
                     children: [
-                      Positioned.fill(child: _VideoThumbnail(hlsUrl: camera.hlsUrl ?? '')),
-                      if (camera.recording)
-                        const Positioned(
-                          top: 5,
-                          right: 5,
-                          child: _RecordingDot(size: 7),
+                      Positioned.fill(
+                        child: _VideoThumbnail(
+                          key: ValueKey('list-thumb-${camera.id}'),
+                          cameraId: camera.id,
+                          hlsUrl: camera.hlsUrl ?? '',
+                          activeTabIndex: 1,
                         ),
+                      ),
+                      ListenableBuilder(
+                        listenable:
+                            CameraStore.instance.cameraListenable(camera.id),
+                        builder: (_, __) {
+                          final recording = CameraStore.instance
+                                  .cameraById(camera.id)
+                                  ?.recording ??
+                              camera.recording;
+                          if (!recording) return const SizedBox.shrink();
+                          return const Positioned(
+                            top: 5,
+                            right: 5,
+                            child: _RecordingDot(size: 7),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -460,7 +497,17 @@ class _CameraListTile extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _StatusBadge(online: camera.online),
+                        ListenableBuilder(
+                          listenable: CameraStore.instance
+                              .cameraListenable(camera.id),
+                          builder: (_, __) {
+                            final online = CameraStore.instance
+                                    .cameraById(camera.id)
+                                    ?.online ??
+                                camera.online;
+                            return _StatusBadge(online: online);
+                          },
+                        ),
                         const SizedBox(width: 8),
                         Icon(
                           Icons.high_quality_outlined,
@@ -619,8 +666,17 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _VideoThumbnail extends StatefulWidget {
+  final String cameraId;
   final String hlsUrl;
-  const _VideoThumbnail({required this.hlsUrl});
+  final int activeTabIndex;
+
+  const _VideoThumbnail({
+    super.key,
+    required this.cameraId,
+    required this.hlsUrl,
+    required this.activeTabIndex,
+  });
+
   @override
   State<_VideoThumbnail> createState() => _VideoThumbnailState();
 }
@@ -629,49 +685,65 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   VideoPlayerController? _controller;
   bool _hasError = false;
 
+  bool get _shouldPlay => AppState.videoAllowedForTab(widget.activeTabIndex);
+
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
-    AppState.isVideoGridActive.addListener(_onGridActiveChange);
+    AppState.isVideoGridActive.addListener(_onPlaybackGateChange);
+    AppState.homeTabIndex.addListener(_onPlaybackGateChange);
+    if (_shouldPlay) _attach();
   }
 
-  void _onGridActiveChange() {
-    if (AppState.isVideoGridActive.value) {
-      _initializeVideo();
+  @override
+  void didUpdateWidget(covariant _VideoThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hlsUrl != widget.hlsUrl ||
+        oldWidget.cameraId != widget.cameraId) {
+      _detach();
+      if (oldWidget.hlsUrl != widget.hlsUrl) {
+        VideoPreloadCache.instance.invalidate(oldWidget.cameraId);
+      }
+      if (_shouldPlay) _attach();
+    }
+  }
+
+  void _onPlaybackGateChange() {
+    if (_shouldPlay) {
+      _attach();
     } else {
-      _disposeVideo();
+      _detach();
     }
   }
 
-  void _initializeVideo() {
-    if (widget.hlsUrl.isNotEmpty && _controller == null) {
-      _hasError = false;
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {});
-            _controller!.setVolume(0);
-            _controller!.play();
-          }
-        }).catchError((_) {
-          if (mounted) setState(() => _hasError = true);
-        });
+  Future<void> _attach() async {
+    if (!_shouldPlay || widget.hlsUrl.isEmpty) return;
+    _hasError = false;
+
+    final cache = VideoPreloadCache.instance;
+    var ctrl = cache.peek(widget.cameraId);
+    ctrl ??= await cache.warm(widget.cameraId, widget.hlsUrl);
+    if (!mounted || !_shouldPlay) return;
+
+    if (ctrl != null && ctrl.value.isInitialized) {
+      setState(() {
+        _controller = ctrl;
+        _hasError = false;
+      });
+    } else if (mounted) {
+      setState(() => _hasError = true);
     }
   }
 
-  void _disposeVideo() {
-    _controller?.dispose();
+  void _detach() {
     _controller = null;
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    AppState.isVideoGridActive.removeListener(_onGridActiveChange);
-    _controller?.dispose();
+    AppState.isVideoGridActive.removeListener(_onPlaybackGateChange);
+    AppState.homeTabIndex.removeListener(_onPlaybackGateChange);
     super.dispose();
   }
 

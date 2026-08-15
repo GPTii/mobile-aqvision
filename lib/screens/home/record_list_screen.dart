@@ -107,6 +107,10 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
     if (cam == null) return;
     final store = RecordingStore.instance;
     final isRec = store.isRecording(cam.id);
+    if (!isRec && !cam.online) {
+      _showSnack('Camera đang offline, không thể bắt đầu ghi hình', error: true);
+      return;
+    }
     setState(() => _loadingToggle = true);
     try {
       if (isRec) {
@@ -117,7 +121,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
         _showSnack('Bắt đầu ghi hình');
       }
     } catch (e) {
-      _showSnack('Lỗi: $e', error: true);
+      _showSnack(RecordingStore.errorText(e), error: true);
     } finally {
       if (mounted) setState(() => _loadingToggle = false);
     }
@@ -128,10 +132,11 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
     if (cam == null) return;
     try {
       await RecordingStore.instance.toggleAutoRecord(cameraId: cam.id, enable: value);
+      CameraStore.instance.setRecordingFlag(cam.id, value);
       if (mounted) setState(() => _enableMp4 = value);
       _showSnack(value ? 'Bật tự động ghi hình' : 'Tắt tự động ghi hình');
     } catch (e) {
-      _showSnack('Lỗi: $e', error: true);
+      _showSnack(RecordingStore.errorText(e), error: true);
     }
   }
 
@@ -145,7 +150,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       await RecordingStore.instance.deleteRecording(cameraId: cam.id, file: file);
       _showSnack('Đã xóa bản ghi');
     } catch (e) {
-      _showSnack('Lỗi: $e', error: true);
+      _showSnack(RecordingStore.errorText(e), error: true);
     }
   }
 
@@ -179,7 +184,10 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       return;
     }
     _vpController?.dispose();
-    final ctrl = VideoPlayerController.networkUrl(Uri.parse(file.mp4Url));
+    final ctrl = VideoPlayerController.networkUrl(
+      file.mp4Uri,
+      httpHeaders: file.playHeaders,
+    );
     setState(() {
       _vpController = ctrl;
       _playing = file;
@@ -294,7 +302,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       final clipUrl = await RecordingStore.instance.requestClip(file, pos, 30);
       _showSnack('Cắt thành công! Đã lưu tại: $clipUrl');
     } catch (e) {
-      _showSnack('Lỗi: $e', error: true);
+      _showSnack(RecordingStore.errorText(e), error: true);
     }
   }
 
@@ -305,7 +313,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       return const Scaffold(backgroundColor: AppColors.background);
     }
     return ListenableBuilder(
-      listenable: RecordingStore.instance,
+      listenable: RecordingStore.instance.listenableFor(cam.id),
       builder: (ctx, _) {
         final store = RecordingStore.instance;
         final isRec = store.isRecording(cam.id);

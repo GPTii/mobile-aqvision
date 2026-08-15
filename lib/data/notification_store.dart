@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+
 enum NotificationSeverity { danger, warning, info }
 
 class AppNotification {
@@ -43,23 +45,17 @@ class NotificationStore extends ChangeNotifier {
   bool get isLoading => _loading;
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
-      if (host == 'localhost' || host == '127.0.0.1') {
-        return 'http://$host:3002/api';
-      }
-      return '${Uri.base.scheme}://${Uri.base.authority}/api';
-    }
-    return 'http://dev1.aqvision.net/api';
-  }
+  String get _baseUrl => ApiConfig.apiBase;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  /// Fetch real system alerts from the backend.
+  /// Fetch real system alerts from the backend. The endpoint has no
+  /// read/unread concept of its own — read state is tracked locally by
+  /// timestamp (alerts newer than the last "mark all read" time show as
+  /// unread), since there's no mark-as-read API to call.
   Future<void> fetchAlerts() async {
     final token = await _getToken();
     if (token == null) return;
@@ -68,16 +64,16 @@ class NotificationStore extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final uri = Uri.parse('$_baseUrl/v1/notifications');
+      final uri = Uri.parse('$_baseUrl/system/alerts');
       final res = await http.get(uri, headers: {
         'Authorization': 'Bearer $token',
       }).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body);
-        final List data = json['data']?['items'] ?? [];
+        final List data = json['data'] ?? [];
 
-        // Get cleared timestamp from prefs
+        // Get cleared/read timestamps from prefs
         final prefs = await SharedPreferences.getInstance();
         final clearedAt = prefs.getInt('alerts_cleared_at') ?? 0;
         final readAt = prefs.getInt('alerts_read_at') ?? 0;
@@ -85,7 +81,7 @@ class NotificationStore extends ChangeNotifier {
         _notifications.clear();
         for (int i = 0; i < data.length; i++) {
           final item = data[i];
-          final alertTime = DateTime.tryParse(item['createdAt'] ?? '') ?? DateTime.now();
+          final alertTime = DateTime.tryParse(item['time'] ?? '') ?? DateTime.now();
           final alertMs = alertTime.millisecondsSinceEpoch;
 
           // Skip alerts that were cleared locally
@@ -94,7 +90,6 @@ class NotificationStore extends ChangeNotifier {
           // Map server type to Flutter severity
           NotificationSeverity severity;
           switch (item['type']) {
-            case 'critical':
             case 'error':
               severity = NotificationSeverity.danger;
               break;
@@ -114,10 +109,10 @@ class NotificationStore extends ChangeNotifier {
             id: item['id']?.toString() ?? 'alert_$i',
             title: title,
             message: item['message'] ?? '',
-            source: item['source'] ?? _extractSource(title),
+            source: _extractSource(title),
             time: _formatTime(alertTime),
             severity: severity,
-            read: item['isRead'] == true || alertMs <= readAt,
+            read: alertMs <= readAt,
           ));
         }
       }
@@ -129,7 +124,8 @@ class NotificationStore extends ChangeNotifier {
     }
   }
 
-  Future<void> markAsRead(String id) async {
+  /// No mark-as-read API exists yet — read state is local only.
+  void markAsRead(String id) {
     for (final n in _notifications) {
       if (n.id == id) {
         n.read = true;
@@ -137,16 +133,6 @@ class NotificationStore extends ChangeNotifier {
       }
     }
     notifyListeners();
-    
-    final token = await _getToken();
-    if (token == null) return;
-    try {
-      await http.patch(
-        Uri.parse('$_baseUrl/v1/notifications'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({'id': id}),
-      );
-    } catch (_) {}
   }
 
   Future<void> markAllAsRead() async {
@@ -156,15 +142,6 @@ class NotificationStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('alerts_read_at', DateTime.now().millisecondsSinceEpoch);
     notifyListeners();
-
-    final token = await _getToken();
-    if (token == null) return;
-    try {
-      await http.patch(
-        Uri.parse('$_baseUrl/v1/notifications'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      );
-    } catch (_) {}
   }
 
   Future<void> clearAll() async {

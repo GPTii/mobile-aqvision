@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../data/app_state.dart';
 import '../../data/camera_store.dart';
 import '../../data/notification_store.dart';
 import 'tabs/camera_tab.dart';
@@ -18,22 +19,6 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    CameraStore.instance.fetchCameras().then((_) {
-      CameraStore.instance.connectRealtime();
-    });
-    CameraStore.instance.fetchGroups();
-    NotificationStore.instance.fetchAlerts();
-  }
-
-  @override
-  void dispose() {
-    CameraStore.instance.disconnectRealtime();
-    super.dispose();
-  }
-
   static const _tabs = [
     HomeTab(),
     CameraTab(),
@@ -49,14 +34,41 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    AppState.homeTabIndex.value = 0;
+    CameraStore.instance.fetchCameras().then((_) {
+      CameraStore.instance.connectRealtime();
+    });
+    CameraStore.instance.fetchGroups();
+    NotificationStore.instance.fetchAlerts();
+  }
+
+  @override
+  void dispose() {
+    CameraStore.instance.disconnectRealtime();
+    super.dispose();
+  }
+
+  void _onTabTap(int index) {
+    if (_currentIndex == index) return;
+    setState(() => _currentIndex = index);
+    AppState.homeTabIndex.value = index;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: _tabs[_currentIndex],
+      // Keep tabs alive — video tiles pause via AppState.homeTabIndex.
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _tabs,
+      ),
       bottomNavigationBar: _BottomNav(
         currentIndex: _currentIndex,
         items: _navItems,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _onTabTap,
       ),
     );
   }
