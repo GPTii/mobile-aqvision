@@ -1,5 +1,5 @@
 import 'dart:typed_data';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
@@ -221,13 +221,12 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       if (byteData == null) return;
       
       final Uint8List pngBytes = byteData.buffer.asUint8List();
-      final result = await ImageGallerySaver.saveImage(
-        pngBytes,
-        quality: 100,
-        name: "snapshot_${DateTime.now().millisecondsSinceEpoch}"
-      );
+      final dir = Directory('/storage/emulated/0/Pictures');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      final file = File('${dir.path}/snapshot_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(pngBytes);
       
-      if (result != null && result['isSuccess'] == true) {
+      if (file.existsSync()) {
         _showSnack('Đã lưu ảnh vào Thư viện!', error: false);
       } else {
         _showSnack('Lưu ảnh thất bại.', error: true);
