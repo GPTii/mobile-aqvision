@@ -33,7 +33,23 @@ class CameraDetailScreen extends StatefulWidget {
 
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
-  bool _isManualRecording = false;
+  bool _recordBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncRecordStatus());
+  }
+
+  Future<void> _syncRecordStatus() async {
+    final camera = CameraStore.instance.cameraById(widget.cameraId);
+    if (camera == null) return;
+    await RecordingStore.instance.checkRecordStatus(
+      cameraId: camera.id,
+      app: camera.app ?? 'live',
+      stream: camera.cameraCode,
+    );
+  }
 
   Future<void> _confirmDelete(BuildContext context, Camera camera) async {
     final confirmed = await showConfirmDialog(
@@ -331,72 +347,108 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   }
 
   Widget _buildControls(Camera camera) {
-    final controls = [
-      (
-        icon: _isManualRecording
-            ? Icons.stop_circle_rounded
-            : Icons.fiber_manual_record_rounded,
-        label: 'Record',
-        active: _isManualRecording,
-        onTap: () async {
-          final newState = !_isManualRecording;
-          setState(() => _isManualRecording = newState);
-          try {
-            await CameraStore.instance.toggleManualRecording(camera.app ?? 'live', camera.cameraCode, newState);
-            if (mounted) {
+    return ListenableBuilder(
+      listenable: RecordingStore.instance,
+      builder: (context, _) {
+        final isRec = RecordingStore.instance.isRecording(camera.id);
+        final controls = [
+          (
+            icon: isRec
+                ? Icons.stop_circle_rounded
+                : Icons.fiber_manual_record_rounded,
+            label: 'Record',
+            active: isRec,
+            onTap: _recordBusy
+                ? () {}
+                : () async {
+                    if (!isRec && !camera.online) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Camera đang offline, không thể bắt đầu ghi hình'),
+                        ),
+                      );
+                      return;
+                    }
+                    final store = RecordingStore.instance;
+                    setState(() => _recordBusy = true);
+                    try {
+                      if (isRec) {
+                        await store.stopRecord(
+                          cameraId: camera.id,
+                          app: camera.app ?? 'live',
+                          stream: camera.cameraCode,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đã dừng ghi hình')),
+                          );
+                        }
+                      } else {
+                        await store.startRecord(
+                          cameraId: camera.id,
+                          app: camera.app ?? 'live',
+                          stream: camera.cameraCode,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Bắt đầu ghi hình...')),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(RecordingStore.errorText(e))),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _recordBusy = false);
+                    }
+                  },
+          ),
+          (
+            icon: Icons.camera_alt_rounded,
+            label: 'Capture',
+            active: false,
+            onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(newState ? 'Bắt đầu ghi hình...' : 'Đã lưu bản ghi vào hệ thống')),
+                const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
               );
-            }
-          } catch (e) {
-            if (mounted) {
-              setState(() => _isManualRecording = !newState);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(e.toString())),
-              );
-            }
-          }
-        },
-      ),
-      (
-        icon: Icons.camera_alt_rounded,
-        label: 'Capture',
-        active: false,
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
-          );
-        },
-      ),
-      (
-        icon: _isAlarmArmed
-            ? Icons.notifications_active_rounded
-            : Icons.notifications_none_rounded,
-        label: 'Alarm',
-        active: _isAlarmArmed,
-        onTap: () => setState(() => _isAlarmArmed = !_isAlarmArmed),
-      ),
-    ];
+            },
+          ),
+          (
+            icon: _isAlarmArmed
+                ? Icons.notifications_active_rounded
+                : Icons.notifications_none_rounded,
+            label: 'Alarm',
+            active: _isAlarmArmed,
+            onTap: () => setState(() => _isAlarmArmed = !_isAlarmArmed),
+          ),
+        ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: controls
-            .map(
-              (c) => Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: c == controls.last ? 0 : 10),
-                  child: _ControlButton(
-                    icon: c.icon,
-                    label: c.label,
-                    active: c.active,
-                    onTap: c.onTap,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: controls
+                .map(
+                  (c) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(right: c == controls.last ? 0 : 10),
+                      child: _ControlButton(
+                        icon: c.icon,
+                        label: c.label,
+                        active: c.active,
+                        onTap: c.onTap,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
+                )
+                .toList(),
+          ),
+        );
+      },
     );
   }
 

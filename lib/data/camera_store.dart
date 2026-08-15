@@ -286,32 +286,6 @@ class CameraStore extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleManualRecording(String app, String stream, bool start) async {
-    final token = await _getToken();
-    final action = start ? "startRecord" : "stopRecord";
-    final baseUrlUri = Uri.parse(_baseUrl);
-    final uri = Uri(
-      scheme: baseUrlUri.scheme,
-      host: baseUrlUri.host,
-      port: baseUrlUri.port,
-      path: "${baseUrlUri.path}/rapidmedia/$action",
-      queryParameters: {
-        "vhost": "__defaultVhost__",
-        "app": app,
-        "stream": stream,
-        "type": "1"
-      }
-    );
-    
-    final res = await http.get(uri, headers: {
-      "Authorization": "Bearer $token",
-    });
-    
-    if (res.statusCode != 200) {
-      throw Exception("Lỗi khi ${start ? "bắt đầu" : "dừng"} ghi hình");
-    }
-  }
-
   Future<void> deleteCamera(String cameraId) async {
     final token = await _getToken();
     final uri = Uri.parse("$_baseUrl/proxies/$cameraId");

@@ -33,11 +33,14 @@ class AuthStore extends ChangeNotifier {
 
   UserAccount? _currentUser;
   String? _token;
+  String? _authToken;
 
   UserAccount? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   String? get token => _token;
-  
+  /// Cookie JWT for Next.js `/api/rapidmedia` (Luồng B). Not `access_token`.
+  String? get authToken => _authToken ?? _token;
+
   String get _baseUrl {
     if (kIsWeb) {
       if (Uri.base.host == "localhost" || Uri.base.host == "127.0.0.1") {
@@ -48,9 +51,18 @@ class AuthStore extends ChangeNotifier {
     return "https://api.aqvision.net/api/v1";
   }
 
+  String get _webOrigin {
+    const suffix = '/api/v1';
+    if (_baseUrl.endsWith(suffix)) {
+      return _baseUrl.substring(0, _baseUrl.length - suffix.length);
+    }
+    return _baseUrl;
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString("token");
+    _authToken = prefs.getString("auth_token");
     if (_token != null) {
       await fetchProfile();
     }
@@ -81,11 +93,50 @@ class AuthStore extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("token", _token!);
 
+      await _loginWebSession(username, password);
       await fetchProfile();
     } else {
       final json = jsonDecode(res.body);
       throw Exception(json["error"] ?? "Đăng nhập thất bại");
     }
+  }
+
+  /// Luồng B: `POST /api/auth/login` → cookie `auth_token` (không có `access_token` trong body).
+  Future<void> _loginWebSession(String username, String password) async {
+    try {
+      final uri = Uri.parse("$_webOrigin/api/auth/login");
+      debugPrint("[LOGIN] web session POST $uri");
+      final res = await http.post(
+        uri,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"username": username, "password": password}),
+      ).timeout(const Duration(seconds: 10));
+
+      final fromCookie = _parseAuthTokenCookie(res.headers["set-cookie"]);
+      final cookie = (fromCookie != null && fromCookie.isNotEmpty)
+          ? fromCookie
+          : _token;
+      debugPrint(
+        "[LOGIN] web session ${res.statusCode} cookie=${fromCookie != null}",
+      );
+      if (cookie != null && cookie.isNotEmpty) {
+        await _saveAuthToken(cookie);
+      }
+    } catch (e) {
+      debugPrint("[LOGIN] web session failed: $e");
+      if (_token != null) await _saveAuthToken(_token!);
+    }
+  }
+
+  Future<void> _saveAuthToken(String value) async {
+    _authToken = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("auth_token", value);
+  }
+
+  String? _parseAuthTokenCookie(String? setCookie) {
+    if (setCookie == null || setCookie.isEmpty) return null;
+    return RegExp(r'auth_token=([^;]+)').firstMatch(setCookie)?.group(1);
   }
 
   Future<void> fetchProfile() async {
@@ -178,10 +229,21 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      await http.post(
+        Uri.parse("$_webOrigin/api/auth/logout"),
+        headers: {
+          if (authToken != null) "Cookie": "auth_token=$authToken",
+        },
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+
     _currentUser = null;
     _token = null;
+    _authToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove("token");
+    await prefs.remove("auth_token");
     notifyListeners();
   }
 }
