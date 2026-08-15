@@ -118,8 +118,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
     if (cam == null) return;
     try {
       await RecordingStore.instance.toggleAutoRecord(cameraId: cam.id, enable: value);
-      cam.recording = value;
-      CameraStore.instance.notifyListeners();
+      CameraStore.instance.setRecordingFlag(cam.id, value);
       if (mounted) setState(() => _enableMp4 = value);
       _showSnack(value ? 'Bật tự động ghi hình' : 'Tắt tự động ghi hình');
     } catch (e) {
@@ -255,7 +254,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       return const Scaffold(backgroundColor: AppColors.background);
     }
     return ListenableBuilder(
-      listenable: RecordingStore.instance,
+      listenable: RecordingStore.instance.listenableFor(cam.id),
       builder: (ctx, _) {
         final store = RecordingStore.instance;
         final isRec = store.isRecording(cam.id);

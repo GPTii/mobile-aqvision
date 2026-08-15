@@ -3,95 +3,101 @@ import 'package:video_player/video_player.dart';
 import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
+import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/camera_selection_sheet.dart';
 import '../../../widgets/camera_form_sheet.dart';
+import '../../../widgets/camera_navigation.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
-import '../camera_detail_screen.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
 
   Future<void> _handleRefresh() async {
-    await Future.delayed(const Duration(milliseconds: 900));
+    await Future.wait([
+      CameraStore.instance.fetchCameras(),
+      CameraStore.instance.fetchGroups(),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: CameraStore.instance,
-      builder: (context, _) {
-        final groups = CameraStore.instance.groups;
-        // A camera counts as ungrouped if none of its groupIds resolve to a
-        // group that still exists — matches the "Chưa phân nhóm" logic in
-        // camera_tab.dart, so cameras pointing at a deleted/unknown group
-        // don't silently disappear from both tabs.
-        final ungrouped = CameraStore.instance.cameras
-            .where((c) => c.groupIds.every(
-                (id) => CameraStore.instance.groupById(id) == null))
-            .toList();
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: Column(
-            children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: AppColors.headerBackground,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(28),
-                    bottomRight: Radius.circular(28),
-                  ),
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Trang chủ',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+    // Chrome stays outside the store listener — SSE/status flips don't rebuild headers.
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
+        children: [
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.headerBackground,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Trang chủ',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const NotificationBellButton(),
-                      ],
+                      ),
                     ),
-                  ),
+                    const NotificationBellButton(),
+                  ],
                 ),
               ),
-              Expanded(
-                child: SafeArea(
-                  top: false,
-                  child: RefreshIndicator(
-                    onRefresh: _handleRefresh,
-                    color: AppColors.accent,
-                    backgroundColor: AppColors.card,
-                    child: CustomScrollView(
+            ),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: RefreshIndicator(
+                onRefresh: _handleRefresh,
+                color: AppColors.accent,
+                backgroundColor: AppColors.card,
+                child: ListenableBuilder(
+                  listenable: CameraStore.instance,
+                  builder: (context, _) {
+                    final groups = CameraStore.instance.groups;
+                    final ungrouped = CameraStore.instance.cameras
+                        .where((c) => c.groupIds.every(
+                            (id) => CameraStore.instance.groupById(id) == null))
+                        .toList();
+
+                    return CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                        for (final group in groups)
-                          SliverToBoxAdapter(child: _RoomSection(group: group)),
+                        SliverList.builder(
+                          itemCount: groups.length,
+                          itemBuilder: (context, index) =>
+                              _RoomSection(group: groups[index]),
+                        ),
                         if (ungrouped.isNotEmpty)
-                          SliverToBoxAdapter(child: _UngroupedSection(cameras: ungrouped)),
+                          SliverToBoxAdapter(
+                            child: _UngroupedSection(cameras: ungrouped),
+                          ),
                         const SliverToBoxAdapter(child: _AddRoomCard()),
                         const SliverToBoxAdapter(child: SizedBox(height: 24)),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -205,7 +211,12 @@ class _CameraGrid extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          _CameraTile(camera: cameras.first, groupId: groupId, aspectRatio: 16 / 10),
+          _CameraTile(
+            key: ValueKey(cameras.first.id),
+            camera: cameras.first,
+            groupId: groupId,
+            aspectRatio: 16 / 10,
+          ),
           if (extras.isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
@@ -218,6 +229,7 @@ class _CameraGrid extends StatelessWidget {
                       right: index == extras.length - 1 ? 0 : 10,
                     ),
                     child: _CameraTile(
+                      key: ValueKey(extras[index].id),
                       camera: extras[index],
                       groupId: groupId,
                       aspectRatio: 1.3,
@@ -435,6 +447,7 @@ class _CameraTile extends StatelessWidget {
   final int overflowCount;
 
   const _CameraTile({
+    super.key,
     required this.camera,
     required this.groupId,
     required this.aspectRatio,
@@ -447,16 +460,7 @@ class _CameraTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          AppState.isVideoGridActive.value = false;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CameraDetailScreen(cameraId: camera.id),
-            ),
-          ).then((_) {
-            AppState.isVideoGridActive.value = true;
-          });
-        },
+        onTap: () => openCameraDetail(context, camera.id),
         child: AspectRatio(
           aspectRatio: aspectRatio,
           child: ClipRRect(
@@ -464,7 +468,14 @@ class _CameraTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Positioned.fill(child: _VideoThumbnail(hlsUrl: camera.hlsUrl ?? '')),
+                Positioned.fill(
+                  child: _VideoThumbnail(
+                    key: ValueKey('thumb-${camera.id}'),
+                    cameraId: camera.id,
+                    hlsUrl: camera.hlsUrl ?? '',
+                    activeTabIndex: 0,
+                  ),
+                ),
                 Positioned(
                   top: 8,
                   left: 8,
@@ -476,7 +487,19 @@ class _CameraTile extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (camera.online) const _LiveBadge(),
+                      ListenableBuilder(
+                        listenable:
+                            CameraStore.instance.cameraListenable(camera.id),
+                        builder: (_, __) {
+                          final live = CameraStore.instance
+                                  .cameraById(camera.id)
+                                  ?.online ??
+                              camera.online;
+                          return live
+                              ? const _LiveBadge()
+                              : const SizedBox.shrink();
+                        },
+                      ),
                       const SizedBox(width: 4),
                       if (groupId.isNotEmpty && groupId != '0')
                         _CameraOptionsMenu(camera: camera, groupId: groupId),
@@ -608,8 +631,18 @@ class _LiveBadge extends StatelessWidget {
 }
 
 class _VideoThumbnail extends StatefulWidget {
+  final String cameraId;
   final String hlsUrl;
-  const _VideoThumbnail({required this.hlsUrl});
+  /// Bottom-nav tab that owns this player (0 = Home, 1 = Camera).
+  final int activeTabIndex;
+
+  const _VideoThumbnail({
+    super.key,
+    required this.cameraId,
+    required this.hlsUrl,
+    required this.activeTabIndex,
+  });
+
   @override
   State<_VideoThumbnail> createState() => _VideoThumbnailState();
 }
@@ -618,49 +651,66 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   VideoPlayerController? _controller;
   bool _hasError = false;
 
+  bool get _shouldPlay => AppState.videoAllowedForTab(widget.activeTabIndex);
+
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
-    AppState.isVideoGridActive.addListener(_onGridActiveChange);
+    AppState.isVideoGridActive.addListener(_onPlaybackGateChange);
+    AppState.homeTabIndex.addListener(_onPlaybackGateChange);
+    if (_shouldPlay) _attach();
   }
 
-  void _onGridActiveChange() {
-    if (AppState.isVideoGridActive.value) {
-      _initializeVideo();
+  @override
+  void didUpdateWidget(covariant _VideoThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hlsUrl != widget.hlsUrl ||
+        oldWidget.cameraId != widget.cameraId) {
+      _detach();
+      if (oldWidget.hlsUrl != widget.hlsUrl) {
+        VideoPreloadCache.instance.invalidate(oldWidget.cameraId);
+      }
+      if (_shouldPlay) _attach();
+    }
+  }
+
+  void _onPlaybackGateChange() {
+    if (_shouldPlay) {
+      _attach();
     } else {
-      _disposeVideo();
+      _detach();
     }
   }
 
-  void _initializeVideo() {
-    if (widget.hlsUrl.isNotEmpty && _controller == null) {
-      _hasError = false;
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {});
-            _controller!.setVolume(0);
-            _controller!.play();
-          }
-        }).catchError((_) {
-          if (mounted) setState(() => _hasError = true);
-        });
+  Future<void> _attach() async {
+    if (!_shouldPlay || widget.hlsUrl.isEmpty) return;
+    _hasError = false;
+
+    final cache = VideoPreloadCache.instance;
+    var ctrl = cache.peek(widget.cameraId);
+    ctrl ??= await cache.warm(widget.cameraId, widget.hlsUrl);
+    if (!mounted || !_shouldPlay) return;
+
+    if (ctrl != null && ctrl.value.isInitialized) {
+      setState(() {
+        _controller = ctrl;
+        _hasError = false;
+      });
+    } else if (mounted) {
+      setState(() => _hasError = true);
     }
   }
 
-  void _disposeVideo() {
-    _controller?.dispose();
+  void _detach() {
+    // Cache owns disposal — only drop the local reference.
     _controller = null;
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    AppState.isVideoGridActive.removeListener(_onGridActiveChange);
-    _controller?.dispose();
+    AppState.isVideoGridActive.removeListener(_onPlaybackGateChange);
+    AppState.homeTabIndex.removeListener(_onPlaybackGateChange);
     super.dispose();
   }
 

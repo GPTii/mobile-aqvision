@@ -4,6 +4,7 @@ import '../../../main.dart' as import_main;
 
 import '../../data/camera_store.dart';
 import '../../data/recording_store.dart';
+import '../../data/video_preload_cache.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
@@ -65,7 +66,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: CameraStore.instance,
+      listenable: Listenable.merge([
+        CameraStore.instance,
+        CameraStore.instance.cameraListenable(widget.cameraId),
+      ]),
       builder: (context, _) {
         final camera = CameraStore.instance.cameraById(widget.cameraId);
         if (camera == null) {
@@ -75,7 +79,8 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             .map((id) => CameraStore.instance.groupById(id)?.name)
             .where((name) => name != null)
             .join(', ');
-        final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
+        final displayGroupName =
+            groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -219,8 +224,41 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: camera.online && (camera.hlsUrl?.isNotEmpty ?? false)
-                      ? _DetailVideoPlayer(hlsUrl: camera.hlsUrl!)
+                  child: (camera.hlsUrl?.isNotEmpty ?? false)
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _DetailVideoPlayer(
+                              key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
+                              cameraId: camera.id,
+                              hlsUrl: camera.hlsUrl!,
+                            ),
+                            if (!camera.online)
+                              const ColoredBox(
+                                color: Color(0x99000000),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.videocam_off_rounded,
+                                        color: Colors.white70,
+                                        size: 40,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Camera offline',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
                       : Stack(
                           fit: StackFit.expand,
                           children: [
@@ -311,7 +349,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16/9,
-                                  child: _DetailVideoPlayer(hlsUrl: camera.hlsUrl!),
+                                  child: _DetailVideoPlayer(
+                                    cameraId: camera.id,
+                                    hlsUrl: camera.hlsUrl!,
+                                  ),
                                 ),
                               ),
                             ),
@@ -348,7 +389,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
 
   Widget _buildControls(Camera camera) {
     return ListenableBuilder(
-      listenable: RecordingStore.instance,
+      listenable: RecordingStore.instance.listenableFor(camera.id),
       builder: (context, _) {
         final isRec = RecordingStore.instance.isRecording(camera.id);
         final controls = [
@@ -496,7 +537,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
 
   Widget _buildRecordingSection(BuildContext context, Camera camera) {
     return ListenableBuilder(
-      listenable: RecordingStore.instance,
+      listenable: RecordingStore.instance.listenableFor(camera.id),
       builder: (ctx, _) {
         final isRec = RecordingStore.instance.isRecording(camera.id);
         return Padding(
@@ -850,8 +891,13 @@ class _MotionTile extends StatelessWidget {
 }
 
 class _DetailVideoPlayer extends StatefulWidget {
+  final String cameraId;
   final String hlsUrl;
-  const _DetailVideoPlayer({required this.hlsUrl});
+  const _DetailVideoPlayer({
+    super.key,
+    required this.cameraId,
+    required this.hlsUrl,
+  });
   @override
   State<_DetailVideoPlayer> createState() => _DetailVideoPlayerState();
 }
@@ -859,6 +905,8 @@ class _DetailVideoPlayer extends StatefulWidget {
 class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware {
   VideoPlayerController? _controller;
   bool _hasError = false;
+  bool _fromCache = false;
+  bool _obscured = false;
 
   @override
   void initState() {
@@ -866,32 +914,71 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
     _initializeVideo();
   }
 
-  void _initializeVideo() async {
-    if (widget.hlsUrl.isNotEmpty) {
-      // Delay initialization slightly to let background routes release their decoders
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
+  @override
+  void didUpdateWidget(covariant _DetailVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hlsUrl != widget.hlsUrl ||
+        oldWidget.cameraId != widget.cameraId) {
+      _disposeVideo();
+      _initializeVideo();
+    }
+  }
 
-      _hasError = false;
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl))
-        ..initialize().then((_) {
-          if (mounted) {
-            setState(() {});
-            _controller!.setVolume(1);
-            _controller!.play();
-          }
-        }).catchError((_) {
-          if (mounted) setState(() => _hasError = true);
-        });
+  Future<void> _initializeVideo() async {
+    if (widget.hlsUrl.isEmpty) return;
+    if (!mounted) return;
+    _hasError = false;
+
+    final cache = VideoPreloadCache.instance;
+
+    // Instant path: reuse warmed controller from grid preload.
+    var ctrl = cache.acquire(widget.cameraId);
+    if (ctrl == null) {
+      await cache.warm(widget.cameraId, widget.hlsUrl);
+      if (!mounted) return;
+      ctrl = cache.acquire(widget.cameraId);
+    }
+
+    if (ctrl != null) {
+      _fromCache = true;
+      _controller = ctrl;
+      try {
+        await ctrl.setVolume(1);
+        await ctrl.setLooping(true);
+        if (!ctrl.value.isPlaying) await ctrl.play();
+      } catch (_) {}
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // Fallback cold start (should be rare).
+    _fromCache = false;
+    try {
+      final local = VideoPlayerController.networkUrl(Uri.parse(widget.hlsUrl));
+      await local.initialize();
+      if (!mounted) {
+        local.dispose();
+        return;
+      }
+      await local.setVolume(1);
+      await local.setLooping(true);
+      await local.play();
+      setState(() => _controller = local);
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
     }
   }
 
   void _disposeVideo() {
-    _controller?.dispose();
-    _controller = null;
-    if (mounted) {
-      setState(() {});
+    if (_controller == null) return;
+    if (_fromCache) {
+      VideoPreloadCache.instance.release(widget.cameraId, keepWarm: true);
+    } else {
+      _controller?.dispose();
     }
+    _controller = null;
+    _fromCache = false;
+    if (mounted) setState(() {});
   }
 
   @override
@@ -902,24 +989,39 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
 
   @override
   void didPushNext() {
-    _disposeVideo();
+    // Detach surface so fullscreen can reuse the same controller safely.
+    try {
+      _controller?.setVolume(0);
+      _controller?.pause();
+    } catch (_) {}
+    if (mounted) setState(() => _obscured = true);
   }
 
   @override
   void didPopNext() {
-    _initializeVideo();
+    if (mounted) setState(() => _obscured = false);
+    try {
+      _controller?.setVolume(1);
+      _controller?.play();
+    } catch (_) {}
   }
 
   @override
   void dispose() {
     import_main.routeObserver.unsubscribe(this);
-    _controller?.dispose();
+    if (_fromCache) {
+      VideoPreloadCache.instance.release(widget.cameraId, keepWarm: true);
+    } else {
+      _controller?.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_controller != null && _controller!.value.isInitialized) {
+    if (!_obscured &&
+        _controller != null &&
+        _controller!.value.isInitialized) {
       return SizedBox.expand(
         child: FittedBox(
           fit: BoxFit.cover,
@@ -940,11 +1042,14 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
         Center(
           child: _hasError
               ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
-              : const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                ),
+              : _obscured
+                  ? const SizedBox.shrink()
+                  : const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white70),
+                    ),
         ),
       ],
     );

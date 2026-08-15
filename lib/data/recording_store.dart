@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+import 'debounced_notifier.dart';
+
 class RecordingFile {
   final String date;       // YYYY-MM-DD
   final String fileName;   // e.g. 2026-08-14-12-00-00-0.mp4
@@ -68,23 +71,19 @@ class RecordingStore extends ChangeNotifier {
   final Map<String, bool> _isRecording = {};
   // Per-camera loading state
   final Map<String, bool> _loading = {};
+  final IdListenables _cameraTicks = IdListenables();
 
   bool isRecording(String cameraId) => _isRecording[cameraId] ?? false;
   bool isLoading(String cameraId) => _loading[cameraId] ?? false;
   List<RecordingFile> recordingsFor(String cameraId) =>
       _cache[cameraId] ?? [];
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
-      final port = Uri.base.port;
-      if (host == 'localhost' || host == '127.0.0.1') {
-        return 'http://$host:3002/api';
-      }
-      return '${Uri.base.scheme}://${Uri.base.authority}/api';
-    }
-    return 'https://api.aqvision.net/api';
-  }
+  /// Rebuild only UI that cares about this camera's recordings / REC state.
+  Listenable listenableFor(String cameraId) => _cameraTicks.of(cameraId);
+
+  void _notifyCamera(String cameraId) => _cameraTicks.bump(cameraId);
+
+  String get _baseUrl => ApiConfig.apiBase;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -184,7 +183,7 @@ class RecordingStore extends ChangeNotifier {
     final token = await _getAuthToken();
     if (token == null) return;
     _loading[cameraId] = true;
-    notifyListeners();
+    _notifyCamera(cameraId);
 
     final resolvedApp = _appName(app);
     final allDates = _datesBetween(startDate, endDate);
@@ -232,7 +231,7 @@ class RecordingStore extends ChangeNotifier {
       _cache[cameraId] = [];
     } finally {
       _loading[cameraId] = false;
-      notifyListeners();
+      _notifyCamera(cameraId);
     }
   }
 
@@ -254,9 +253,11 @@ class RecordingStore extends ChangeNotifier {
         timeout: const Duration(seconds: 8),
       );
       if (_isApiOk(json)) {
-        _isRecording[cameraId] =
-            json['status'] == true || json['status'] == 1;
-        notifyListeners();
+        final next = json['status'] == true || json['status'] == 1;
+        if (_isRecording[cameraId] != next) {
+          _isRecording[cameraId] = next;
+          _notifyCamera(cameraId);
+        }
       }
     } catch (e) {
       debugPrint('[RECORD] isRecording failed: $e');
@@ -277,7 +278,7 @@ class RecordingStore extends ChangeNotifier {
     });
     if (_isApiOk(json)) {
       _isRecording[cameraId] = true;
-      notifyListeners();
+      _notifyCamera(cameraId);
       return;
     }
     throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'));
@@ -297,7 +298,7 @@ class RecordingStore extends ChangeNotifier {
     });
     if (_isApiOk(json)) {
       _isRecording[cameraId] = false;
-      notifyListeners();
+      _notifyCamera(cameraId);
       return;
     }
     throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'));
@@ -338,7 +339,7 @@ class RecordingStore extends ChangeNotifier {
     });
     if (_isApiOk(json)) {
       _cache[cameraId]?.removeWhere((r) => r.id == file.id);
-      notifyListeners();
+      _notifyCamera(cameraId);
       return;
     }
     throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'));

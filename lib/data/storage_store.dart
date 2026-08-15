@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+
 class CameraStorageUsage {
   final String id;
   final String name;
@@ -31,17 +33,7 @@ class StorageStore extends ChangeNotifier {
   bool loading = false;
   String? error;
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      final port = Uri.base.port;
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : "localhost";
-      if (port != 3002 && (host == 'localhost' || host == '127.0.0.1')) {
-        return "http://$host:3002/api";
-      }
-      return "${Uri.base.scheme}://${Uri.base.authority}/api";
-    }
-    return "https://api.aqvision.net/api";
-  }
+  String get _baseUrl => ApiConfig.apiBase;
 
   Future<void> fetchStorage() async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,7 +41,7 @@ class StorageStore extends ChangeNotifier {
     if (token == null) return;
 
     loading = true;
-    notifyListeners();
+    if (cameras.isEmpty && usedStorageMb == 0) notifyListeners();
 
     try {
       final uri = Uri.parse("$_baseUrl/v1/storage");

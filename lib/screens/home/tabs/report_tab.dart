@@ -35,95 +35,103 @@ class _ReportTabState extends State<ReportTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: CameraStore.instance,
-      builder: (ctx, _) {
-        final cameras = CameraStore.instance.cameras;
-        final groups = CameraStore.instance.groups;
-        final online = cameras.where((c) => c.online).length;
-        final offline = cameras.length - online;
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _handleRefresh,
-              color: AppColors.accent,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                // Header
-                SliverToBoxAdapter(
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: AppColors.headerBackground,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(28),
-                        bottomRight: Radius.circular(28),
-                      ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppColors.accent,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    color: AppColors.headerBackground,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(28),
+                      bottomRight: Radius.circular(28),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    child: ListenableBuilder(
+                      listenable: CameraStore.instance.listAndStatus,
+                      builder: (ctx, _) {
+                        final cameras = CameraStore.instance.cameras;
+                        final groups = CameraStore.instance.groups;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Báo cáo',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${cameras.length} camera · ${groups.length} nhóm',
+                              style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              // Status cards row
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListenableBuilder(
+                    listenable: CameraStore.instance.listAndStatus,
+                    builder: (ctx, _) {
+                      final cameras = CameraStore.instance.cameras;
+                      final groups = CameraStore.instance.groups;
+                      final online = cameras.where((c) => c.online).length;
+                      final offline = cameras.length - online;
+                      return Row(
                         children: [
-                          const Text('Báo cáo',
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${cameras.length} camera · ${groups.length} nhóm',
-                            style: const TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500),
+                          Expanded(
+                            child: _StatCard(
+                              label: 'Đang hoạt động',
+                              value: '$online',
+                              icon: Icons.check_circle_rounded,
+                              color: AppColors.success,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _StatCard(
+                              label: 'Offline',
+                              value: '$offline',
+                              icon: Icons.power_off_rounded,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _StatCard(
+                              label: 'Tổng nhóm',
+                              value: '${groups.length}',
+                              icon: Icons.folder_rounded,
+                              color: AppColors.info,
+                            ),
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-                // Status cards row
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Đang hoạt động',
-                            value: '$online',
-                            icon: Icons.check_circle_rounded,
-                            color: AppColors.success,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Offline',
-                            value: '$offline',
-                            icon: Icons.power_off_rounded,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Tổng nhóm',
-                            value: '${groups.length}',
-                            icon: Icons.folder_rounded,
-                            color: AppColors.info,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              ),
 
                 // Dashboard Charts (fl_chart)
                 SliverToBoxAdapter(
@@ -267,192 +275,191 @@ class _ReportTabState extends State<ReportTab> {
 
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // Quick actions
+                // Quick actions + groups (structure + status)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Truy cập nhanh',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
-                        const SizedBox(height: 10),
-                        Row(
+                  child: ListenableBuilder(
+                    listenable: CameraStore.instance.listAndStatus,
+                    builder: (ctx, _) {
+                      final cameras = CameraStore.instance.cameras;
+                      final groups = CameraStore.instance.groups;
+                      final ungrouped = cameras
+                          .where((c) => c.groupIds.every((id) =>
+                              CameraStore.instance.groupById(id) == null))
+                          .toList();
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: _QuickAction(
-                                icon: Icons.video_library_rounded,
-                                label: 'Bản ghi',
-                                sublabel: 'Xem & quản lý',
-                                color: AppColors.danger,
-                                onTap: cameras.isEmpty
-                                    ? null
-                                    : () => Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                              builder: (_) => RecordingListScreen(
-                                                  cameraId: cameras.first.id)),
-                                        ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _QuickAction(
-                                icon: Icons.folder_rounded,
-                                label: 'Nhóm',
-                                sublabel: 'Quản lý nhóm',
-                                color: AppColors.info,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) => const GroupsScreen()),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // Groups with camera count
-                if (groups.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text('Camera theo nhóm',
+                            const Text('Truy cập nhanh',
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textPrimary)),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => const GroupsScreen()),
-                            ),
-                            child: const Text('Quản lý →',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.accent,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, i) {
-                        final group = groups[i];
-                        final cams = CameraStore.instance.camerasInGroup(group.id);
-                        final onlineCams = cams.where((c) => c.online).length;
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
+                            const SizedBox(height: 10),
+                            Row(
                               children: [
-                                Container(
-                                  width: 42, height: 42,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.info.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.folder_rounded,
-                                      color: AppColors.info, size: 20),
-                                ),
-                                const SizedBox(width: 12),
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(group.name,
-                                          style: const TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textPrimary)),
-                                      const SizedBox(height: 3),
-                                      // mini progress bar
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(4),
-                                        child: LinearProgressIndicator(
-                                          value: cams.isEmpty
-                                              ? 0
-                                              : onlineCams / cams.length,
-                                          backgroundColor:
-                                              AppColors.border,
-                                          color: AppColors.success,
-                                          minHeight: 4,
-                                        ),
-                                      ),
-                                    ],
+                                  child: _QuickAction(
+                                    icon: Icons.video_library_rounded,
+                                    label: 'Bản ghi',
+                                    sublabel: 'Xem & quản lý',
+                                    color: AppColors.danger,
+                                    onTap: cameras.isEmpty
+                                        ? null
+                                        : () => Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      RecordingListScreen(
+                                                          cameraId: cameras
+                                                              .first.id)),
+                                            ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text('${cams.length}',
-                                        style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textPrimary)),
-                                    Text('$onlineCams online',
-                                        style: TextStyle(
-                                            fontSize: 10.5,
-                                            color: AppColors.success)),
-                                  ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _QuickAction(
+                                    icon: Icons.folder_rounded,
+                                    label: 'Nhóm',
+                                    sublabel: 'Quản lý nhóm',
+                                    color: AppColors.info,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const GroupsScreen()),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        );
-                      },
-                      childCount: groups.length,
-                    ),
-                  ),
-                ],
-
-                // Ungrouped cameras
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: () {
-                      // A camera counts as ungrouped if none of its groupIds
-                      // resolve to a group that still exists — matches
-                      // home_tab.dart, so cameras pointing at a deleted/
-                      // unknown group don't silently disappear.
-                      final ungrouped = cameras
-                          .where((c) => c.groupIds.every(
-                              (id) => CameraStore.instance.groupById(id) == null))
-                          .toList();
-                      if (ungrouped.isEmpty) return const SizedBox.shrink();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Chưa phân nhóm',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textMuted)),
-                          const SizedBox(height: 8),
-                          ...ungrouped.map((c) => _CameraRow(camera: c)),
-                        ],
+                            if (groups.isNotEmpty) ...[
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text('Camera theo nhóm',
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary)),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const GroupsScreen()),
+                                    ),
+                                    child: const Text('Quản lý →',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.accent,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              ...groups.map((group) {
+                                final cams = CameraStore.instance
+                                    .camerasInGroup(group.id);
+                                final onlineCams =
+                                    cams.where((c) => c.online).length;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.card,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border:
+                                          Border.all(color: AppColors.border),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.info
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: const Icon(
+                                              Icons.folder_rounded,
+                                              color: AppColors.info,
+                                              size: 20),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(group.name,
+                                                  style: const TextStyle(
+                                                      fontSize: 13.5,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: AppColors
+                                                          .textPrimary)),
+                                              const SizedBox(height: 3),
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                                child: LinearProgressIndicator(
+                                                  value: cams.isEmpty
+                                                      ? 0
+                                                      : onlineCams /
+                                                          cams.length,
+                                                  backgroundColor:
+                                                      AppColors.border,
+                                                  color: AppColors.success,
+                                                  minHeight: 4,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text('${cams.length}',
+                                                style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    color: AppColors
+                                                        .textPrimary)),
+                                            Text('$onlineCams online',
+                                                style: TextStyle(
+                                                    fontSize: 10.5,
+                                                    color:
+                                                        AppColors.success)),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                            if (ungrouped.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              const Text('Chưa phân nhóm',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textMuted)),
+                              const SizedBox(height: 8),
+                              ...ungrouped.map((c) => _CameraRow(camera: c)),
+                            ],
+                          ],
+                        ),
                       );
-                    }(),
+                    },
                   ),
                 ),
 
@@ -470,12 +477,10 @@ class _ReportTabState extends State<ReportTab> {
                 ),
 
                 const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                ],
-              ),
-            ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

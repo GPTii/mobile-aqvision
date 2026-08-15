@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
+
 enum NotificationSeverity { danger, warning, info }
 
 class AppNotification {
@@ -43,16 +45,7 @@ class NotificationStore extends ChangeNotifier {
   bool get isLoading => _loading;
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      final host = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
-      if (host == 'localhost' || host == '127.0.0.1') {
-        return 'http://$host:3002/api';
-      }
-      return '${Uri.base.scheme}://${Uri.base.authority}/api';
-    }
-    return 'https://api.aqvision.net/api';
-  }
+  String get _baseUrl => ApiConfig.apiBase;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import '../config/api_config.dart';
+
 class UserAccount {
   final String id;
   String name;
@@ -41,23 +43,9 @@ class AuthStore extends ChangeNotifier {
   /// Cookie JWT for Next.js `/api/rapidmedia` (Luồng B). Not `access_token`.
   String? get authToken => _authToken ?? _token;
 
-  String get _baseUrl {
-    if (kIsWeb) {
-      if (Uri.base.host == "localhost" || Uri.base.host == "127.0.0.1") {
-        return "http://localhost:3002/api/v1";
-      }
-      return "${Uri.base.scheme}://${Uri.base.authority}/api/v1";
-    }
-    return "https://api.aqvision.net/api/v1";
-  }
+  String get _baseUrl => ApiConfig.apiV1Base;
 
-  String get _webOrigin {
-    const suffix = '/api/v1';
-    if (_baseUrl.endsWith(suffix)) {
-      return _baseUrl.substring(0, _baseUrl.length - suffix.length);
-    }
-    return _baseUrl;
-  }
+  String get _webOrigin => ApiConfig.webOrigin;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
