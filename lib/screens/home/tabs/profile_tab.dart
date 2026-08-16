@@ -5,7 +5,6 @@ import '../../../theme/app_colors.dart';
 import '../../../widgets/change_password_sheet.dart';
 import '../../../widgets/edit_profile_sheet.dart';
 import '../../../widgets/prompt_dialog.dart';
-import '../../auth/login_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -19,10 +18,6 @@ class ProfileTab extends StatelessWidget {
     );
     if (!confirmed || !context.mounted) return;
     AuthStore.instance.logout();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
   }
 
   @override

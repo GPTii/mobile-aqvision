@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -5,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../config/api_config.dart';
+import '../utils/network_error_handler.dart';
+import 'video_preload_cache.dart';
 
 class UserAccount {
   final String id;
@@ -62,7 +66,7 @@ class AuthStore extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
     debugPrint("[LOGIN] POST $uri");
 
-    final http.Response res;
+    http.Response res;
     try {
       res = await http.post(uri,
         headers: {
@@ -70,6 +74,12 @@ class AuthStore extends ChangeNotifier {
         },
         body: jsonEncode({"username": username, "password": password})
       ).timeout(const Duration(seconds: 10));
+    } on SocketException catch (_) {
+      showNetworkErrorDialog();
+      throw Exception("Không thể kết nối máy chủ");
+    } on TimeoutException catch (_) {
+      showNetworkErrorDialog();
+      throw Exception("Kết nối quá hạn");
     } catch (e) {
       debugPrint("[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e");
       rethrow;
@@ -236,6 +246,7 @@ class AuthStore extends ChangeNotifier {
     _currentUser = null;
     _token = null;
     _authToken = null;
+    VideoPreloadCache.instance.clear();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove("token");
     await prefs.remove("auth_token");

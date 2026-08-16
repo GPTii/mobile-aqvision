@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,10 @@ class VideoPreloadCache {
   final Map<String, int> _refs = {};
   final LinkedHashSet<String> _lru = LinkedHashSet();
   final Set<String> _pinned = {};
+
+  static const int maxConcurrentWarm = 2;
+  int _activeWarms = 0;
+  final Queue<({String id, String url, Completer<VideoPlayerController?> completer})> _warmQueue = Queue();
 
   bool isReady(String cameraId) {
     final c = _ready[cameraId];
@@ -48,9 +53,31 @@ class VideoPreloadCache {
     final pending = _inflight[cameraId];
     if (pending != null) return pending;
 
-    final future = _create(cameraId, hlsUrl);
-    _inflight[cameraId] = future;
-    return future.whenComplete(() => _inflight.remove(cameraId));
+    final completer = Completer<VideoPlayerController?>();
+    _inflight[cameraId] = completer.future;
+
+    _warmQueue.add((id: cameraId, url: hlsUrl, completer: completer));
+    _processQueue();
+
+    return completer.future;
+  }
+
+  void _processQueue() async {
+    if (_activeWarms >= maxConcurrentWarm || _warmQueue.isEmpty) return;
+
+    final task = _warmQueue.removeFirst();
+    _activeWarms++;
+
+    try {
+      final c = await _create(task.id, task.url);
+      if (!task.completer.isCompleted) task.completer.complete(c);
+    } catch (e) {
+      if (!task.completer.isCompleted) task.completer.complete(null);
+    } finally {
+      _inflight.remove(task.id);
+      _activeWarms--;
+      _processQueue();
+    }
   }
 
   Future<void> warmMany(Iterable<({String id, String url})> items) async {
@@ -114,6 +141,13 @@ class VideoPreloadCache {
     _inflight.clear();
     _pinned.clear();
     _refs.clear();
+
+    for (final task in _warmQueue) {
+      if (!task.completer.isCompleted) {
+        task.completer.complete(null);
+      }
+    }
+    _warmQueue.clear();
   }
 
   Future<VideoPlayerController?> _create(String cameraId, String hlsUrl) async {

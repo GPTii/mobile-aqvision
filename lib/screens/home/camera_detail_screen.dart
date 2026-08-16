@@ -3,6 +3,7 @@ import 'package:video_player/video_player.dart';
 import '../../../main.dart' as import_main;
 
 import '../../data/camera_store.dart';
+import '../../data/notification_store.dart';
 import '../../data/recording_store.dart';
 import '../../data/video_preload_cache.dart';
 import '../../theme/app_colors.dart';
@@ -10,18 +11,8 @@ import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
 import 'record_list_screen.dart';
 
-class _MotionEvent {
-  final String location;
-  final String time;
 
-  const _MotionEvent(this.location, this.time);
-}
 
-const _motionEvents = [
-  _MotionEvent('Gần cửa ra vào', '5 phút trước'),
-  _MotionEvent('Khu vực trung tâm', '22 phút trước'),
-  _MotionEvent('Gần cửa sổ', '1 giờ trước'),
-];
 
 class CameraDetailScreen extends StatefulWidget {
   final String cameraId;
@@ -40,6 +31,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRecordStatus());
+    NotificationStore.instance.fetchAlerts();
   }
 
   Future<void> _syncRecordStatus() async {
@@ -110,7 +102,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         _buildSpeakButton(),
                         _buildRecordingSection(context, camera),
                         _buildDeviceInfoSection(camera, displayGroupName),
-                        _buildMotionSection(camera),
+
                       ],
                     ),
                   ),
@@ -228,11 +220,12 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       ? Stack(
                           fit: StackFit.expand,
                           children: [
-                            _DetailVideoPlayer(
-                              key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
-                              cameraId: camera.id,
-                              hlsUrl: camera.hlsUrl!,
-                            ),
+                            if (camera.online)
+                              _DetailVideoPlayer(
+                                key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
+                                cameraId: camera.id,
+                                hlsUrl: camera.hlsUrl!,
+                              ),
                             if (!camera.online)
                               const ColoredBox(
                                 color: Color(0x99000000),
@@ -460,12 +453,31 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             },
           ),
           (
-            icon: _isAlarmArmed
-                ? Icons.notifications_active_rounded
-                : Icons.notifications_none_rounded,
-            label: 'Alarm',
-            active: _isAlarmArmed,
-            onTap: () => setState(() => _isAlarmArmed = !_isAlarmArmed),
+            icon: Icons.history_rounded,
+            label: 'Lịch sử',
+            active: false,
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: AppColors.background,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (_) => DraggableScrollableSheet(
+                  initialChildSize: 0.6,
+                  minChildSize: 0.4,
+                  maxChildSize: 0.9,
+                  expand: false,
+                  builder: (_, scrollController) => SingleChildScrollView(
+                    controller: scrollController,
+                    child: SafeArea(
+                      child: _buildActivitySection(camera),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ];
 
@@ -721,46 +733,77 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildMotionSection(Camera camera) {
+  Widget _buildActivitySection(Camera camera) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 26, 16, 12),
+          padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
           child: Text(
-            'Phát hiện chuyển động',
+            'Lịch sử hoạt động',
             style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 15.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              children: List.generate(_motionEvents.length, (i) {
-                final event = _motionEvents[i];
-                return Column(
-                  children: [
-                    _MotionTile(event: event, cameraName: camera.name),
-                    if (i != _motionEvents.length - 1)
-                      Divider(
-                        height: 1,
-                        color: AppColors.divider,
-                        indent: 14,
-                        endIndent: 14,
-                      ),
-                  ],
+          child: ListenableBuilder(
+            listenable: NotificationStore.instance,
+            builder: (context, _) {
+              final allNotifications = NotificationStore.instance.notifications;
+              final cameraNotifications = allNotifications.where((n) {
+                return n.source.toLowerCase() == 'camera' && n.message.contains(camera.cameraCode);
+              }).take(50).toList();
+
+              if (cameraNotifications.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Chưa có hoạt động nào',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ),
                 );
-              }),
-            ),
+              }
+
+              return Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: List.generate(cameraNotifications.length, (i) {
+                      final notif = cameraNotifications[i];
+                      return Column(
+                        children: [
+                          _ActivityTile(notification: notif),
+                          if (i != cameraNotifications.length - 1)
+                            const Divider(
+                              height: 1,
+                              color: AppColors.divider,
+                              indent: 14,
+                              endIndent: 14,
+                            ),
+                        ],
+                      );
+                    }),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -823,11 +866,26 @@ class _ControlButton extends StatelessWidget {
   }
 }
 
-class _MotionTile extends StatelessWidget {
-  final _MotionEvent event;
-  final String cameraName;
+class _ActivityTile extends StatelessWidget {
+  final AppNotification notification;
 
-  const _MotionTile({required this.event, required this.cameraName});
+  const _ActivityTile({required this.notification});
+
+  Color get _color {
+    switch (notification.severity) {
+      case NotificationSeverity.danger: return AppColors.danger;
+      case NotificationSeverity.warning: return AppColors.warning;
+      case NotificationSeverity.info: return AppColors.info;
+    }
+  }
+
+  IconData get _icon {
+    switch (notification.severity) {
+      case NotificationSeverity.danger: return Icons.error_rounded;
+      case NotificationSeverity.warning: return Icons.wifi_off_rounded;
+      case NotificationSeverity.info: return Icons.info_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -839,14 +897,10 @@ class _MotionTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.14),
+              color: _color.withOpacity(0.14),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              Icons.directions_walk_rounded,
-              size: 18,
-              color: AppColors.warning,
-            ),
+            child: Icon(_icon, size: 18, color: _color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -854,7 +908,9 @@ class _MotionTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Phát hiện chuyển động',
+                  notification.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
@@ -863,25 +919,12 @@ class _MotionTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$cameraName · ${event.location} · ${event.time}',
+                  notification.time,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11.5),
                 ),
               ],
-            ),
-          ),
-          Container(
-            width: 44,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.play_arrow_rounded,
-              size: 18,
-              color: AppColors.accent,
             ),
           ),
         ],

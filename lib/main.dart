@@ -9,6 +9,7 @@ import 'screens/auth/login_screen.dart';
 import 'data/auth_store.dart';
 import 'screens/home/home_shell.dart';
 import 'theme/app_colors.dart';
+import 'utils/network_error_handler.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -60,7 +61,13 @@ class RapidMediaApp extends StatelessWidget {
         ),
         fontFamily: 'Roboto',
       ),
-      home: AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen(),
+      home: ListenableBuilder(
+        listenable: AuthStore.instance,
+        builder: (context, _) {
+          return AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen();
+        },
+      ),
+      navigatorKey: globalNavigatorKey,
       navigatorObservers: [routeObserver],
     );
   }

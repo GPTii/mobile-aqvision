@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -7,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import 'debounced_notifier.dart';
 import 'video_preload_cache.dart';
+import '../utils/network_error_handler.dart';
+import 'notification_store.dart';
 
 const kCameraTypes = [
   'Camera Dome',
@@ -38,6 +42,7 @@ class Camera {
   // API specific fields
   String? app;
   String? hlsUrl;
+  String? fmp4Url;
   String? targetUrl;
 
   Camera({
@@ -54,6 +59,7 @@ class Camera {
     this.lastSeen = '--:--',
     this.app,
     this.hlsUrl,
+    this.fmp4Url,
     this.targetUrl,
   });
 }
@@ -147,9 +153,20 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     if (token == null) return;
 
     final uri = Uri.parse('$_baseUrl/proxies');
-    final res = await http.get(uri, headers: {
-      'Authorization': 'Bearer $token',
-    }).timeout(const Duration(seconds: 10));
+    http.Response res;
+    try {
+      res = await http.get(uri, headers: {
+        'Authorization': 'Bearer $token',
+      }).timeout(const Duration(seconds: 10));
+    } on SocketException catch (_) {
+      showNetworkErrorDialog();
+      return;
+    } on TimeoutException catch (_) {
+      showNetworkErrorDialog();
+      return;
+    } catch (_) {
+      return;
+    }
 
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
@@ -163,10 +180,13 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
         final itemUrl = (item['url'] ?? '').toString().trim();
 
         String hlsUrl = '';
+        String fmp4Url = '';
         if (itemUrl.contains('.m3u8') || itemUrl.startsWith('http')) {
           hlsUrl = itemUrl;
+          fmp4Url = itemUrl.replaceAll('/hls.m3u8', '.live.mp4'); // Fallback logic
         } else {
           hlsUrl = '$mediaBaseUrl/$app/$stream/hls.m3u8?access_token=$token';
+          fmp4Url = '$mediaBaseUrl/$app/$stream.live.mp4?access_token=$token';
         }
 
         return Camera(
@@ -186,6 +206,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           lastSeen: 'Vừa mới',
           app: app,
           hlsUrl: hlsUrl,
+          fmp4Url: fmp4Url,
           targetUrl: item['url'],
         );
       }).toList();
@@ -358,6 +379,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
         camera.online = !camera.online;
       }
       _bumpStatus(cameraId);
+      NotificationStore.instance.fetchAlerts();
     } else {
       throw Exception(
           'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối' : 'kết nối lại'} camera');

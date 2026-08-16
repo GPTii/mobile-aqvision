@@ -26,6 +26,11 @@ class RecordingFile {
   String get mp4Url => mp4Uri.toString();
 
   /// `/api/media/record/...` — encode stream names with spaces (`cam demo2`).
+  ///
+  /// Auth: `?access_token=` là cách duy nhất `/api/media/[...path]` chấp nhận
+  /// cho mobile (nó chỉ đọc cookie `session`, header Bearer, hoặc query
+  /// `access_token` — KHÔNG đọc `auth_token`). Query param cũng cần thiết cho
+  /// nút tải về vì trình duyệt ngoài app không có cookie.
   Uri get mp4Uri {
     final base = Uri.parse(serverUrl);
     return base.replace(
@@ -38,14 +43,10 @@ class RecordingFile {
         fileName,
       ],
       queryParameters: {
-        'auth_token': token,
+        'access_token': token,
       },
     );
   }
-
-  Map<String, String> get playHeaders => {
-        'Cookie': 'auth_token=$token',
-      };
 
   /// ZLM MP4 names: `YYYY-MM-DD-HH-MM-SS-index.mp4` → `HH:MM:SS`.
   /// Legacy short names: `HH-MM-SS.mp4` → `HH:MM:SS`.

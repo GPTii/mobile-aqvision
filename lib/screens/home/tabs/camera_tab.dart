@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
@@ -319,11 +320,34 @@ class _CameraGridCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              _VideoThumbnail(
-                key: ValueKey('cam-thumb-${camera.id}'),
-                cameraId: camera.id,
-                hlsUrl: camera.hlsUrl ?? '',
-                activeTabIndex: 1,
+              ListenableBuilder(
+                listenable: CameraStore.instance.cameraListenable(camera.id),
+                builder: (_, __) {
+                  final online = CameraStore.instance.cameraById(camera.id)?.online ?? camera.online;
+                  if (!online) {
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        const DecoratedBox(
+                          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+                        ),
+                        const Center(
+                          child: Icon(
+                            Icons.videocam_off_rounded,
+                            color: Colors.white70,
+                            size: 34,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return _VideoThumbnail(
+                    key: ValueKey('cam-thumb-${camera.id}'),
+                    cameraId: camera.id,
+                    hlsUrl: camera.hlsUrl ?? '',
+                    activeTabIndex: 1,
+                  );
+                },
               ),
               Positioned(
                 bottom: 8,
@@ -430,11 +454,34 @@ class _CameraListTile extends StatelessWidget {
                   child: Stack(
                     children: [
                       Positioned.fill(
-                        child: _VideoThumbnail(
-                          key: ValueKey('list-thumb-${camera.id}'),
-                          cameraId: camera.id,
-                          hlsUrl: camera.hlsUrl ?? '',
-                          activeTabIndex: 1,
+                        child: ListenableBuilder(
+                          listenable: CameraStore.instance.cameraListenable(camera.id),
+                          builder: (_, __) {
+                            final online = CameraStore.instance.cameraById(camera.id)?.online ?? camera.online;
+                            if (!online) {
+                              return Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  const DecoratedBox(
+                                    decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+                                  ),
+                                  const Center(
+                                    child: Icon(
+                                      Icons.videocam_off_rounded,
+                                      color: Colors.white70,
+                                      size: 34,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                            return _VideoThumbnail(
+                              key: ValueKey('list-thumb-${camera.id}'),
+                              cameraId: camera.id,
+                              hlsUrl: camera.hlsUrl ?? '',
+                              activeTabIndex: 1,
+                            );
+                          },
                         ),
                       ),
                       ListenableBuilder(
@@ -685,7 +732,17 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   VideoPlayerController? _controller;
   bool _hasError = false;
 
-  bool get _shouldPlay => AppState.videoAllowedForTab(widget.activeTabIndex);
+  bool _isVisible = false;
+
+  bool get _shouldPlay => AppState.videoAllowedForTab(widget.activeTabIndex) && _isVisible;
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final visible = info.visibleFraction > 0.1;
+    if (_isVisible != visible) {
+      _isVisible = visible;
+      _onPlaybackGateChange();
+    }
+  }
 
   @override
   void initState() {
@@ -749,8 +806,9 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
 
   @override
   Widget build(BuildContext context) {
+    Widget content;
     if (_controller != null && _controller!.value.isInitialized) {
-      return SizedBox.expand(
+      content = SizedBox.expand(
         child: FittedBox(
           fit: BoxFit.cover,
           child: SizedBox(
@@ -760,23 +818,30 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
           ),
         ),
       );
+    } else {
+      content = Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+          ),
+          Center(
+            child: _hasError
+                ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+                : const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                  ),
+          ),
+        ],
+      );
     }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const DecoratedBox(
-          decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-        ),
-        Center(
-          child: _hasError
-              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
-              : const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                ),
-        ),
-      ],
+
+    return VisibilityDetector(
+      key: Key('visibility-cam-${widget.cameraId}'),
+      onVisibilityChanged: _onVisibilityChanged,
+      child: content,
     );
   }
 }

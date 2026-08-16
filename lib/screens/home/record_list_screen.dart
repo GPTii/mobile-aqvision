@@ -1,8 +1,6 @@
-import 'dart:typed_data';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
-import 'dart:ui' as ui;
-import 'dart:io';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../data/camera_store.dart';
 import '../../data/recording_store.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/captured_photo.dart';
 
 class RecordingListScreen extends StatefulWidget {
   final String cameraId;
@@ -184,10 +183,8 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       return;
     }
     _vpController?.dispose();
-    final ctrl = VideoPlayerController.networkUrl(
-      file.mp4Uri,
-      httpHeaders: file.playHeaders,
-    );
+    // Auth đi kèm trong `?access_token=` của mp4Uri — không cần httpHeaders.
+    final ctrl = VideoPlayerController.networkUrl(file.mp4Uri);
     setState(() {
       _vpController = ctrl;
       _playing = file;
@@ -221,24 +218,10 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
   
   Future<void> _takeSnapshot() async {
     try {
-      _showSnack('Đang xử lý ảnh chụp...', error: false);
-      final boundary = _videoKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
-      final image = await boundary.toImage();
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      
-      final Uint8List pngBytes = byteData.buffer.asUint8List();
-      final dir = Directory('/storage/emulated/0/Pictures');
-      if (!dir.existsSync()) dir.createSync(recursive: true);
-      final file = File('${dir.path}/snapshot_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(pngBytes);
-      
-      if (file.existsSync()) {
-        _showSnack('Đã lưu ảnh vào Thư viện!', error: false);
-      } else {
-        _showSnack('Lưu ảnh thất bại.', error: true);
-      }
+      final pngBytes = await CapturedPhoto.capture(_videoKey);
+      if (!mounted) return;
+      final saved = await CapturedPhoto.showPreviewAndSave(context, pngBytes);
+      if (saved) _showSnack('Đã lưu ảnh vào Photos');
     } catch (e) {
       _showSnack('Lỗi chụp ảnh: $e', error: true);
     }
@@ -765,8 +748,37 @@ class _RecordingTile extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.download_rounded,
                         size: 20, color: AppColors.accent),
-                    onPressed: () {
-                      launchUrl(Uri.parse(recording.mp4Url), mode: LaunchMode.externalApplication);
+                    onPressed: () async {
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đang tải video...')),
+                        );
+                        final uri = Uri.parse(recording.mp4Url);
+                        final res = await http.Client().send(http.Request('GET', uri));
+                        if (res.statusCode == 200) {
+                          final dir = Directory('/storage/emulated/0/Download');
+                          if (!dir.existsSync()) dir.createSync(recursive: true);
+                          final file = File('${dir.path}/${recording.fileName}');
+                          await res.stream.pipe(file.openWrite());
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Đã lưu video vào thư mục Download')),
+                            );
+                          }
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Lỗi tải video')),
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Lỗi: $e')),
+                          );
+                        }
+                      }
                     },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),

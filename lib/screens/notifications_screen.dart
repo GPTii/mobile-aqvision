@@ -298,6 +298,15 @@ class _NotificationTile extends StatelessWidget {
                         fontWeight: notification.read ? FontWeight.w500 : FontWeight.w700,
                       ),
                     ),
+                    if (notification.message.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        notification.message,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
                     const SizedBox(height: 2),
                     Text(
                       '${notification.source} · ${notification.time}',

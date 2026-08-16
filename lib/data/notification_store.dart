@@ -27,8 +27,9 @@ class AppNotification {
   });
 }
 
-/// Notifications feed backed by the real `/api/v1/notifications` API.
-/// Falls back to empty list on error.
+/// Notifications feed backed by the real `/api/system/alerts` API.
+/// When called from Mobile with Bearer token, backend returns
+/// user-scoped Notifications from DB instead of system-wide alerts.
 class NotificationStore extends ChangeNotifier {
   static final NotificationStore instance = NotificationStore._();
 
@@ -52,10 +53,9 @@ class NotificationStore extends ChangeNotifier {
     return prefs.getString('token');
   }
 
-  /// Fetch real system alerts from the backend. The endpoint has no
-  /// read/unread concept of its own — read state is tracked locally by
-  /// timestamp (alerts newer than the last "mark all read" time show as
-  /// unread), since there's no mark-as-read API to call.
+  /// Fetch user-scoped notifications from the backend.
+  /// The `/api/system/alerts` endpoint detects Bearer token and returns
+  /// only the current user's notifications from the Notification table.
   Future<void> fetchAlerts() async {
     final token = await _getToken();
     if (token == null) return;
@@ -73,24 +73,16 @@ class NotificationStore extends ChangeNotifier {
         final json = jsonDecode(res.body);
         final List data = json['data'] ?? [];
 
-        // Get cleared/read timestamps from prefs
-        final prefs = await SharedPreferences.getInstance();
-        final clearedAt = prefs.getInt('alerts_cleared_at') ?? 0;
-        final readAt = prefs.getInt('alerts_read_at') ?? 0;
-
         _notifications.clear();
         for (int i = 0; i < data.length; i++) {
           final item = data[i];
           final alertTime = DateTime.tryParse(item['time'] ?? '') ?? DateTime.now();
-          final alertMs = alertTime.millisecondsSinceEpoch;
-
-          // Skip alerts that were cleared locally
-          if (alertMs <= clearedAt) continue;
 
           // Map server type to Flutter severity
           NotificationSeverity severity;
           switch (item['type']) {
             case 'error':
+            case 'critical':
               severity = NotificationSeverity.danger;
               break;
             case 'warning':
@@ -109,10 +101,10 @@ class NotificationStore extends ChangeNotifier {
             id: item['id']?.toString() ?? 'alert_$i',
             title: title,
             message: item['message'] ?? '',
-            source: _extractSource(title),
+            source: _extractSource(item['source'] as String? ?? title),
             time: _formatTime(alertTime),
             severity: severity,
-            read: alertMs <= readAt,
+            read: false,
           ));
         }
       }
@@ -124,8 +116,8 @@ class NotificationStore extends ChangeNotifier {
     }
   }
 
-  /// No mark-as-read API exists yet — read state is local only.
-  void markAsRead(String id) {
+  /// Mark a single notification as read (synced to server).
+  void markAsRead(String id) async {
     for (final n in _notifications) {
       if (n.id == id) {
         n.read = true;
@@ -133,20 +125,49 @@ class NotificationStore extends ChangeNotifier {
       }
     }
     notifyListeners();
+
+    final token = await _getToken();
+    if (token != null) {
+      try {
+        await http.patch(
+          Uri.parse('${ApiConfig.apiV1Base}/notifications'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'id': id}),
+        );
+      } catch (e) {
+        debugPrint('Failed to mark notification as read: $e');
+      }
+    }
   }
 
+  /// Mark all notifications as read (synced to server).
   Future<void> markAllAsRead() async {
     for (final n in _notifications) {
       n.read = true;
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('alerts_read_at', DateTime.now().millisecondsSinceEpoch);
     notifyListeners();
+
+    final token = await _getToken();
+    if (token != null) {
+      try {
+        await http.patch(
+          Uri.parse('${ApiConfig.apiV1Base}/notifications'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({}),
+        );
+      } catch (e) {
+        debugPrint('Failed to mark all notifications as read: $e');
+      }
+    }
   }
 
   Future<void> clearAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('alerts_cleared_at', DateTime.now().millisecondsSinceEpoch);
     _notifications.clear();
     notifyListeners();
   }
@@ -171,10 +192,11 @@ class NotificationStore extends ChangeNotifier {
 
   // --- Helpers ---
 
-  String _extractSource(String title) {
-    if (title.contains('Camera')) return 'Camera';
-    if (title.contains('CPU') || title.contains('Memory') || title.contains('Disk')) return 'Hệ thống';
-    return 'Hệ thống';
+  String _extractSource(String titleOrSource) {
+    if (titleOrSource == 'camera') return 'Camera';
+    if (titleOrSource.contains('Camera')) return 'Camera';
+    if (titleOrSource.contains('CPU') || titleOrSource.contains('Memory') || titleOrSource.contains('Disk')) return 'Hệ thống';
+    return titleOrSource.isNotEmpty ? titleOrSource : 'Hệ thống';
   }
 
   String _formatTime(DateTime time) {
