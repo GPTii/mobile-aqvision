@@ -190,7 +190,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
               ),
             ],
           ),
-          _ConnectionToggleButton(camera: camera),
+          // _ConnectionToggleButton(camera: camera),
           const SizedBox(width: 4),
         ],
       ),
