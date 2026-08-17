@@ -49,7 +49,7 @@ class RapidMediaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'RapidMedia',
+      title: 'AQPC',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

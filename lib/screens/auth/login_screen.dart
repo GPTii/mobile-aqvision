@@ -252,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               Flexible(
                 child: Text(
-                  'Ghi nhớ đăng nhập',
+                  'Ghi nhớ',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),

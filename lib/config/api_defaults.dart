@@ -4,11 +4,10 @@ class ApiDefaults {
   ApiDefaults._();
 
   /// Production API host (no scheme).
-  static const String productionHost = 'dev1.aqvision.net';
+  static const String productionHost = 'api.aqvision.net';
 
   /// Production URL scheme (`https` or `http`).
-  /// `http` for now: dev1 serves a self-signed cert that ExoPlayer rejects.
-  static const String productionScheme = 'http';
+  static const String productionScheme = 'https';
 
   /// Local Next.js / BFF port when debugging on web.
   static const int localApiPort = 3002;

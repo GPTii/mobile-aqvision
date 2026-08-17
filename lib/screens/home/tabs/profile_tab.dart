@@ -1,13 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../data/auth_store.dart';
+import '../../../data/camera_store.dart';
+import '../../../data/service_plans.dart';
+import '../../../data/storage_store.dart';
+import '../../../data/subscription_store.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/change_password_sheet.dart';
 import '../../../widgets/edit_profile_sheet.dart';
 import '../../../widgets/prompt_dialog.dart';
+import '../plan_selection_screen.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
+
+  @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  @override
+  void initState() {
+    super.initState();
+    SubscriptionStore.instance.fetchAll();
+  }
 
   Future<void> _logout(BuildContext context) async {
     final confirmed = await showConfirmDialog(
@@ -125,6 +142,14 @@ class ProfileTab extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 24),
+                      const _SectionLabel('Gói dịch vụ'),
+                      const SizedBox(height: 10),
+                      const _ServicePackageCard(),
+                      const SizedBox(height: 24),
+                      const _SectionLabel('Thông tin ứng dụng'),
+                      const SizedBox(height: 10),
+                      const _AppVersionCard(),
                     ],
                   ),
                 ),
@@ -142,6 +167,199 @@ class ProfileTab extends StatelessWidget {
     final first = parts.first.characters.first;
     final last = parts.length > 1 ? parts.last.characters.first : '';
     return (first + last).toUpperCase();
+  }
+}
+
+class _ServicePackageCard extends StatelessWidget {
+  const _ServicePackageCard();
+
+  static const _tierLabels = {
+    'good': 'Bình thường',
+    'warn': 'Sắp đầy',
+    'warn2': 'Gần đầy',
+    'bad': 'Nguy cấp',
+    'full': 'Đã đầy',
+  };
+
+  static const _tierColors = {
+    'good': AppColors.success,
+    'warn': AppColors.warning,
+    'warn2': Color(0xFFC2410C),
+    'bad': AppColors.danger,
+    'full': AppColors.danger,
+  };
+
+  String _formatMb(double mb) {
+    if (mb >= 1024) return '${(mb / 1024).toStringAsFixed(1)} GB';
+    return '${mb.toStringAsFixed(0)} MB';
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '--';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _formatVnd(int amount, BillingCycle cycle) {
+    if (amount == 0) return 'Miễn phí';
+    final s = amount.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    final suffix = cycle == BillingCycle.monthly ? '/tháng' : '/năm';
+    return '${buf}đ$suffix';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        StorageStore.instance,
+        CameraStore.instance,
+        SubscriptionStore.instance,
+      ]),
+      builder: (context, _) {
+        final store = StorageStore.instance;
+        final sub = SubscriptionStore.instance;
+        final hasData = store.storageQuotaMb > 0;
+        final tierLabel = _tierLabels[store.tier] ?? 'Bình thường';
+        final tierColor = _tierColors[store.tier] ?? AppColors.success;
+        final plan = sub.currentPlan;
+        final cameraCount = CameraStore.instance.cameras.length;
+
+        if (sub.loading && plan == null) {
+          return const _InfoCard(children: [
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+                ),
+              ),
+            ),
+          ]);
+        }
+
+        if (plan == null) {
+          return _InfoCard(children: [
+            _InfoRow(
+              icon: Icons.error_outline_rounded,
+              label: 'Gói dịch vụ',
+              value: sub.error ?? 'Chưa có dữ liệu',
+            ),
+          ]);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _InfoCard(
+              children: [
+                _InfoRow(icon: Icons.workspace_premium_outlined, label: 'Gói hiện tại', value: plan.name),
+                _InfoRow(
+                  icon: Icons.videocam_outlined,
+                  label: 'Camera',
+                  value: plan.maxCameras < 0
+                      ? '$cameraCount (không giới hạn)'
+                      : '$cameraCount / ${plan.maxCameras}',
+                ),
+                _InfoRow(
+                  icon: Icons.cloud_outlined,
+                  label: 'Dung lượng lưu trữ',
+                  value: hasData
+                      ? '${_formatMb(store.usedStorageMb)} / ${_formatMb(store.storageQuotaMb)}'
+                      : '${plan.storageGb.toStringAsFixed(0)} GB',
+                ),
+                _InfoRow(
+                  icon: Icons.event_repeat_rounded,
+                  label: 'Chu kỳ thanh toán',
+                  value: sub.currentBillingCycle == BillingCycle.monthly ? 'Theo tháng' : 'Theo năm',
+                ),
+                _InfoRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Ngày bắt đầu gói',
+                  value: _formatDate(sub.startedAt),
+                ),
+                _InfoRow(
+                  icon: Icons.payments_outlined,
+                  label: 'Giá gói',
+                  value: _formatVnd(plan.priceFor(sub.currentBillingCycle), sub.currentBillingCycle),
+                ),
+                _InfoRow(
+                  icon: Icons.info_outline_rounded,
+                  label: 'Trạng thái dung lượng',
+                  value: hasData ? tierLabel : '--',
+                ),
+              ],
+            ),
+            if (hasData && store.tier != 'good') ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: tierColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tierColor.withOpacity(0.25)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_rounded, size: 16, color: tierColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Dung lượng đang ở mức "$tierLabel" — cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.',
+                        style: TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            _ActionCard(
+              children: [
+                _ActionRow(
+                  icon: Icons.upgrade_rounded,
+                  label: 'Nâng cấp gói dịch vụ',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PlanSelectionScreen(currentPlanId: plan.id),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AppVersionCard extends StatelessWidget {
+  const _AppVersionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        return _InfoCard(
+          children: [
+            _InfoRow(
+              icon: Icons.info_outline_rounded,
+              label: 'Phiên bản',
+              value: info == null ? '--' : '${info.version} (${info.buildNumber})',
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
