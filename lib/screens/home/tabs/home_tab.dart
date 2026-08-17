@@ -10,6 +10,7 @@ import '../../../widgets/camera_form_sheet.dart';
 import '../../../widgets/camera_navigation.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
+import '../../../widgets/weather_time_header.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -41,17 +42,26 @@ class HomeTab extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Expanded(
-                      child: Text(
-                        'Trang chủ',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Trang chủ',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          WeatherTimeHeader(),
+                        ],
                       ),
                     ),
+                    const SizedBox(width: 12),
                     const NotificationBellButton(),
                   ],
                 ),
@@ -202,45 +212,111 @@ class _CameraGrid extends StatelessWidget {
 
   const _CameraGrid({required this.cameras, required this.groupId});
 
+  /// Above this available width (phone landscape and up, not just tablets)
+  /// we switch each room from "1 hero + small tiles" to a uniform
+  /// video-wall grid showing every camera in the group at equal size.
+  /// Phone portrait width tops out around 320-400dp available, phone
+  /// landscape starts around 600dp — this sits between the two.
+  static const _wallBreakpoint = 560.0;
+
   @override
   Widget build(BuildContext context) {
-    final extras = cameras.skip(1).take(2).toList();
-    final overflowCount = cameras.length - 3;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          _CameraTile(
-            key: ValueKey(cameras.first.id),
-            camera: cameras.first,
-            groupId: groupId,
-            aspectRatio: 16 / 10,
-          ),
-          if (extras.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: List.generate(extras.length, (index) {
-                final isLast = index == extras.length - 1;
-                final showOverflow = isLast && overflowCount > 0;
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: index == extras.length - 1 ? 0 : 10,
-                    ),
-                    child: _CameraTile(
-                      key: ValueKey(extras[index].id),
-                      camera: extras[index],
-                      groupId: groupId,
-                      aspectRatio: 1.3,
-                      overflowCount: showOverflow ? overflowCount : 0,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ],
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= _wallBreakpoint) {
+            return _CameraWallGrid(
+              cameras: cameras,
+              groupId: groupId,
+              maxWidth: constraints.maxWidth,
+            );
+          }
+
+          // Phone portrait keeps the current "1 hero + 2 small" look
+          // unchanged. Phone landscape fits more small tiles in the row
+          // instead of stretching just 2 of them — same responsive idea
+          // as the Camera tab's grid, applied to this tab's hero-tile
+          // layout instead of a uniform grid.
+          final extraCount =
+              (constraints.maxWidth / 150).floor().clamp(2, 4);
+          final extras = cameras.skip(1).take(extraCount).toList();
+          final overflowCount = cameras.length - (1 + extraCount);
+
+          return Column(
+            children: [
+              _CameraTile(
+                key: ValueKey(cameras.first.id),
+                camera: cameras.first,
+                groupId: groupId,
+                aspectRatio: 16 / 10,
+              ),
+              if (extras.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: List.generate(extras.length, (index) {
+                    final isLast = index == extras.length - 1;
+                    final showOverflow = isLast && overflowCount > 0;
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: index == extras.length - 1 ? 0 : 10,
+                        ),
+                        child: _CameraTile(
+                          key: ValueKey(extras[index].id),
+                          camera: extras[index],
+                          groupId: groupId,
+                          aspectRatio: 1.3,
+                          overflowCount: showOverflow ? overflowCount : 0,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Tablet layout: every camera in the room/group at equal size, like a
+/// monitoring video wall, instead of one hero tile + small thumbnails.
+class _CameraWallGrid extends StatelessWidget {
+  final List<Camera> cameras;
+  final String groupId;
+  final double maxWidth;
+
+  const _CameraWallGrid({
+    required this.cameras,
+    required this.groupId,
+    required this.maxWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Smaller target tile width than a tablet-only grid would use, so
+    // ordinary phone landscape (not just big tablets) already lands on
+    // 3-4 columns instead of needing tablet-scale width to densify.
+    final crossAxisCount = (maxWidth / 170).floor().clamp(3, 6);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 16 / 10,
+      ),
+      itemCount: cameras.length,
+      itemBuilder: (context, index) => _CameraTile(
+        key: ValueKey(cameras[index].id),
+        camera: cameras[index],
+        groupId: groupId,
+        aspectRatio: 16 / 10,
       ),
     );
   }

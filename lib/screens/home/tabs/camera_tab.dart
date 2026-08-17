@@ -6,10 +6,8 @@ import '../../../data/app_state.dart';
 import '../../../data/camera_store.dart';
 import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
-import '../../../widgets/camera_form_sheet.dart';
 import '../../../widgets/camera_navigation.dart';
 import '../../../widgets/notification_bell_button.dart';
-import '../groups_screen.dart';
 
 class CameraTab extends StatefulWidget {
   const CameraTab({super.key});
@@ -207,44 +205,7 @@ class _Header extends StatelessWidget {
                 : Icons.grid_view_rounded,
             onTap: onToggleView,
           ),
-          const SizedBox(width: 10),
-          _AddMenuButton(),
         ],
-      ),
-    );
-  }
-}
-
-class _AddMenuButton extends StatelessWidget {
-  const _AddMenuButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      color: AppColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      onSelected: (value) {
-        switch (value) {
-          case 'camera':
-            showCameraFormSheet(context);
-          case 'group':
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const GroupsScreen()),
-            );
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'camera', child: Text('Thêm camera')),
-        PopupMenuItem(value: 'group', child: Text('Quản lý nhóm')),
-      ],
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          gradient: AppColors.accentGradient,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Icon(Icons.add_rounded, size: 21, color: Colors.white),
       ),
     );
   }
@@ -285,20 +246,31 @@ class _CameraGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      physics: const AlwaysScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.3,
-      ),
-      itemCount: cameras.length,
-      itemBuilder: (context, index) => _CameraGridCard(
-        key: ValueKey(cameras[index].id),
-        camera: cameras[index],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Phone portrait stays at the current 2 columns; wider layouts
+        // (phone landscape, tablets) pick up extra columns instead of
+        // stretching 2 fixed tiles across the whole width, matching the
+        // multi-screen wall look on bigger screens.
+        final crossAxisCount =
+            (constraints.maxWidth / 190).floor().clamp(2, 5);
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          physics: const AlwaysScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.3,
+          ),
+          itemCount: cameras.length,
+          itemBuilder: (context, index) => _CameraGridCard(
+            key: ValueKey(cameras[index].id),
+            camera: cameras[index],
+          ),
+        );
+      },
     );
   }
 }
