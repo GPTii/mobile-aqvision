@@ -10,6 +10,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
 import 'record_list_screen.dart';
+import '../../widgets/webrtc_player.dart';
 
 
 
@@ -26,6 +27,7 @@ class CameraDetailScreen extends StatefulWidget {
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
+  bool _useWebRTC = false;
 
   @override
   void initState() {
@@ -195,6 +197,85 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
+  Widget _buildProtocolChip(String label, bool selected) {
+    return GestureDetector(
+      onTap: () {
+        final wantWebRTC = label == 'WebRTC';
+        if (_useWebRTC != wantWebRTC) {
+          setState(() => _useWebRTC = wantWebRTC);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withOpacity(0.9)
+              : Colors.black.withOpacity(0.45),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected
+                ? AppColors.accent
+                : Colors.white.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.white70,
+            fontSize: 10,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoContent(Camera camera) {
+    if (!camera.online) {
+      return const ColoredBox(
+        color: Color(0x99000000),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam_off_rounded, color: Colors.white70, size: 40),
+              SizedBox(height: 8),
+              Text(
+                'Camera offline',
+                style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_useWebRTC) {
+      return WebRTCPlayerWidget(
+        key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
+        app: camera.app ?? 'live',
+        stream: camera.cameraCode,
+      );
+    }
+
+    if (camera.hlsUrl?.isNotEmpty ?? false) {
+      return _DetailVideoPlayer(
+        key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
+        cameraId: camera.id,
+        hlsUrl: camera.hlsUrl!,
+      );
+    }
+
+    return const DecoratedBox(
+      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+      child: Center(
+        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
+      ),
+    );
+  }
+
   Widget _buildPreview(Camera camera) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -215,69 +296,13 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             borderRadius: BorderRadius.circular(20),
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: (camera.hlsUrl?.isNotEmpty ?? false)
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            if (camera.online)
-                              _DetailVideoPlayer(
-                                key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
-                                cameraId: camera.id,
-                                hlsUrl: camera.hlsUrl!,
-                              ),
-                            if (!camera.online)
-                              const ColoredBox(
-                                color: Color(0x99000000),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.videocam_off_rounded,
-                                        color: Colors.white70,
-                                        size: 40,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Camera offline',
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        )
-                      : Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            const DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: AppColors.mediaPlaceholderGradient,
-                              ),
-                            ),
-                            const Center(
-                              child: Icon(
-                                Icons.videocam_rounded,
-                                color: AppColors.mediaPlaceholderIcon,
-                                size: 56,
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
+                Positioned.fill(child: _buildVideoContent(camera)),
+                // Camera name badge
                 Positioned(
                   top: 12,
                   left: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8),
@@ -285,22 +310,31 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                     child: Text(
                       camera.name,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ),
+                // Protocol toggle chips
+                if (camera.online)
+                  Positioned(
+                    top: 38,
+                    left: 12,
+                    child: Row(
+                      children: [
+                        _buildProtocolChip('HLS', !_useWebRTC),
+                        const SizedBox(width: 6),
+                        _buildProtocolChip('WebRTC', _useWebRTC),
+                      ],
+                    ),
+                  ),
+                // LIVE badge
                 if (camera.online)
                   Positioned(
                     top: 12,
                     right: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.danger.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(8),
@@ -309,27 +343,24 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 6,
-                            height: 6,
+                            width: 6, height: 6,
                             margin: const EdgeInsets.only(right: 4),
                             decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
+                              color: Colors.white, shape: BoxShape.circle,
                             ),
                           ),
                           const Text(
                             'LIVE',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
+                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                if (camera.online && (camera.hlsUrl?.isNotEmpty ?? false))
+                // Fullscreen button
+                if (camera.online)
                   Positioned(
                     bottom: 12,
                     right: 12,
@@ -341,11 +372,16 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                             body: SafeArea(
                               child: Center(
                                 child: AspectRatio(
-                                  aspectRatio: 16/9,
-                                  child: _DetailVideoPlayer(
-                                    cameraId: camera.id,
-                                    hlsUrl: camera.hlsUrl!,
-                                  ),
+                                  aspectRatio: 16 / 9,
+                                  child: _useWebRTC
+                                      ? WebRTCPlayerWidget(
+                                          app: camera.app ?? 'live',
+                                          stream: camera.cameraCode,
+                                        )
+                                      : _DetailVideoPlayer(
+                                          cameraId: camera.id,
+                                          hlsUrl: camera.hlsUrl!,
+                                        ),
                                 ),
                               ),
                             ),
@@ -365,9 +401,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(
-                          Icons.fullscreen_rounded,
-                          color: Colors.white,
-                          size: 18,
+                          Icons.fullscreen_rounded, color: Colors.white, size: 18,
                         ),
                       ),
                     ),

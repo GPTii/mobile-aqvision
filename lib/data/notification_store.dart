@@ -40,7 +40,19 @@ class NotificationStore extends ChangeNotifier {
   bool offlineAlertsEnabled = true;
   bool systemAlertsEnabled = true;
 
-  NotificationStore._();
+
+  NotificationStore._() {
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    motionAlertsEnabled = prefs.getBool('motionAlertsEnabled') ?? true;
+    offlineAlertsEnabled = prefs.getBool('offlineAlertsEnabled') ?? true;
+    systemAlertsEnabled = prefs.getBool('systemAlertsEnabled') ?? true;
+    notifyListeners();
+  }
+
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
   bool get isLoading => _loading;
@@ -94,8 +106,9 @@ class NotificationStore extends ChangeNotifier {
 
           // Filter by user preferences
           final title = item['title'] ?? '';
-          if (!offlineAlertsEnabled && title.contains('Camera')) continue;
-          if (!systemAlertsEnabled && (title.contains('CPU') || title.contains('Memory') || title.contains('Disk'))) continue;
+          if (!offlineAlertsEnabled && (title.contains('Camera') || title.contains('ngắt kết nối') || title.contains('kết nối lại'))) continue;
+          if (!systemAlertsEnabled && (title.contains('CPU') || title.contains('Memory') || title.contains('Disk') || title.contains('Cập nhật'))) continue;
+          if (!motionAlertsEnabled && (title.contains('chuyển động') || title.toLowerCase().contains('motion'))) continue;
 
           _notifications.add(AppNotification(
             id: item['id']?.toString() ?? 'alert_$i',
@@ -104,7 +117,7 @@ class NotificationStore extends ChangeNotifier {
             source: _extractSource(item['source'] as String? ?? title),
             time: _formatTime(alertTime),
             severity: severity,
-            read: false,
+            read: item['read'] == true || item['isRead'] == true,
           ));
         }
       }
@@ -172,22 +185,52 @@ class NotificationStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setMotionAlertsEnabled(bool value) {
+  void setMotionAlertsEnabled(bool value) async {
     motionAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('motionAlertsEnabled', value);
     notifyListeners();
-    fetchAlerts(); // Refresh with new filter
+    _syncPrefsWithServer();
+    fetchAlerts();
   }
 
-  void setOfflineAlertsEnabled(bool value) {
+  void setOfflineAlertsEnabled(bool value) async {
     offlineAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('offlineAlertsEnabled', value);
     notifyListeners();
+    _syncPrefsWithServer();
     fetchAlerts();
   }
 
-  void setSystemAlertsEnabled(bool value) {
+  void setSystemAlertsEnabled(bool value) async {
     systemAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('systemAlertsEnabled', value);
     notifyListeners();
+    _syncPrefsWithServer();
     fetchAlerts();
+  }
+
+  Future<void> _syncPrefsWithServer() async {
+    final token = await _getToken();
+    if (token == null) return;
+    try {
+      await http.patch(
+        Uri.parse('${ApiConfig.apiV1Base}/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'motionAlerts': motionAlertsEnabled,
+          'offlineAlerts': offlineAlertsEnabled,
+          'systemAlerts': systemAlertsEnabled,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Failed to sync prefs with server: $e');
+    }
   }
 
   // --- Helpers ---
