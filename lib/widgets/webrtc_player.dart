@@ -23,6 +23,9 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
   bool _connecting = false;
   String? _error;
 
+  String _iceState = 'unknown';
+  String _connState = 'unknown';
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +46,8 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
     _connecting = true;
     _error = null;
     _initialized = false;
+    _iceState = 'new';
+    _connState = 'new';
     if (mounted) setState(() {});
 
     try {
@@ -59,6 +64,29 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
         if (event.track.kind == 'video' && event.streams.isNotEmpty) {
           _renderer.srcObject = event.streams[0];
           if (mounted) setState(() => _initialized = true);
+        }
+      };
+
+      _peerConnection!.onIceConnectionState = (state) {
+        if (mounted) {
+          setState(() {
+            _iceState = state.name;
+            if (state == RTCIceConnectionState.RTCIceConnectionStateFailed || 
+                state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+              _error = 'ICE Connection Failed (Có thể do mạng Simulator chặn UDP)';
+            }
+          });
+        }
+      };
+      
+      _peerConnection!.onConnectionState = (state) {
+        if (mounted) {
+          setState(() {
+            _connState = state.name;
+            if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+              _error = 'WebRTC Connection Failed';
+            }
+          });
         }
       };
 
@@ -80,7 +108,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
 
       final uri = Uri.parse(
         '${ApiConfig.mediaBase}/index/api/webrtc'
-        '?app=${widget.app}&stream=${widget.stream}&type=play',
+        '?app=${Uri.encodeComponent(widget.app)}&stream=${Uri.encodeComponent(widget.stream)}&type=play',
       );
       final res = await http.post(
         uri,
@@ -192,9 +220,29 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
         ),
       );
     }
-    return RTCVideoView(
-      _renderer,
-      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          color: Colors.grey[900], // Dark gray background to see if widget is rendering
+          child: RTCVideoView(
+            _renderer,
+            objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+          ),
+        ),
+        Positioned(
+          bottom: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            color: Colors.black54,
+            child: Text(
+              'ICE: $_iceState | Conn: $_connState',
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
