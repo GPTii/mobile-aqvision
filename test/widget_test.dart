@@ -92,7 +92,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const MaterialApp(home: RecordListScreen()),
+      const MaterialApp(home: RecordingListScreen(cameraId: 'test')),
     );
     await tester.pumpAndSettle();
 

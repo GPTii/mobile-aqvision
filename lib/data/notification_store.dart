@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 
-enum NotificationSeverity { danger, warning, info }
+enum NotificationSeverity { danger, warning, info, subscription }
 
 class AppNotification {
   final String id;
@@ -99,6 +99,9 @@ class NotificationStore extends ChangeNotifier {
               break;
             case 'warning':
               severity = NotificationSeverity.warning;
+              break;
+            case 'subscription':
+              severity = NotificationSeverity.subscription;
               break;
             default:
               severity = NotificationSeverity.info;

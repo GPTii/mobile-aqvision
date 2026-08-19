@@ -250,6 +250,8 @@ class _NotificationTile extends StatelessWidget {
         return AppColors.warning;
       case NotificationSeverity.info:
         return AppColors.info;
+      case NotificationSeverity.subscription:
+        return AppColors.info;
     }
   }
 
@@ -261,6 +263,8 @@ class _NotificationTile extends StatelessWidget {
         return Icons.wifi_off_rounded;
       case NotificationSeverity.info:
         return Icons.info_rounded;
+      case NotificationSeverity.subscription:
+        return Icons.workspace_premium_rounded;
     }
   }
 

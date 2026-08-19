@@ -16,33 +16,59 @@ class PlanSelectionScreen extends StatefulWidget {
 class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
   late BillingCycle _cycle = SubscriptionStore.instance.currentBillingCycle;
 
-  String _formatVnd(int amount) {
-    if (amount == 0) return 'Miễn phí';
-    final s = amount.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    return '${buf}đ';
-  }
-
   Future<void> _requestUpgrade(ServicePlan plan) async {
+    final messageController = TextEditingController();
     try {
-      await SubscriptionStore.instance.requestUpgrade(planId: plan.id, cycle: _cycle);
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Liên hệ quản lý về gói ${plan.name}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: messageController,
+            maxLength: 500,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Nhắn thêm cho quản lý (không bắt buộc)...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Huỷ'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Gửi yêu cầu'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true || !mounted) return;
+
+      final resultMessage = await SubscriptionStore.instance.requestUpgrade(
+        planId: plan.id,
+        cycle: _cycle,
+        message: messageController.text,
+      );
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Đã gửi yêu cầu nâng cấp lên ${plan.name}',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-          content: const Text(
-            'Yêu cầu của bạn đang chờ quản trị viên duyệt. Gói sẽ tự cập nhật '
-            'trong mục "Gói dịch vụ" ngay sau khi được duyệt.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
+          title: const Text('Yêu cầu đã gửi',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          content: Text(resultMessage,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -56,6 +82,8 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), backgroundColor: AppColors.danger),
       );
+    } finally {
+      messageController.dispose();
     }
   }
 
@@ -162,7 +190,6 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       cycle: _cycle,
       isCurrent: isCurrent,
       isUpgrading: SubscriptionStore.instance.upgrading,
-      formatVnd: _formatVnd,
       onUpgrade: () => _requestUpgrade(plan),
     );
   }
@@ -250,7 +277,6 @@ class _PlanCard extends StatelessWidget {
   final BillingCycle cycle;
   final bool isCurrent;
   final bool isUpgrading;
-  final String Function(int) formatVnd;
   final VoidCallback onUpgrade;
 
   const _PlanCard({
@@ -258,13 +284,11 @@ class _PlanCard extends StatelessWidget {
     required this.cycle,
     required this.isCurrent,
     required this.isUpgrading,
-    required this.formatVnd,
     required this.onUpgrade,
   });
 
   @override
   Widget build(BuildContext context) {
-    final price = plan.priceFor(cycle);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -302,43 +326,12 @@ class _PlanCard extends StatelessWidget {
           Text(plan.tagline,
               style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const SizedBox(height: 14),
-          if (cycle == BillingCycle.yearly && plan.yearlySavingsPercent > 0) ...[
-            Row(
-              children: [
-                Text(
-                  formatVnd(plan.fullYearPriceVnd),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '-${plan.yearlySavingsPercent}%',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-          ],
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          const Row(
             children: [
-              Text(formatVnd(price),
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              if (price > 0)
-                Text(cycle == BillingCycle.monthly ? ' /tháng' : ' /năm',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              Icon(Icons.support_agent_rounded, size: 18, color: AppColors.accent),
+              SizedBox(width: 6),
+              Text('Liên hệ quản lý',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent)),
             ],
           ),
           const SizedBox(height: 14),
@@ -375,8 +368,8 @@ class _PlanCard extends StatelessWidget {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(plan.isFree ? 'Chuyển về Free' : 'Nâng cấp',
-                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                        : const Text('Liên hệ quản lý',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                   ),
           ),
         ],

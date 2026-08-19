@@ -86,10 +86,15 @@ class SubscriptionStore extends ChangeNotifier {
     }
   }
 
-  /// Sends an upgrade request for admin approval — does not flip the plan
-  /// immediately. Callers should show a "request sent" message, not a
-  /// success-as-if-upgraded one.
-  Future<void> requestUpgrade({required String planId, required BillingCycle cycle}) async {
+  /// Sends a "contact manager" request for a plan — this is not a
+  /// self-service purchase, admin reviews and reaches out directly (no
+  /// online payment yet). Doesn't flip the plan immediately. Returns the
+  /// server's confirmation message to show the customer verbatim.
+  Future<String> requestUpgrade({
+    required String planId,
+    required BillingCycle cycle,
+    String? message,
+  }) async {
     final token = await _getToken();
     if (token == null) throw Exception('Chưa đăng nhập');
 
@@ -98,18 +103,27 @@ class SubscriptionStore extends ChangeNotifier {
 
     try {
       final uri = Uri.parse('$_baseUrl/subscription/upgrade');
+      final trimmedMessage = message?.trim();
       final res = await http.post(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'planId': planId, 'billingCycle': cycle.name}),
+        body: jsonEncode({
+          'planId': planId,
+          'billingCycle': cycle.name,
+          if (trimmedMessage != null && trimmedMessage.isNotEmpty) 'message': trimmedMessage,
+        }),
       ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) {
-        throw Exception('Lỗi gửi yêu cầu nâng cấp (${res.statusCode}): ${res.body}');
+        throw Exception('Lỗi gửi yêu cầu liên hệ (${res.statusCode}): ${res.body}');
       }
+
+      final json = jsonDecode(res.body);
+      return json['msg']?.toString() ??
+          'Yêu cầu liên hệ đã được ghi nhận, quản lý sẽ liên hệ với bạn sớm';
     } finally {
       _upgrading = false;
       notifyListeners();

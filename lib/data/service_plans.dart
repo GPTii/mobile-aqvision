@@ -38,27 +38,7 @@ class ServicePlan {
         tagline: json['tagline']?.toString() ?? '',
       );
 
-  bool get isFree => priceMonthlyVnd == 0;
-
-  int priceFor(BillingCycle cycle) =>
-      cycle == BillingCycle.monthly ? priceMonthlyVnd : priceYearlyVnd;
-
   String get cameraLabel => maxCameras < 0 ? 'Không giới hạn camera' : '$maxCameras camera';
-
-  /// 12x the monthly price — the "giá gốc" shown struck-through next to the
-  /// discounted yearly price.
-  int get fullYearPriceVnd => priceMonthlyVnd * 12;
-
-  /// Percent saved by paying yearly vs. 12x monthly, derived from the two
-  /// real prices the API returns — mirrors whatever % the admin set on the
-  /// server, since priceYearlyVnd is server-computed from that same %.
-  int get yearlySavingsPercent {
-    final full = fullYearPriceVnd;
-    if (full <= 0 || isFree) return 0;
-    final saved = full - priceYearlyVnd;
-    if (saved <= 0) return 0;
-    return ((saved / full) * 100).round();
-  }
 }
 
 /// No plan has a fixed retention window — recordings are kept indefinitely

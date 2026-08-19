@@ -199,18 +199,6 @@ class _ServicePackageCard extends StatelessWidget {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  String _formatVnd(int amount, BillingCycle cycle) {
-    if (amount == 0) return 'Miễn phí';
-    final s = amount.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    final suffix = cycle == BillingCycle.monthly ? '/tháng' : '/năm';
-    return '${buf}đ$suffix';
-  }
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -282,11 +270,6 @@ class _ServicePackageCard extends StatelessWidget {
                   icon: Icons.calendar_today_outlined,
                   label: 'Ngày bắt đầu gói',
                   value: _formatDate(sub.startedAt),
-                ),
-                _InfoRow(
-                  icon: Icons.payments_outlined,
-                  label: 'Giá gói',
-                  value: _formatVnd(plan.priceFor(sub.currentBillingCycle), sub.currentBillingCycle),
                 ),
                 _InfoRow(
                   icon: Icons.info_outline_rounded,

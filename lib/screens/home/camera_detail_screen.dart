@@ -910,6 +910,7 @@ class _ActivityTile extends StatelessWidget {
       case NotificationSeverity.danger: return AppColors.danger;
       case NotificationSeverity.warning: return AppColors.warning;
       case NotificationSeverity.info: return AppColors.info;
+      case NotificationSeverity.subscription: return AppColors.info;
     }
   }
 
@@ -918,6 +919,7 @@ class _ActivityTile extends StatelessWidget {
       case NotificationSeverity.danger: return Icons.error_rounded;
       case NotificationSeverity.warning: return Icons.wifi_off_rounded;
       case NotificationSeverity.info: return Icons.info_rounded;
+      case NotificationSeverity.subscription: return Icons.workspace_premium_rounded;
     }
   }
 
