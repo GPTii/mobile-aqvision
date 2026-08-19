@@ -230,18 +230,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
             objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
           ),
         ),
-        Positioned(
-          bottom: 8,
-          right: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            color: Colors.black54,
-            child: Text(
-              'ICE: $_iceState | Conn: $_connState',
-              style: const TextStyle(color: Colors.white, fontSize: 10),
-            ),
-          ),
-        ),
       ],
     );
   }

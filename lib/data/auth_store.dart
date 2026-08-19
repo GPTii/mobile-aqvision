@@ -2,12 +2,14 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../config/api_config.dart';
 import '../utils/network_error_handler.dart';
+import '../screens/auth/login_screen.dart';
 import 'video_preload_cache.dart';
 
 class UserAccount {
@@ -251,5 +253,14 @@ class AuthStore extends ChangeNotifier {
     await prefs.remove("token");
     await prefs.remove("auth_token");
     notifyListeners();
+
+    // Force navigation to LoginScreen on any logout (manual or token expiration)
+    final context = globalNavigatorKey.currentContext;
+    if (context != null) {
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 }

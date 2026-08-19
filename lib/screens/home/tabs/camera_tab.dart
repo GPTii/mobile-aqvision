@@ -799,7 +799,10 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
           ),
           Center(
             child: _hasError
-                ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+                ? IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
+                    onPressed: _attach,
+                  )
                 : const SizedBox(
                     width: 24,
                     height: 24,

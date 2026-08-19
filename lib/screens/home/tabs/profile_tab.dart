@@ -10,6 +10,7 @@ import '../../../theme/app_colors.dart';
 import '../../../widgets/change_password_sheet.dart';
 import '../../../widgets/edit_profile_sheet.dart';
 import '../../../widgets/prompt_dialog.dart';
+import '../../auth/login_screen.dart';
 import '../plan_selection_screen.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -34,7 +35,13 @@ class _ProfileTabState extends State<ProfileTab> {
       confirmLabel: 'Đăng xuất',
     );
     if (!confirmed || !context.mounted) return;
-    AuthStore.instance.logout();
+    await AuthStore.instance.logout();
+    
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
