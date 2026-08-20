@@ -32,6 +32,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final camera = CameraStore.instance.cameraById(widget.cameraId);
+    if (camera != null) {
+      _useWebRTC = camera.playProtocol == 'webrtc';
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRecordStatus());
     NotificationStore.instance.fetchAlerts();
   }
@@ -1120,7 +1124,10 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
         ),
         Center(
           child: _hasError
-              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+              ? IconButton(
+                  icon: const Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
+                  onPressed: _initializeVideo,
+                )
               : _obscured
                   ? const SizedBox.shrink()
                   : const SizedBox(

@@ -35,6 +35,11 @@ class ApiConfig {
   static String get webOrigin => origin;
 
   /// HLS / recording media base: `/api/media`.
-  static String get mediaBase =>
-      '$apiBase/${ApiDefaults.mediaPathSegment}';
+  /// Force HTTP for media to prevent ExoPlayer from rejecting self-signed SSL on dev.
+  static String get mediaBase {
+    if (origin.startsWith('https://dev1')) {
+      return '${origin.replaceFirst('https://', 'http://')}${ApiDefaults.apiPath}/${ApiDefaults.mediaPathSegment}';
+    }
+    return '$apiBase/${ApiDefaults.mediaPathSegment}';
+  }
 }

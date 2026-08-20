@@ -44,6 +44,7 @@ class Camera {
   String? hlsUrl;
   String? fmp4Url;
   String? targetUrl;
+  String? playProtocol;
 
   Camera({
     required this.id,
@@ -61,6 +62,7 @@ class Camera {
     this.hlsUrl,
     this.fmp4Url,
     this.targetUrl,
+    this.playProtocol,
   });
 }
 
@@ -208,6 +210,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           hlsUrl: hlsUrl,
           fmp4Url: fmp4Url,
           targetUrl: item['url'],
+          playProtocol: item['playProtocol'],
         );
       }).toList();
       notifyNow();
