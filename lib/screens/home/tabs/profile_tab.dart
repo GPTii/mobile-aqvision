@@ -25,6 +25,7 @@ class _ProfileTabState extends State<ProfileTab> {
   void initState() {
     super.initState();
     SubscriptionStore.instance.fetchAll();
+    StorageStore.instance.fetchStorage();
   }
 
   Future<void> _logout(BuildContext context) async {
