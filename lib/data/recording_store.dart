@@ -32,10 +32,15 @@ class RecordingFile {
   /// `access_token` — KHÔNG đọc `auth_token`). Query param cũng cần thiết cho
   /// nút tải về vì trình duyệt ngoài app không có cookie.
   Uri get mp4Uri {
-    final base = Uri.parse(serverUrl);
+    var base = Uri.parse(serverUrl);
+    if (base.scheme == 'https' && base.host.startsWith('dev1')) {
+      base = base.replace(scheme: 'http', port: 80);
+    }
     return base.replace(
       pathSegments: [
         ...base.pathSegments.where((s) => s.isNotEmpty),
+        'api',
+        'media',
         'record',
         app,
         stream,
