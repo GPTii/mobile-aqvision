@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'screens/auth/login_screen.dart';
 import 'data/auth_store.dart';
@@ -22,7 +23,8 @@ final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<v
 
 void main() async {
   HttpOverrides.global = MyHttpOverrides();
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Boss's call: the app stays portrait-only for regular navigation.
   // Individual screens (e.g. fullscreen video playback) can still switch
@@ -50,6 +52,7 @@ void main() async {
 
   await AuthStore.instance.init();
   runApp(const RapidMediaApp());
+  FlutterNativeSplash.remove();
 }
 
 class RapidMediaApp extends StatelessWidget {
@@ -58,7 +61,7 @@ class RapidMediaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AQPC',
+      title: 'AQPCamera',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

@@ -27,15 +27,10 @@ class CameraDetailScreen extends StatefulWidget {
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
-  bool _useWebRTC = false;
 
   @override
   void initState() {
     super.initState();
-    final camera = CameraStore.instance.cameraById(widget.cameraId);
-    if (camera != null) {
-      _useWebRTC = camera.playProtocol == 'webrtc';
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRecordStatus());
     NotificationStore.instance.fetchAlerts();
   }
@@ -201,41 +196,6 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildProtocolChip(String label, bool selected) {
-    return GestureDetector(
-      onTap: () {
-        final wantWebRTC = label == 'WebRTC';
-        if (_useWebRTC != wantWebRTC) {
-          setState(() => _useWebRTC = wantWebRTC);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.accent.withOpacity(0.9)
-              : Colors.black.withOpacity(0.45),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected
-                ? AppColors.accent
-                : Colors.white.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
-            fontSize: 10,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildVideoContent(Camera camera) {
     if (!camera.online) {
       return const ColoredBox(
@@ -256,27 +216,12 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       );
     }
 
-    if (_useWebRTC) {
-      return WebRTCPlayerWidget(
-        key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
-        app: camera.app ?? 'live',
-        stream: camera.cameraCode,
-      );
-    }
-
-    if (camera.hlsUrl?.isNotEmpty ?? false) {
-      return _DetailVideoPlayer(
-        key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
-        cameraId: camera.id,
-        hlsUrl: camera.hlsUrl!,
-      );
-    }
-
-    return const DecoratedBox(
-      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-      child: Center(
-        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
-      ),
+    return _CameraPlayer(
+      key: ValueKey('player-${camera.id}-${camera.app}-${camera.cameraCode}'),
+      cameraId: camera.id,
+      app: camera.app ?? 'live',
+      stream: camera.cameraCode,
+      hlsUrl: camera.hlsUrl,
     );
   }
 
@@ -319,19 +264,6 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                     ),
                   ),
                 ),
-                // Protocol toggle chips
-                if (camera.online)
-                  Positioned(
-                    top: 38,
-                    left: 12,
-                    child: Row(
-                      children: [
-                        _buildProtocolChip('HLS', !_useWebRTC),
-                        const SizedBox(width: 6),
-                        _buildProtocolChip('WebRTC', _useWebRTC),
-                      ],
-                    ),
-                  ),
                 // LIVE badge
                 if (camera.online)
                   Positioned(
@@ -377,15 +309,12 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: _useWebRTC
-                                      ? WebRTCPlayerWidget(
-                                          app: camera.app ?? 'live',
-                                          stream: camera.cameraCode,
-                                        )
-                                      : _DetailVideoPlayer(
-                                          cameraId: camera.id,
-                                          hlsUrl: camera.hlsUrl!,
-                                        ),
+                                  child: _CameraPlayer(
+                                    cameraId: camera.id,
+                                    app: camera.app ?? 'live',
+                                    stream: camera.cameraCode,
+                                    hlsUrl: camera.hlsUrl,
+                                  ),
                                 ),
                               ),
                             ),
@@ -689,7 +618,6 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     final rows = [
       ('Camera ID', camera.cameraCode, Icons.qr_code_2_rounded),
       ('Loại camera', camera.type, Icons.videocam_outlined),
-      ('Địa chỉ IP', camera.ipAddress, Icons.wifi_rounded),
       ('Vị trí lắp đặt', camera.location, Icons.place_outlined),
       ('Nhóm', groupName, Icons.folder_open_rounded),
       (
@@ -968,6 +896,60 @@ class _ActivityTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Plays a camera's live view, preferring WebRTC for low latency and
+/// silently falling back to HLS if WebRTC fails or times out — no protocol
+/// picker, no visible error, the user just sees the stream.
+class _CameraPlayer extends StatefulWidget {
+  final String cameraId;
+  final String app;
+  final String stream;
+  final String? hlsUrl;
+
+  const _CameraPlayer({
+    super.key,
+    required this.cameraId,
+    required this.app,
+    required this.stream,
+    this.hlsUrl,
+  });
+
+  @override
+  State<_CameraPlayer> createState() => _CameraPlayerState();
+}
+
+class _CameraPlayerState extends State<_CameraPlayer> {
+  bool _useWebRTC = true;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_useWebRTC) {
+      return WebRTCPlayerWidget(
+        key: ValueKey('webrtc-${widget.cameraId}-${widget.app}-${widget.stream}'),
+        app: widget.app,
+        stream: widget.stream,
+        onError: () {
+          if (mounted) setState(() => _useWebRTC = false);
+        },
+      );
+    }
+
+    if (widget.hlsUrl?.isNotEmpty ?? false) {
+      return _DetailVideoPlayer(
+        key: ValueKey('detail-${widget.cameraId}-${widget.hlsUrl}'),
+        cameraId: widget.cameraId,
+        hlsUrl: widget.hlsUrl!,
+      );
+    }
+
+    return const DecoratedBox(
+      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+      child: Center(
+        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
       ),
     );
   }

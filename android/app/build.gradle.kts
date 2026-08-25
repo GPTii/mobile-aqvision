@@ -42,7 +42,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "AQPC-v${flutter.versionName}-${buildType.name}.apk"
+            output.outputFileName = "AQPCamera-v${flutter.versionName}-${buildType.name}.apk"
         }
     }
 }

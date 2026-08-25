@@ -46,6 +46,7 @@ dependencies:
   visibility_detector: ^0.4.0+2
   package_info_plus: ^8.1.2
   geolocator: ^13.0.2
+  flutter_native_splash: ^2.4.3
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +64,15 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/aqpc_logo.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/icon/aqpc_logo.png
+  android_12:
+    color: "#FFFFFF"
+    image: assets/icon/aqpc_logo.png
+  android: true
+  ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
