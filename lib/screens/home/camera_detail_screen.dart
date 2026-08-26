@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../../../main.dart' as import_main;
 
@@ -11,6 +12,7 @@ import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
 import 'record_list_screen.dart';
 import '../../widgets/webrtc_player.dart';
+import '../../utils/captured_photo.dart';
 
 
 
@@ -27,15 +29,11 @@ class CameraDetailScreen extends StatefulWidget {
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
-  bool _useWebRTC = false;
+  final GlobalKey _videoKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    final camera = CameraStore.instance.cameraById(widget.cameraId);
-    if (camera != null) {
-      _useWebRTC = camera.playProtocol == 'webrtc';
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncRecordStatus());
     NotificationStore.instance.fetchAlerts();
   }
@@ -201,40 +199,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     );
   }
 
-  Widget _buildProtocolChip(String label, bool selected) {
-    return GestureDetector(
-      onTap: () {
-        final wantWebRTC = label == 'WebRTC';
-        if (_useWebRTC != wantWebRTC) {
-          setState(() => _useWebRTC = wantWebRTC);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.accent.withOpacity(0.9)
-              : Colors.black.withOpacity(0.45),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected
-                ? AppColors.accent
-                : Colors.white.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
-            fontSize: 10,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildVideoContent(Camera camera) {
     if (!camera.online) {
@@ -256,7 +221,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       );
     }
 
-    if (_useWebRTC) {
+    if (camera.playProtocol?.toLowerCase() == 'webrtc') {
       return WebRTCPlayerWidget(
         key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
         app: camera.app ?? 'live',
@@ -300,7 +265,12 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             borderRadius: BorderRadius.circular(20),
             child: Stack(
               children: [
-                Positioned.fill(child: _buildVideoContent(camera)),
+                Positioned.fill(
+                  child: RepaintBoundary(
+                    key: _videoKey,
+                    child: _buildVideoContent(camera),
+                  ),
+                ),
                 // Camera name badge
                 Positioned(
                   top: 12,
@@ -319,19 +289,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                     ),
                   ),
                 ),
-                // Protocol toggle chips
-                if (camera.online)
-                  Positioned(
-                    top: 38,
-                    left: 12,
-                    child: Row(
-                      children: [
-                        _buildProtocolChip('HLS', !_useWebRTC),
-                        const SizedBox(width: 6),
-                        _buildProtocolChip('WebRTC', _useWebRTC),
-                      ],
-                    ),
-                  ),
+                // Protocol toggle chips removed as requested
                 // LIVE badge
                 if (camera.online)
                   Positioned(
@@ -377,7 +335,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: _useWebRTC
+                                  child: (camera.playProtocol?.toLowerCase() == 'webrtc')
                                       ? WebRTCPlayerWidget(
                                           app: camera.app ?? 'live',
                                           stream: camera.cameraCode,
@@ -484,10 +442,19 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             icon: Icons.camera_alt_rounded,
             label: 'Capture',
             active: false,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
-              );
+            onTap: () async {
+              try {
+                final pngBytes = await CapturedPhoto.capture(_videoKey);
+                if (pngBytes != null && context.mounted) {
+                  await CapturedPhoto.showPreviewAndSave(context, pngBytes);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi chụp ảnh: $e')),
+                  );
+                }
+              }
             },
           ),
           (
@@ -689,7 +656,6 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     final rows = [
       ('Camera ID', camera.cameraCode, Icons.qr_code_2_rounded),
       ('Loại camera', camera.type, Icons.videocam_outlined),
-      ('Địa chỉ IP', camera.ipAddress, Icons.wifi_rounded),
       ('Vị trí lắp đặt', camera.location, Icons.place_outlined),
       ('Nhóm', groupName, Icons.folder_open_rounded),
       (
@@ -742,17 +708,39 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                             ),
                           ),
                           Flexible(
-                            child: Text(
-                              value,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: isStatus
-                                    ? (camera.online ? AppColors.success : AppColors.danger)
-                                    : AppColors.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            child: GestureDetector(
+                              onTap: () async {
+                                if (label == 'Vị trí lắp đặt' && camera.mapLink != null && camera.mapLink!.isNotEmpty) {
+                                  final uri = Uri.tryParse(camera.mapLink!);
+                                  if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  if (label == 'Vị trí lắp đặt' && camera.mapLink != null && camera.mapLink!.isNotEmpty)
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.info),
+                                    ),
+                                  Flexible(
+                                    child: Text(
+                                      value,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        color: isStatus
+                                            ? (camera.online ? AppColors.success : AppColors.danger)
+                                            : (label == 'Vị trí lắp đặt' && camera.mapLink != null && camera.mapLink!.isNotEmpty ? AppColors.info : AppColors.textPrimary),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        decoration: label == 'Vị trí lắp đặt' && camera.mapLink != null && camera.mapLink!.isNotEmpty ? TextDecoration.underline : null,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
