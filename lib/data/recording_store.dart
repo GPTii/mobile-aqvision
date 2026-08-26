@@ -39,8 +39,6 @@ class RecordingFile {
     return base.replace(
       pathSegments: [
         ...base.pathSegments.where((s) => s.isNotEmpty),
-        'api',
-        'media',
         'record',
         app,
         stream,
