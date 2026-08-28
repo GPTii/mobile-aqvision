@@ -1,13 +1,14 @@
-import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
-import '../config/api_config.dart';
+import '../core/commadesk_api.dart';
 import '../utils/network_error_handler.dart';
 import '../screens/auth/login_screen.dart';
 import 'video_preload_cache.dart';
@@ -15,22 +16,20 @@ import 'video_preload_cache.dart';
 class UserAccount {
   final String id;
   String name;
-  String email; // used as username or email
+  String email;
   String phone;
   String role;
-  
-  // Agency info
-  String? agencyId;
-  String? apiSecret;
+  String? organizationId;
+  String? organizationName;
 
   UserAccount({
     required this.id,
     required this.name,
     required this.email,
     this.phone = '',
-    this.role = 'Quản trị viên',
-    this.agencyId,
-    this.apiSecret,
+    this.role = 'Người dùng',
+    this.organizationId,
+    this.organizationName,
   });
 }
 
@@ -41,220 +40,236 @@ class AuthStore extends ChangeNotifier {
 
   UserAccount? _currentUser;
   String? _token;
-  String? _authToken;
 
   UserAccount? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   String? get token => _token;
 
-  /// Cookie JWT for Next.js `/api/rapidmedia` (Luồng B). Not `access_token`.
-  String? get authToken => _authToken ?? _token;
-
-  String get _baseUrl => ApiConfig.apiV1Base;
-
-  String get _webOrigin => ApiConfig.webOrigin;
+  /// Legacy alias — CommaDesk uses Bearer JWT only (no web cookie session).
+  String? get authToken => _token;
 
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString("token");
-    _authToken = prefs.getString("auth_token");
-    if (_token != null) {
-      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
-    }
-  }
-
-  Future<void> login(String username, String password) async {
-    final uri = Uri.parse("$_baseUrl/auth/login");
-    final stopwatch = Stopwatch()..start();
-    debugPrint("[LOGIN] POST $uri");
-
-    http.Response res;
-    try {
-      res = await http.post(uri,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: jsonEncode({"username": username, "password": password})
-      ).timeout(const Duration(seconds: 10));
-    } on SocketException catch (_) {
-      showNetworkErrorDialog();
-      throw Exception("Không thể kết nối máy chủ");
-    } on TimeoutException catch (_) {
-      showNetworkErrorDialog();
-      throw Exception("Kết nối quá hạn");
-    } catch (e) {
-      debugPrint("[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e");
-      rethrow;
-    }
-    debugPrint("[LOGIN] status ${res.statusCode} after ${stopwatch.elapsedMilliseconds}ms");
-
-    if (res.statusCode == 200) {
-      final json = jsonDecode(res.body);
-      _token = json["data"]["token"];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("token", _token!);
-
-      await _loginWebSession(username, password);
+    _token = await CommaDeskApi.instance.readAccessToken();
+    if (_token != null && _token!.isNotEmpty) {
       try {
         await fetchProfile();
       } catch (e) {
-        debugPrint("[LOGIN] profile fetch failed: $e");
+        debugPrint('[AuthStore] token invalid: $e');
         await logout();
-        rethrow;
       }
-    } else {
-      final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Đăng nhập thất bại");
     }
   }
 
-  /// Luồng B: `POST /api/auth/login` → cookie `auth_token` (không có `access_token` trong body).
-  Future<void> _loginWebSession(String username, String password) async {
+  Future<void> login(String emailOrUsername, String password) async {
+    final uri = Uri.parse('${CommaDeskApi.instance.baseUrl}/auth/login');
+    final stopwatch = Stopwatch()..start();
+    debugPrint('[LOGIN] POST $uri');
+
+    http.Response res;
     try {
-      final uri = Uri.parse("$_webOrigin/api/auth/login");
-      debugPrint("[LOGIN] web session POST $uri");
-      final res = await http.post(
-        uri,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"username": username, "password": password}),
-      ).timeout(const Duration(seconds: 10));
-
-      final fromCookie = _parseAuthTokenCookie(res.headers["set-cookie"]);
-      final cookie = (fromCookie != null && fromCookie.isNotEmpty)
-          ? fromCookie
-          : _token;
-      debugPrint(
-        "[LOGIN] web session ${res.statusCode} cookie=${fromCookie != null}",
-      );
-      if (cookie != null && cookie.isNotEmpty) {
-        await _saveAuthToken(cookie);
-      }
+      res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'email': emailOrUsername.trim(),
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+    } on SocketException catch (_) {
+      showNetworkErrorDialog();
+      throw Exception('Không thể kết nối máy chủ');
+    } on TimeoutException catch (_) {
+      showNetworkErrorDialog();
+      throw Exception('Kết nối quá hạn');
     } catch (e) {
-      debugPrint("[LOGIN] web session failed: $e");
-      if (_token != null) await _saveAuthToken(_token!);
+      debugPrint(
+        '[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e',
+      );
+      rethrow;
     }
-  }
+    debugPrint(
+      '[LOGIN] status ${res.statusCode} after ${stopwatch.elapsedMilliseconds}ms',
+    );
 
-  Future<void> _saveAuthToken(String value) async {
-    _authToken = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("auth_token", value);
-  }
+    final json = jsonDecode(res.body);
+    if (json is! Map) {
+      throw Exception('Phản hồi đăng nhập không hợp lệ');
+    }
+    final map = Map<String, dynamic>.from(json);
 
-  String? _parseAuthTokenCookie(String? setCookie) {
-    if (setCookie == null || setCookie.isEmpty) return null;
-    return RegExp(r'auth_token=([^;]+)').firstMatch(setCookie)?.group(1);
+    if (res.statusCode != 200) {
+      throw Exception(map['error']?.toString() ?? 'Đăng nhập thất bại');
+    }
+
+    final status = map['status']?.toString();
+    if (status == 'requires_2fa') {
+      throw Exception(
+        'Tài khoản bật 2FA — vui lòng đăng nhập qua dashboard CommaDesk trước.',
+      );
+    }
+    if (status == 'requires_org') {
+      throw Exception(
+        'Email trùng nhiều tổ chức — cần Organization ID khi đăng nhập.',
+      );
+    }
+    if (status == 'requires_email') {
+      throw Exception(
+        'Tên đăng nhập trùng — vui lòng dùng email đầy đủ.',
+      );
+    }
+
+    final access = (map['access_token'] ?? map['token'])?.toString() ?? '';
+    final refresh = map['refresh_token']?.toString() ?? '';
+    if (access.isEmpty || refresh.isEmpty) {
+      throw Exception('Đăng nhập thất bại — thiếu token');
+    }
+
+    final userRaw = map['user'];
+    String? orgId;
+    if (userRaw is Map) {
+      orgId = (userRaw['organization_id'] ?? userRaw['organizationId'])
+          ?.toString();
+    }
+
+    await CommaDeskApi.instance.saveSession(
+      accessToken: access,
+      refreshToken: refresh,
+      organizationId: orgId,
+    );
+    _token = access;
+
+    try {
+      await fetchProfile();
+    } catch (e) {
+      debugPrint('[LOGIN] profile fetch failed: $e');
+      await logout();
+      rethrow;
+    }
   }
 
   Future<void> fetchProfile() async {
-    if (_token == null) return;
-    
-    final uri = Uri.parse("$_baseUrl/auth/me");
-    final res = await http.get(uri, headers: {
-      "Authorization": "Bearer $_token",
-      "Bypass-Tunnel-Reminder": "true"
-    }).timeout(const Duration(seconds: 10));
-    
-    if (res.statusCode == 200) {
-      final json = jsonDecode(res.body);
-      final user = json["user"];
-      final agency = json["agency"];
-      
-      _currentUser = UserAccount(
-        id: user["id"]?.toString() ?? "",
-        name: user["name"] ?? user["fullName"] ?? user["username"] ?? "Người dùng",
-        email: user["username"] ?? "",
-        phone: user["phone"] ?? "--",
-        role: user["role"] ?? "Quản trị viên",
-        agencyId: agency != null ? agency["agencyId"] : null,
-        apiSecret: agency != null ? agency["apiSecret"] : null,
-      );
-      
-      // Register device token for push notifications
-      _registerDeviceToken();
-      
-      notifyListeners();
-    } else {
-      // Token may be expired
+    final token = await CommaDeskApi.instance.readAccessToken();
+    if (token == null || token.isEmpty) return;
+
+    final res = await CommaDeskApi.instance.get('/profile');
+    if (res.statusCode != 200) {
       await logout();
+      return;
     }
+
+    final json = jsonDecode(res.body);
+    if (json is! Map) throw Exception('Profile không hợp lệ');
+    final map = Map<String, dynamic>.from(json);
+
+    final userRaw = map['user'];
+    if (userRaw is! Map) throw Exception('Thiếu user trong profile');
+    final user = Map<String, dynamic>.from(userRaw);
+    final orgRaw = map['organization'];
+    final org = orgRaw is Map ? Map<String, dynamic>.from(orgRaw) : null;
+
+    final roles = map['roles'];
+    String roleLabel = 'Người dùng';
+    if (roles is List && roles.isNotEmpty) {
+      roleLabel = roles.first.toString();
+    } else if (user['is_admin'] == true || user['isAdmin'] == true) {
+      roleLabel = 'Quản trị viên';
+    }
+
+    final orgId = org?['id']?.toString() ??
+        user['organization_id']?.toString() ??
+        user['organizationId']?.toString();
+
+    if (orgId != null && orgId.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('organization_id', orgId);
+    }
+
+    _token = token;
+    _currentUser = UserAccount(
+      id: user['id']?.toString() ?? '',
+      name: (user['name'] ?? user['display_name'] ?? 'Người dùng').toString(),
+      email: user['email']?.toString() ?? '',
+      phone: user['phone']?.toString() ?? '',
+      role: roleLabel,
+      organizationId: orgId,
+      organizationName: org?['name']?.toString(),
+    );
+
+    await _registerDeviceToken();
+    notifyListeners();
   }
 
   Future<void> _registerDeviceToken() async {
     if (kIsWeb) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null && _token != null) {
-        await http.post(
-          Uri.parse("$_baseUrl/devices/register"),
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer $_token",
-          },
-          body: jsonEncode({"token": token, "platform": defaultTargetPlatform.name}),
-        );
-      }
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      final access = await CommaDeskApi.instance.readAccessToken();
+      if (fcmToken == null || access == null) return;
+
+      await CommaDeskApi.instance.post(
+        '/push/register',
+        body: {
+          'token': fcmToken,
+          'platform': defaultTargetPlatform.name,
+        },
+      );
     } catch (e) {
-      print("Register device token error: $e");
+      debugPrint('[AuthStore] push register error: $e');
     }
   }
 
   Future<void> updateProfile({String? name, String? email, String? phone}) async {
-    final uri = Uri.parse("$_baseUrl/auth/me");
-    final res = await http.patch(uri,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $_token",
-      },
-      body: jsonEncode({
-        if (name != null && name.trim().isNotEmpty) "name": name.trim(),
-        if (phone != null) "phone": phone.trim(),
-      }),
-    ).timeout(const Duration(seconds: 10));
+    final body = <String, dynamic>{};
+    if (name != null && name.trim().isNotEmpty) {
+      body['name'] = name.trim();
+      body['display_name'] = name.trim();
+    }
+    if (phone != null) body['phone'] = phone.trim();
 
+    final res = await CommaDeskApi.instance.put('/profile', body: body);
     if (res.statusCode == 200) {
-      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
+      await fetchProfile();
     } else {
-      final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi cập nhật thông tin");
+      throw Exception(CommaDeskApi.messageFromResponse(res));
     }
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
-    final uri = Uri.parse("$_baseUrl/auth/me");
-    final res = await http.put(uri, 
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $_token",
+    final res = await CommaDeskApi.instance.post(
+      '/profile/change-password',
+      body: {
+        'current_password': oldPassword,
+        'new_password': newPassword,
       },
-      body: jsonEncode({"oldPassword": oldPassword, "newPassword": newPassword}),
     );
     if (res.statusCode != 200) {
-      final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi đổi mật khẩu");
+      throw Exception(CommaDeskApi.messageFromResponse(res));
     }
   }
 
   Future<void> logout() async {
     try {
-      await http.post(
-        Uri.parse("$_webOrigin/api/auth/logout"),
-        headers: {
-          if (authToken != null) "Cookie": "auth_token=$authToken",
-        },
-      ).timeout(const Duration(seconds: 5));
+      final prefs = await SharedPreferences.getInstance();
+      final refresh = prefs.getString('refresh_token');
+      if (refresh != null && refresh.isNotEmpty) {
+        await CommaDeskApi.instance.post(
+          '/auth/logout',
+          body: {'refresh_token': refresh},
+        );
+      }
     } catch (_) {}
 
     _currentUser = null;
     _token = null;
-    _authToken = null;
     VideoPreloadCache.instance.clear();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("token");
-    await prefs.remove("auth_token");
+    await CommaDeskApi.instance.clearSession();
     notifyListeners();
 
-    // Force navigation to LoginScreen on any logout (manual or token expiration)
     final context = globalNavigatorKey.currentContext;
     if (context != null) {
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(

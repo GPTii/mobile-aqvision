@@ -1,45 +1,100 @@
 import 'package:flutter/foundation.dart';
 
 import 'api_defaults.dart';
+import 'base_url.dart';
 
-/// Resolves API base URLs from [ApiDefaults].
-/// Do not put raw hosts/ports here — change [ApiDefaults] instead.
+/// Resolves CommaDesk API base URLs from [BaseUrl] and dart-define overrides.
 class ApiConfig {
   ApiConfig._();
 
-  /// Production origin, e.g. `https://api.aqvision.net`.
-  static String get productionOrigin =>
-      '${ApiDefaults.productionScheme}://${ApiDefaults.productionHost}';
-
-  /// Scheme + host (+ port if needed), without `/api` path.
-  static String get origin {
+  static String get _hostPort {
     if (kIsWeb) {
       final host =
           Uri.base.host.isNotEmpty ? Uri.base.host : ApiDefaults.localHost;
       final isLocal = host == 'localhost' || host == '127.0.0.1';
-      if (isLocal && Uri.base.port != ApiDefaults.localApiPort) {
-        return 'http://$host:${ApiDefaults.localApiPort}';
+      if (isLocal) {
+        return '$host:${ApiDefaults.localApiPort}';
       }
-      return '${Uri.base.scheme}://${Uri.base.authority}';
+      return Uri.base.authority;
     }
-    return productionOrigin;
+    final configured = BaseUrl.api.trim();
+    if (configured.isNotEmpty) {
+      final uri = Uri.parse(configured.replaceAll(RegExp(r'/+$'), ''));
+      final defaultPort = uri.scheme == 'https' ? 443 : 80;
+      if (!uri.hasPort || uri.port == defaultPort) return uri.host;
+      return uri.authority;
+    }
+    final host = ApiDefaults.productionHost;
+    final port = ApiDefaults.productionPort;
+    final defaultPort =
+        ApiDefaults.productionScheme == 'https' ? 443 : 80;
+    if (port == defaultPort) return host;
+    return '$host:$port';
   }
 
-  /// `/api` — groups, proxies, rapidmedia, alerts, storage, …
-  static String get apiBase => '$origin${ApiDefaults.apiPath}';
-
-  /// `/api/v1` — auth, stats, devices, …
-  static String get apiV1Base => '$origin${ApiDefaults.apiV1Path}';
-
-  /// Web app origin for cookie auth (`/api/auth/login`, logout).
-  static String get webOrigin => origin;
-
-  /// HLS / recording media base: `/api/media`.
-  /// Force HTTP for media to prevent ExoPlayer from rejecting self-signed SSL on dev.
-  static String get mediaBase {
-    if (origin.startsWith('https://dev1')) {
-      return '${origin.replaceFirst('https://', 'http://')}${ApiDefaults.apiPath}/${ApiDefaults.mediaPathSegment}';
+  /// Origin without path, e.g. `http://10.0.2.2:8080`.
+  static String get origin {
+    if (!kIsWeb) {
+      final configured = BaseUrl.api.trim();
+      if (configured.isNotEmpty) {
+        return configured.replaceAll(RegExp(r'/+$'), '');
+      }
     }
-    return '$apiBase/${ApiDefaults.mediaPathSegment}';
+    return '${ApiDefaults.productionScheme}://$_hostPort';
+  }
+
+  /// CommaDesk REST API base: `/api/v1`.
+  static String get apiV1Base =>
+      '${origin.replaceAll(RegExp(r'/+$'), '')}${ApiDefaults.apiV1Path}';
+
+  /// Legacy alias kept for stores that referenced `apiBase`.
+  static String get apiBase => apiV1Base;
+
+  /// Public MediaServer URL for HLS / MP4 playback.
+  static String get mediaPublicBase {
+    final configured = ApiDefaults.mediaPublicUrl.trim();
+    if (configured.isNotEmpty) {
+      return configured.replaceAll(RegExp(r'/+$'), '');
+    }
+    return origin;
+  }
+
+  /// MediaServer management base for `/index/api/*` recording calls.
+  static String get mediaManagementBase {
+    final configured = ApiDefaults.mediaManagementUrl.trim();
+    if (configured.isNotEmpty) {
+      return configured.replaceAll(RegExp(r'/+$'), '');
+    }
+    return mediaPublicBase;
+  }
+
+  static String get mediaApiSecret => ApiDefaults.mediaApiSecret.trim();
+
+  static bool get hasMediaRecording =>
+      mediaManagementBase.isNotEmpty && mediaApiSecret.isNotEmpty;
+
+  /// Build HLS URL for a camera stream (html5stream convention).
+  static String buildHlsUrl({
+    required String app,
+    required String stream,
+    String? accessToken,
+  }) {
+    final base = mediaPublicBase;
+    final path =
+        '$base/${Uri.encodeComponent(app)}/${Uri.encodeComponent(stream)}/hls.m3u8';
+    if (accessToken == null || accessToken.isEmpty) return path;
+    return '$path?token=${Uri.encodeComponent(accessToken)}';
+  }
+
+  static String buildFmp4Url({
+    required String app,
+    required String stream,
+    String? accessToken,
+  }) {
+    final base = mediaPublicBase;
+    final path =
+        '$base/${Uri.encodeComponent(app)}/${Uri.encodeComponent(stream)}.live.mp4';
+    if (accessToken == null || accessToken.isEmpty) return path;
+    return '$path?token=${Uri.encodeComponent(accessToken)}';
   }
 }

@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/api_config.dart';
+import 'camera_store.dart';
 
 class SystemStats {
   final int totalCameras;
@@ -21,37 +18,17 @@ class SystemStats {
     required this.totalCameras,
     required this.onlineCameras,
     required this.offlineCameras,
-    required this.cpuLoadPercent,
-    required this.ramTotal,
-    required this.ramUsed,
-    required this.ramFree,
-    required this.diskTotal,
-    required this.diskUsed,
-    required this.diskFree,
+    this.cpuLoadPercent = 0,
+    this.ramTotal = 0,
+    this.ramUsed = 0,
+    this.ramFree = 0,
+    this.diskTotal = 0,
+    this.diskUsed = 0,
+    this.diskFree = 0,
   });
-
-  factory SystemStats.fromJson(Map<String, dynamic> json) {
-    final cams = json['cameras'] ?? {};
-    final sys = json['system'] ?? {};
-    final cpu = sys['cpu'] ?? {};
-    final ram = sys['ram'] ?? {};
-    final disk = sys['disk'] ?? {};
-
-    return SystemStats(
-      totalCameras: cams['total'] ?? 0,
-      onlineCameras: cams['online'] ?? 0,
-      offlineCameras: cams['offline'] ?? 0,
-      cpuLoadPercent: (cpu['loadPercent'] ?? 0.0).toDouble(),
-      ramTotal: ram['total'] ?? 0,
-      ramUsed: ram['used'] ?? 0,
-      ramFree: ram['free'] ?? 0,
-      diskTotal: disk['total'] ?? 0,
-      diskUsed: disk['used'] ?? 0,
-      diskFree: disk['free'] ?? 0,
-    );
-  }
 }
 
+/// Camera overview derived from [CameraStore] — CommaDesk has no `/stats` endpoint.
 class StatsStore extends ChangeNotifier {
   static final StatsStore instance = StatsStore._();
 
@@ -62,34 +39,22 @@ class StatsStore extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String get _baseUrl => ApiConfig.apiV1Base;
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("token");
-  }
-
   Future<void> fetchStats() async {
     final hadData = _stats != null;
     _isLoading = true;
-    // Avoid wiping charts on refresh — only notify for the empty/loading state.
     if (!hadData) notifyListeners();
 
     try {
-      final token = await _getToken();
-      if (token == null) return;
-
-      final uri = Uri.parse("$_baseUrl/stats");
-      final res = await http.get(uri, headers: {
-        "Authorization": "Bearer $token",
-      }).timeout(const Duration(seconds: 10));
-
-      if (res.statusCode == 200) {
-        final json = jsonDecode(res.body);
-        _stats = SystemStats.fromJson(json);
-      }
+      await CameraStore.instance.fetchCameras();
+      final cams = CameraStore.instance.cameras;
+      final online = cams.where((c) => c.online).length;
+      _stats = SystemStats(
+        totalCameras: cams.length,
+        onlineCameras: online,
+        offlineCameras: cams.length - online,
+      );
     } catch (e) {
-      // Ignore errors for now
+      debugPrint('[StatsStore] $e');
     } finally {
       _isLoading = false;
       notifyListeners();
