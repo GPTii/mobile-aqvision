@@ -104,36 +104,31 @@ class RecordingStore extends ChangeNotifier {
     return prefs.getString('token');
   }
 
-  /// Luồng B: cookie `auth_token` after `POST /api/auth/login`.
-  Future<String?> _getAuthToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token') ?? prefs.getString('token');
-  }
-
   String _appName(String? app) =>
       (app == null || app.trim().isEmpty) ? 'live' : app.trim();
 
-  /// Web proxy `/api/rapidmedia/*` — send cookie `auth_token`, do not send `secret`.
+  /// Web proxy `/api/rapidmedia/*` — send `Authorization: Bearer`, same as
+  /// every other `/api/*` call in this file (`toggleAutoRecord`, `requestClip`).
   Future<Map<String, dynamic>> _rapidGet(
     String action,
     Map<String, String> query, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    final authToken = await _getAuthToken();
-    if (authToken == null) throw Exception('Chưa đăng nhập');
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập');
 
     final uri = Uri.parse('$_baseUrl/rapidmedia/$action').replace(
       queryParameters: query,
     );
     final res = await http.get(uri, headers: {
-      'Cookie': 'auth_token=$authToken',
+      'Authorization': 'Bearer $token',
       'Accept': 'application/json',
     }).timeout(timeout);
 
     debugPrint('[RECORD] $action → ${res.statusCode} ${res.body}');
 
     if (res.statusCode == 401 || res.statusCode == 403) {
-      throw Exception('Phiên ghi hình hết hạn. Hãy đăng xuất rồi đăng nhập lại.');
+      throw Exception('Phiên đăng nhập hết hạn. Hãy đăng nhập lại.');
     }
 
     Map<String, dynamic> json;
@@ -194,7 +189,7 @@ class RecordingStore extends ChangeNotifier {
     required String startDate,
     required String endDate,
   }) async {
-    final token = await _getAuthToken();
+    final token = await _getToken();
     if (token == null) return;
     _loading[cameraId] = true;
     _notifyCamera(cameraId);

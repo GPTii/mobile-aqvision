@@ -7,6 +7,7 @@ import '../../data/notification_store.dart';
 import '../../data/recording_store.dart';
 import '../../data/video_preload_cache.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/captured_photo.dart';
 import '../../widgets/camera_form_sheet.dart';
 import '../../widgets/prompt_dialog.dart';
 import 'record_list_screen.dart';
@@ -27,6 +28,7 @@ class CameraDetailScreen extends StatefulWidget {
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
+  final GlobalKey _videoKey = GlobalKey();
 
   @override
   void initState() {
@@ -43,6 +45,33 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       app: camera.app ?? 'live',
       stream: camera.cameraCode,
     );
+  }
+
+  Future<void> _takeSnapshot(Camera camera) async {
+    if (!camera.online) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Camera đang offline, không thể chụp ảnh'),
+        ),
+      );
+      return;
+    }
+    try {
+      final pngBytes = await CapturedPhoto.capture(_videoKey);
+      if (!mounted) return;
+      final saved = await CapturedPhoto.showPreviewAndSave(context, pngBytes);
+      if (saved && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi chụp ảnh: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, Camera camera) async {
@@ -245,7 +274,12 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             borderRadius: BorderRadius.circular(20),
             child: Stack(
               children: [
-                Positioned.fill(child: _buildVideoContent(camera)),
+                Positioned.fill(
+                  child: RepaintBoundary(
+                    key: _videoKey,
+                    child: _buildVideoContent(camera),
+                  ),
+                ),
                 // Camera name badge
                 Positioned(
                   top: 12,
@@ -413,11 +447,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             icon: Icons.camera_alt_rounded,
             label: 'Capture',
             active: false,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
-              );
-            },
+            onTap: () => _takeSnapshot(camera),
           ),
           (
             icon: Icons.history_rounded,
