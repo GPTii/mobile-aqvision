@@ -275,6 +275,28 @@ class RecordingStore extends ChangeNotifier {
     throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'));
   }
 
+  Future<void> deleteRecording({
+    required String cameraId,
+    required RecordingFile file,
+  }) async {
+    final json = await _mediaGet('deleteRecordDirectory', {
+      'vhost': '__defaultVhost__',
+      'app': file.app,
+      'stream': file.stream,
+      'period': file.date,
+      'name': file.fileName,
+    });
+    if (_isApiOk(json)) {
+      final list = _cache[cameraId];
+      if (list != null) {
+        _cache[cameraId] = list.where((r) => r.id != file.id).toList();
+        _notifyCamera(cameraId);
+      }
+      return;
+    }
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'));
+  }
+
   /// Auto-record toggle is not exposed on CommaDesk catalog yet.
   Future<void> toggleAutoRecord({
     required String cameraId,
