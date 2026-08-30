@@ -83,18 +83,23 @@ class RecordingStore extends ChangeNotifier {
   String _appName(String? app) =>
       (app == null || app.trim().isEmpty) ? 'live' : app.trim();
 
-  /// MediaServer `/index/api/*` via Luồng A (secret in dart-define).
+  /// MediaServer `/index/api/*` via Luồng A (secret in dart-define) or CommaDesk proxy (JWT).
   Future<Map<String, dynamic>> _mediaGet(
     String action,
     Map<String, String> query, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    if (!ApiConfig.hasMediaRecording) {
-      throw Exception(
-        'Chưa cấu hình MEDIA_MANAGEMENT_URL và MEDIA_API_SECRET',
-      );
+    if (ApiConfig.hasMediaRecording) {
+      return _directMediaGet(action, query, timeout: timeout);
     }
+    return _proxyMediaGet(action, query, timeout: timeout);
+  }
 
+  Future<Map<String, dynamic>> _directMediaGet(
+    String action,
+    Map<String, String> query, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
     final params = {
       'secret': ApiConfig.mediaApiSecret,
       ...query,
@@ -103,8 +108,30 @@ class RecordingStore extends ChangeNotifier {
         .replace(queryParameters: params);
 
     final res = await http.get(uri).timeout(timeout);
-    debugPrint('[RECORD] $action → ${res.statusCode}');
+    debugPrint('[RECORD] direct $action → ${res.statusCode}');
+    return _parseMediaResponse(res, action);
+  }
 
+  Future<Map<String, dynamic>> _proxyMediaGet(
+    String action,
+    Map<String, String> query, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final res = await CommaDeskApi.instance.get(
+      '/media-recording/$action',
+      query: query,
+      timeout: timeout,
+    );
+    debugPrint('[RECORD] proxy $action → ${res.statusCode}');
+    if (res.statusCode == 503) {
+      throw Exception(
+        'Chưa cấu hình MEDIA_MANAGEMENT_URL và MEDIA_API_SECRET trên máy chủ CommaDesk',
+      );
+    }
+    return _parseMediaResponse(res, action);
+  }
+
+  Map<String, dynamic> _parseMediaResponse(http.Response res, String action) {
     Map<String, dynamic> json;
     try {
       final decoded = jsonDecode(res.body);
@@ -113,10 +140,17 @@ class RecordingStore extends ChangeNotifier {
       }
       json = decoded;
     } catch (_) {
+      if (res.statusCode == 401 || res.statusCode == 403) {
+        throw Exception('Không có quyền ghi hình');
+      }
       throw Exception('Máy chủ ghi hình trả về lỗi (${res.statusCode})');
     }
 
     if (res.statusCode != 200) {
+      final err = json['error']?.toString();
+      if (err != null && err.isNotEmpty) {
+        throw Exception(err);
+      }
       throw Exception(_messageFrom(json, json, fallback: 'Lỗi ghi hình'));
     }
     return json;
@@ -213,7 +247,6 @@ class RecordingStore extends ChangeNotifier {
     required String app,
     required String stream,
   }) async {
-    if (!ApiConfig.hasMediaRecording) return;
     try {
       final json = await _mediaGet(
         'isRecording',
@@ -320,7 +353,7 @@ class RecordingStore extends ChangeNotifier {
   ) async {
     if (!ApiConfig.hasMediaRecording) {
       throw Exception(
-        'Chưa cấu hình MEDIA_MANAGEMENT_URL và MEDIA_API_SECRET để cắt clip',
+        'Cắt clip thủ công chưa hỗ trợ qua CommaDesk API — dùng dashboard hoặc MediaServer.',
       );
     }
     throw Exception(

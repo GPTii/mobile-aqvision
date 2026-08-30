@@ -31,6 +31,16 @@ Trên thiết bị thật, thay bằng IP máy chạy CommaDesk backend.
 
 ### Phát HLS / WebRTC (MediaServer)
 
+**Ghi hình (khuyến nghị):** dùng proxy CommaDesk — chỉ cần đăng nhập JWT, không cần `MEDIA_API_SECRET` trong app. Backend cần cấu hình:
+
+```bash
+# dev.env hoặc backend/.env
+MEDIA_MANAGEMENT_URL=http://192.168.1.10:8080
+MEDIA_API_SECRET=<media-server-secret>
+```
+
+**Luồng A (dev / override):** gọi trực tiếp MediaServer khi build kèm secret:
+
 ```bash
 flutter run \
   --dart-define=API_BASE_URL=http://192.168.1.10:8080 \
@@ -40,7 +50,7 @@ flutter run \
 ```
 
 - **HLS:** `{MEDIA_PUBLIC_URL}/{app}/{stream}/hls.m3u8`
-- **Ghi hình:** gọi trực tiếp MediaServer `/index/api/*` (Luồng A) khi có `MEDIA_API_SECRET`
+- **Ghi hình:** `GET /api/v1/media-recording/{action}` (JWT) hoặc `/index/api/*` trực tiếp khi có `MEDIA_API_SECRET` trong dart-define
 
 ## Chưa có trên CommaDesk (stub / thông báo trong app)
 
