@@ -409,6 +409,9 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                     setState(() => _recordBusy = true);
                     try {
                       if (isRec) {
+                        debugPrint(
+                          '[RECORD] UI stop camera=${camera.id} app=${camera.app ?? 'live'} stream=${camera.cameraCode}',
+                        );
                         await store.stopRecord(
                           cameraId: camera.id,
                           app: camera.app ?? 'live',
@@ -420,6 +423,9 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                           );
                         }
                       } else {
+                        debugPrint(
+                          '[RECORD] UI start camera=${camera.id} app=${camera.app ?? 'live'} stream=${camera.cameraCode} online=${camera.online}',
+                        );
                         await store.startRecord(
                           cameraId: camera.id,
                           app: camera.app ?? 'live',

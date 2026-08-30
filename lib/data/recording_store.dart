@@ -83,12 +83,46 @@ class RecordingStore extends ChangeNotifier {
   String _appName(String? app) =>
       (app == null || app.trim().isEmpty) ? 'live' : app.trim();
 
+  void _recordLog(String message) => debugPrint('[RECORD] $message');
+
+  String _recordingTransport() =>
+      ApiConfig.hasMediaRecording ? 'direct' : 'proxy';
+
+  Map<String, String> _queryForLog(Map<String, String> query) {
+    return Map.fromEntries(
+      query.entries.map((e) {
+        if (e.key.toLowerCase() == 'secret') {
+          return MapEntry(e.key, '***');
+        }
+        return MapEntry(e.key, e.value);
+      }),
+    );
+  }
+
+  String _summarizeMediaJson(Map<String, dynamic> json) {
+    final code = json['code'];
+    final msg = (json['msg'] ?? json['error'] ?? json['message'])?.toString();
+    final status = json['status'];
+    final result = json['result'];
+    return 'code=$code msg=${msg ?? '-'} status=$status result=$result ok=${_isApiOk(json)}';
+  }
+
+  String _truncateBody(String body, {int max = 400}) {
+    final trimmed = body.trim();
+    if (trimmed.length <= max) return trimmed;
+    return '${trimmed.substring(0, max)}…';
+  }
+
   /// MediaServer `/index/api/*` via Luồng A (secret in dart-define) or CommaDesk proxy (JWT).
   Future<Map<String, dynamic>> _mediaGet(
     String action,
     Map<String, String> query, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
+    final transport = _recordingTransport();
+    _recordLog(
+      '$transport $action request ${_queryForLog(query)} timeout=${timeout.inSeconds}s',
+    );
     if (ApiConfig.hasMediaRecording) {
       return _directMediaGet(action, query, timeout: timeout);
     }
@@ -107,9 +141,10 @@ class RecordingStore extends ChangeNotifier {
     final uri = Uri.parse('${ApiConfig.mediaManagementBase}/index/api/$action')
         .replace(queryParameters: params);
 
+    _recordLog('direct GET ${uri.replace(queryParameters: _queryForLog(params))}');
     final res = await http.get(uri).timeout(timeout);
-    debugPrint('[RECORD] direct $action → ${res.statusCode}');
-    return _parseMediaResponse(res, action);
+    _recordLog('direct $action http=${res.statusCode} body=${_truncateBody(res.body)}');
+    return _parseMediaResponse(res, action, transport: 'direct');
   }
 
   Future<Map<String, dynamic>> _proxyMediaGet(
@@ -122,16 +157,22 @@ class RecordingStore extends ChangeNotifier {
       query: query,
       timeout: timeout,
     );
-    debugPrint('[RECORD] proxy $action → ${res.statusCode}');
+    _recordLog(
+      'proxy $action http=${res.statusCode} path=/media-recording/$action query=${_queryForLog(query)} body=${_truncateBody(res.body)}',
+    );
     if (res.statusCode == 503) {
       throw Exception(
         'Chưa cấu hình MEDIA_MANAGEMENT_URL và MEDIA_API_SECRET trên máy chủ CommaDesk',
       );
     }
-    return _parseMediaResponse(res, action);
+    return _parseMediaResponse(res, action, transport: 'proxy');
   }
 
-  Map<String, dynamic> _parseMediaResponse(http.Response res, String action) {
+  Map<String, dynamic> _parseMediaResponse(
+    http.Response res,
+    String action, {
+    String transport = 'media',
+  }) {
     Map<String, dynamic> json;
     try {
       final decoded = jsonDecode(res.body);
@@ -139,7 +180,11 @@ class RecordingStore extends ChangeNotifier {
         throw FormatException('unexpected body');
       }
       json = decoded;
-    } catch (_) {
+      _recordLog('$transport $action parsed ${_summarizeMediaJson(json)}');
+    } catch (e) {
+      _recordLog(
+        '$transport $action parse failed http=${res.statusCode} error=$e body=${_truncateBody(res.body)}',
+      );
       if (res.statusCode == 401) {
         throw Exception('Phiên đăng nhập hết hạn — vui lòng đăng nhập lại');
       }
@@ -150,6 +195,7 @@ class RecordingStore extends ChangeNotifier {
     }
 
     if (res.statusCode != 200) {
+      _recordLog('$transport $action failed http=${res.statusCode}');
       final err = json['error']?.toString();
       if (err != null && err.isNotEmpty) {
         throw Exception(err);
@@ -282,18 +328,25 @@ class RecordingStore extends ChangeNotifier {
     required String app,
     required String stream,
   }) async {
+    final resolvedApp = _appName(app);
+    _recordLog(
+      'startRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${_recordingTransport()}',
+    );
     final json = await _mediaGet('startRecord', {
       'type': '1',
       'vhost': '__defaultVhost__',
-      'app': _appName(app),
+      'app': resolvedApp,
       'stream': stream,
     });
     if (_isApiOk(json)) {
+      _recordLog('startRecord OK cameraId=$cameraId ${_summarizeMediaJson(json)}');
       _isRecording[cameraId] = true;
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'));
+    final err = _messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình');
+    _recordLog('startRecord business error cameraId=$cameraId $err ${_summarizeMediaJson(json)}');
+    throw Exception(err);
   }
 
   Future<void> stopRecord({
@@ -301,18 +354,25 @@ class RecordingStore extends ChangeNotifier {
     required String app,
     required String stream,
   }) async {
+    final resolvedApp = _appName(app);
+    _recordLog(
+      'stopRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${_recordingTransport()}',
+    );
     final json = await _mediaGet('stopRecord', {
       'type': '1',
       'vhost': '__defaultVhost__',
-      'app': _appName(app),
+      'app': resolvedApp,
       'stream': stream,
     });
     if (_isApiOk(json)) {
+      _recordLog('stopRecord OK cameraId=$cameraId ${_summarizeMediaJson(json)}');
       _isRecording[cameraId] = false;
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'));
+    final err = _messageFrom(json, json, fallback: 'Lỗi dừng ghi hình');
+    _recordLog('stopRecord business error cameraId=$cameraId $err ${_summarizeMediaJson(json)}');
+    throw Exception(err);
   }
 
   Future<void> deleteRecording({
