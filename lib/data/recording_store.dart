@@ -85,8 +85,18 @@ class RecordingStore extends ChangeNotifier {
 
   void _recordLog(String message) => debugPrint('[RECORD] $message');
 
-  String _recordingTransport() =>
-      ApiConfig.hasMediaRecording ? 'direct' : 'proxy';
+  Future<bool> _shouldUseDirectMedia() async {
+    if (!ApiConfig.hasMediaRecording) return false;
+    final token = await CommaDeskApi.instance.readAccessToken();
+    // Đã login → proxy CommaDesk (backend gọi 127.0.0.1, tránh IP allowlist MediaServer).
+    if (token != null && token.isNotEmpty) return false;
+    return true;
+  }
+
+  Future<String> _recordingTransport() async {
+    if (await _shouldUseDirectMedia()) return 'direct';
+    return 'proxy';
+  }
 
   Map<String, String> _queryForLog(Map<String, String> query) {
     return Map.fromEntries(
@@ -119,11 +129,12 @@ class RecordingStore extends ChangeNotifier {
     Map<String, String> query, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    final transport = _recordingTransport();
+    final useDirect = await _shouldUseDirectMedia();
+    final transport = useDirect ? 'direct' : 'proxy';
     _recordLog(
       '$transport $action request ${_queryForLog(query)} timeout=${timeout.inSeconds}s',
     );
-    if (ApiConfig.hasMediaRecording) {
+    if (useDirect) {
       return _directMediaGet(action, query, timeout: timeout);
     }
     return _proxyMediaGet(action, query, timeout: timeout);
@@ -226,7 +237,13 @@ class RecordingStore extends ChangeNotifier {
     if (code == -500 || raw == 'can not find the stream') {
       return 'Camera chưa online trên máy chủ ghi hình';
     }
-    if (code == -100) return 'Không có quyền ghi hình';
+    if (code == -100) {
+      final lower = (raw ?? '').toLowerCase();
+      if (lower.contains('ip is not allowed')) {
+        return 'Thiết bị không được phép gọi API ghi hình trực tiếp — đang chuyển qua CommaDesk';
+      }
+      return 'Không có quyền ghi hình (secret MediaServer sai hoặc bị từ chối)';
+    }
     if (code == -300) return 'Thiếu thông tin camera để ghi hình';
     if (raw == null || raw.isEmpty || raw.toLowerCase() == 'success') {
       return fallback;
@@ -330,7 +347,7 @@ class RecordingStore extends ChangeNotifier {
   }) async {
     final resolvedApp = _appName(app);
     _recordLog(
-      'startRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${_recordingTransport()}',
+      'startRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${await _recordingTransport()}',
     );
     final json = await _mediaGet('startRecord', {
       'type': '1',
@@ -356,7 +373,7 @@ class RecordingStore extends ChangeNotifier {
   }) async {
     final resolvedApp = _appName(app);
     _recordLog(
-      'stopRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${_recordingTransport()}',
+      'stopRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${await _recordingTransport()}',
     );
     final json = await _mediaGet('stopRecord', {
       'type': '1',
