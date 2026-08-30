@@ -140,8 +140,11 @@ class RecordingStore extends ChangeNotifier {
       }
       json = decoded;
     } catch (_) {
-      if (res.statusCode == 401 || res.statusCode == 403) {
-        throw Exception('Không có quyền ghi hình');
+      if (res.statusCode == 401) {
+        throw Exception('Phiên đăng nhập hết hạn — vui lòng đăng nhập lại');
+      }
+      if (res.statusCode == 403) {
+        throw Exception('Không có quyền ghi hình camera này');
       }
       throw Exception('Máy chủ ghi hình trả về lỗi (${res.statusCode})');
     }
@@ -150,6 +153,10 @@ class RecordingStore extends ChangeNotifier {
       final err = json['error']?.toString();
       if (err != null && err.isNotEmpty) {
         throw Exception(err);
+      }
+      final msg = json['message']?.toString();
+      if (msg != null && msg.isNotEmpty) {
+        throw Exception(msg);
       }
       throw Exception(_messageFrom(json, json, fallback: 'Lỗi ghi hình'));
     }
