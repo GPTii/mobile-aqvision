@@ -439,6 +439,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         }
                       }
                     } catch (e) {
+                      debugPrint('[RECORD] UI error camera=${camera.id} $e');
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(RecordingStore.errorText(e))),
