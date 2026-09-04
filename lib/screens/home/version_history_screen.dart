@@ -96,7 +96,7 @@ class _KindStyle {
   const _KindStyle(this.label, this.icon, this.color, this.tint);
 }
 
-const Map<ReleaseNoteKind, _KindStyle> _kindStyles = {
+final Map<ReleaseNoteKind, _KindStyle> _kindStyles = {
   ReleaseNoteKind.newFeature: _KindStyle(
       'Tính năng mới', Icons.auto_awesome_rounded, AppColors.info, Color(0xFFEAF1FF)),
   ReleaseNoteKind.improvement: _KindStyle(
@@ -118,7 +118,7 @@ class VersionHistoryScreen extends StatelessWidget {
         child: Column(
           children: [
             DecoratedBox(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.headerBackground,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(28),
@@ -131,14 +131,14 @@ class VersionHistoryScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
                           color: AppColors.textPrimary, size: 20),
                     ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Lịch sử phiên bản',
                             style: TextStyle(
                                 color: AppColors.textPrimary,
@@ -148,7 +148,7 @@ class VersionHistoryScreen extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${kAppVersionHistory.length} bản cập nhật gần đây',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 color: AppColors.textSecondary,
                                 fontWeight: FontWeight.w500),
@@ -225,7 +225,7 @@ class _VersionListTile extends StatelessWidget {
                     ),
                     Text(
                       version.build.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 8.5, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 0.2),
                     ),
                   ],
@@ -239,7 +239,7 @@ class _VersionListTile extends StatelessWidget {
                     Row(
                       children: [
                         Text('Phiên bản ${version.version}',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         if (version.isLatest) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -248,7 +248,7 @@ class _VersionListTile extends StatelessWidget {
                               color: const Color(0xFFFDEAEC),
                               borderRadius: BorderRadius.circular(99),
                             ),
-                            child: const Text('MỚI NHẤT',
+                            child: Text('MỚI NHẤT',
                                 style: TextStyle(
                                     fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
                           ),
@@ -256,10 +256,10 @@ class _VersionListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(version.date, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                    Text(version.date, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                     const SizedBox(height: 6),
                     Text(version.teaser,
-                        style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
@@ -284,7 +284,7 @@ class _VersionListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+              Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
             ],
           ),
         ),
@@ -306,7 +306,7 @@ class VersionDetailScreen extends StatelessWidget {
         child: Column(
           children: [
             DecoratedBox(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.headerBackground,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(28),
@@ -319,7 +319,7 @@ class VersionDetailScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
                           color: AppColors.textPrimary, size: 20),
                     ),
                     Expanded(
@@ -329,7 +329,7 @@ class VersionDetailScreen extends StatelessWidget {
                           Row(
                             children: [
                               Text('Phiên bản ${version.version}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
                               if (version.isLatest) ...[
                                 const SizedBox(width: 8),
@@ -339,7 +339,7 @@ class VersionDetailScreen extends StatelessWidget {
                                     color: Colors.white.withOpacity(0.6),
                                     borderRadius: BorderRadius.circular(99),
                                   ),
-                                  child: const Text('MỚI NHẤT',
+                                  child: Text('MỚI NHẤT',
                                       style: TextStyle(
                                           fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
                                 ),
@@ -348,7 +348,7 @@ class VersionDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text('${version.build} · ${version.date}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                         ],
                       ),
@@ -395,7 +395,7 @@ class _SectionBlock extends StatelessWidget {
             const SizedBox(width: 9),
             Expanded(
               child: Text(section.items.join(' '),
-                  style: const TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textPrimary)),
+                  style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textPrimary)),
             ),
           ],
         ),
@@ -436,7 +436,7 @@ class _SectionBlock extends StatelessWidget {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(section.items[i],
-                        style: const TextStyle(fontSize: 13, height: 1.5, color: AppColors.textPrimary)),
+                        style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textPrimary)),
                   ),
                 ],
               ),

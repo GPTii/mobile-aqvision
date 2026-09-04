@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'service_plans.dart';
+import '../utils/app_strings.dart';
 
 class SubscriptionStore extends ChangeNotifier {
   static final SubscriptionStore instance = SubscriptionStore._();
@@ -46,7 +47,7 @@ class SubscriptionStore extends ChangeNotifier {
       await Future.wait([_fetchPlans(token), _fetchCurrent(token)]);
       error = null;
     } catch (_) {
-      error = 'Không tải được thông tin gói dịch vụ';
+      error = 'Không tải được thông tin gói dịch vụ'.tr;
     }
 
     loading = false;
@@ -86,44 +87,30 @@ class SubscriptionStore extends ChangeNotifier {
     }
   }
 
-  /// Sends a "contact manager" request for a plan — this is not a
-  /// self-service purchase, admin reviews and reaches out directly (no
-  /// online payment yet). Doesn't flip the plan immediately. Returns the
-  /// server's confirmation message to show the customer verbatim.
-  Future<String> requestUpgrade({
-    required String planId,
-    required BillingCycle cycle,
-    String? message,
-  }) async {
+  /// Sends an upgrade request for admin approval — does not flip the plan
+  /// immediately. Callers should show a "request sent" message, not a
+  /// success-as-if-upgraded one.
+  Future<void> requestUpgrade({required String planId, required BillingCycle cycle}) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập');
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
 
     _upgrading = true;
     notifyListeners();
 
     try {
       final uri = Uri.parse('$_baseUrl/subscription/upgrade');
-      final trimmedMessage = message?.trim();
       final res = await http.post(
         uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'planId': planId,
-          'billingCycle': cycle.name,
-          if (trimmedMessage != null && trimmedMessage.isNotEmpty) 'message': trimmedMessage,
-        }),
+        body: jsonEncode({'planId': planId, 'billingCycle': cycle.name}),
       ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) {
-        throw Exception('Lỗi gửi yêu cầu liên hệ (${res.statusCode}): ${res.body}');
+        throw Exception('Lỗi gửi yêu cầu nâng cấp (${res.statusCode}): ${res.body}'.tr);
       }
-
-      final json = jsonDecode(res.body);
-      return json['msg']?.toString() ??
-          'Yêu cầu liên hệ đã được ghi nhận, quản lý sẽ liên hệ với bạn sớm';
     } finally {
       _upgrading = false;
       notifyListeners();

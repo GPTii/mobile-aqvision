@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -6,27 +5,13 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../theme/app_colors.dart';
-
-/// How long we wait for the WebRTC handshake/ICE to actually produce video
-/// before treating it as failed. Some failure modes (blocked UDP, server
-/// misconfig) never fire an explicit error — they just hang forever.
-const Duration _kConnectTimeout = Duration(seconds: 8);
+import '../utils/app_strings.dart';
 
 class WebRTCPlayerWidget extends StatefulWidget {
   final String app;
   final String stream;
 
-  /// Called once when WebRTC playback fails or times out. When provided,
-  /// this widget stays silent (no red error UI) since the caller is
-  /// expected to swap to a fallback player instead.
-  final VoidCallback? onError;
-
-  const WebRTCPlayerWidget({
-    super.key,
-    required this.app,
-    required this.stream,
-    this.onError,
-  });
+  const WebRTCPlayerWidget({super.key, required this.app, required this.stream});
 
   @override
   State<WebRTCPlayerWidget> createState() => _WebRTCPlayerWidgetState();
@@ -38,8 +23,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
   bool _initialized = false;
   bool _connecting = false;
   String? _error;
-  bool _reportedError = false;
-  Timer? _connectTimeoutTimer;
 
   String _iceState = 'unknown';
   String _connState = 'unknown';
@@ -48,18 +31,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
   void initState() {
     super.initState();
     _initWebRTC();
-  }
-
-  /// Records the failure and — once — notifies the caller so it can fall
-  /// back to another player. Never shows the visible error UI when a
-  /// fallback handler is set.
-  void _fail(String message) {
-    if (!mounted) return;
-    setState(() => _error = message);
-    if (!_reportedError) {
-      _reportedError = true;
-      widget.onError?.call();
-    }
   }
 
   @override
@@ -80,13 +51,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
     _connState = 'new';
     if (mounted) setState(() {});
 
-    _connectTimeoutTimer?.cancel();
-    _connectTimeoutTimer = Timer(_kConnectTimeout, () {
-      if (!_initialized) {
-        _fail('Kết nối WebRTC quá thời gian chờ');
-      }
-    });
-
     try {
       await _renderer.initialize();
 
@@ -100,23 +64,30 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       _peerConnection!.onTrack = (event) {
         if (event.track.kind == 'video' && event.streams.isNotEmpty) {
           _renderer.srcObject = event.streams[0];
-          _connectTimeoutTimer?.cancel();
           if (mounted) setState(() => _initialized = true);
         }
       };
 
       _peerConnection!.onIceConnectionState = (state) {
-        if (mounted) setState(() => _iceState = state.name);
-        if (state == RTCIceConnectionState.RTCIceConnectionStateFailed ||
-            state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
-          _fail('ICE Connection Failed (Có thể do mạng chặn UDP)');
+        if (mounted) {
+          setState(() {
+            _iceState = state.name;
+            if (state == RTCIceConnectionState.RTCIceConnectionStateFailed || 
+                state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
+              _error = 'ICE Connection Failed (Có thể do mạng Simulator chặn UDP)'.tr;
+            }
+          });
         }
       };
-
+      
       _peerConnection!.onConnectionState = (state) {
-        if (mounted) setState(() => _connState = state.name);
-        if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
-          _fail('WebRTC Connection Failed');
+        if (mounted) {
+          setState(() {
+            _connState = state.name;
+            if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+              _error = 'WebRTC Connection Failed';
+            }
+          });
         }
       };
 
@@ -158,20 +129,21 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
             RTCSessionDescription(json['sdp'], 'answer'),
           );
         } else {
-          throw Exception(json['msg'] ?? 'Server không trả SDP answer');
+          throw Exception(json['msg'] ?? 'Server không trả SDP answer'.tr);
         }
       } else {
-        throw Exception('Server lỗi ${res.statusCode}');
+        throw Exception('Server lỗi ${res.statusCode}'.tr);
       }
     } catch (e) {
-      _fail(e.toString());
+      if (mounted) {
+        setState(() => _error = e.toString());
+      }
     } finally {
       _connecting = false;
     }
   }
 
   void _cleanup() {
-    _connectTimeoutTimer?.cancel();
     _renderer.srcObject = null;
     _peerConnection?.close();
     _peerConnection = null;
@@ -188,12 +160,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // A fallback handler means the caller is about to swap this widget out
-    // for another player — stay on the connecting look, never show the red
-    // error box, so the failure is invisible to the user.
-    if (_error != null && widget.onError != null) {
-      return _buildConnecting();
-    }
     if (_error != null) {
       return Container(
         color: Colors.black,
@@ -201,8 +167,8 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.danger, size: 34),
-              const SizedBox(height: 8),
+              Icon(Icons.error_outline, color: AppColors.danger, size: 34),
+              SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
@@ -213,14 +179,14 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () {
                   _cleanup();
                   _initWebRTC();
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Thử lại'),
+                label: Text('Thử lại'.tr),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.accent,
                 ),
@@ -231,7 +197,29 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       );
     }
     if (!_initialized) {
-      return _buildConnecting();
+      return Container(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white70,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Đang kết nối WebRTC…'.tr,
+                style: TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      );
     }
     return Stack(
       fit: StackFit.expand,
@@ -244,32 +232,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildConnecting() {
-    return Container(
-      color: Colors.black,
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white70,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Đang kết nối…',
-              style: TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

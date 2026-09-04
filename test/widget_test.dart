@@ -8,7 +8,7 @@ import 'package:mobile/screens/home/camera_detail_screen.dart';
 import 'package:mobile/screens/home/record_list_screen.dart';
 import 'package:mobile/screens/home/tabs/camera_tab.dart';
 import 'package:mobile/screens/home/tabs/home_tab.dart';
-import 'package:mobile/screens/home/tabs/profile_tab.dart';
+import 'package:mobile/screens/settings_screen.dart';
 
 void main() {
   testWidgets('Shows the login screen', (WidgetTester tester) async {
@@ -99,14 +99,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Profile tab does not overflow on a narrow screen', (WidgetTester tester) async {
+  testWidgets('Settings tab does not overflow on a narrow screen', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(320, 720);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const MaterialApp(home: ProfileTab()),
+      const MaterialApp(home: SettingsScreen()),
     );
     await tester.pumpAndSettle();
 

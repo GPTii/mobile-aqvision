@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import '../utils/app_strings.dart';
 
 enum WeatherStatus { idle, loading, ready, permissionDenied, permissionDeniedForever, error }
 
@@ -13,32 +14,32 @@ class WeatherSnapshot {
 
   /// WMO weather code -> (emoji, short Vietnamese label). Table:
   /// https://open-meteo.com/en/docs (see "weathercode").
-  static const Map<int, (String, String)> _codeInfo = {
-    0: ('☀️', 'Trời quang'),
-    1: ('🌤️', 'Ít mây'),
-    2: ('⛅', 'Có mây'),
-    3: ('☁️', 'Nhiều mây'),
-    45: ('🌫️', 'Sương mù'),
-    48: ('🌫️', 'Sương mù'),
-    51: ('🌦️', 'Mưa phùn nhẹ'),
-    53: ('🌦️', 'Mưa phùn'),
-    55: ('🌦️', 'Mưa phùn dày'),
-    61: ('🌧️', 'Mưa nhẹ'),
-    63: ('🌧️', 'Mưa'),
-    65: ('🌧️', 'Mưa to'),
-    71: ('🌨️', 'Tuyết nhẹ'),
-    73: ('🌨️', 'Tuyết'),
-    75: ('🌨️', 'Tuyết dày'),
-    80: ('🌦️', 'Mưa rào nhẹ'),
-    81: ('🌦️', 'Mưa rào'),
-    82: ('⛈️', 'Mưa rào to'),
-    95: ('⛈️', 'Dông'),
-    96: ('⛈️', 'Dông kèm mưa đá'),
-    99: ('⛈️', 'Dông kèm mưa đá'),
+  static Map<int, (String, String)> get _codeInfo => {
+    0: ('☀️', 'Trời quang'.tr),
+    1: ('🌤️', 'Ít mây'.tr),
+    2: ('⛅', 'Có mây'.tr),
+    3: ('☁️', 'Nhiều mây'.tr),
+    45: ('🌫️', 'Sương mù'.tr),
+    48: ('🌫️', 'Sương mù'.tr),
+    51: ('🌦️', 'Mưa phùn nhẹ'.tr),
+    53: ('🌦️', 'Mưa phùn'.tr),
+    55: ('🌦️', 'Mưa phùn dày'.tr),
+    61: ('🌧️', 'Mưa nhẹ'.tr),
+    63: ('🌧️', 'Mưa'.tr),
+    65: ('🌧️', 'Mưa to'.tr),
+    71: ('🌨️', 'Tuyết nhẹ'.tr),
+    73: ('🌨️', 'Tuyết'.tr),
+    75: ('🌨️', 'Tuyết dày'.tr),
+    80: ('🌦️', 'Mưa rào nhẹ'.tr),
+    81: ('🌦️', 'Mưa rào'.tr),
+    82: ('⛈️', 'Mưa rào to'.tr),
+    95: ('⛈️', 'Dông'.tr),
+    96: ('⛈️', 'Dông kèm mưa đá'.tr),
+    99: ('⛈️', 'Dông kèm mưa đá'.tr),
   };
 
   String get emoji => _codeInfo[weatherCode]?.$1 ?? '🌡️';
-  String get label => _codeInfo[weatherCode]?.$2 ?? 'Không rõ';
+  String get label => _codeInfo[weatherCode]?.$2 ?? 'Không rõ'.tr;
 }
 
 /// Current-location weather for the Home tab header. Uses the device GPS

@@ -1,3 +1,4 @@
+import '../utils/app_strings.dart';
 import 'package:flutter/material.dart';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
@@ -14,15 +15,15 @@ void showNetworkErrorDialog() {
     builder: (context) {
       return AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.system_update_alt_rounded, color: Colors.blueAccent),
             SizedBox(width: 10),
-            Text('Thông báo hệ thống', style: TextStyle(fontSize: 18)),
+            Text('Thông báo hệ thống'.tr, style: TextStyle(fontSize: 18)),
           ],
         ),
-        content: const Text(
-          'Ứng dụng đang được cập nhật. Không thể kết nối tới máy chủ lúc này. Vui lòng thử lại sau!',
+        content: Text(
+          'Ứng dụng đang được cập nhật. Không thể kết nối tới máy chủ lúc này. Vui lòng thử lại sau!'.tr,
           style: TextStyle(height: 1.5),
         ),
         actions: [
@@ -31,7 +32,7 @@ void showNetworkErrorDialog() {
               _isShowingNetworkError = false;
               Navigator.of(context).pop();
             },
-            child: const Text('Đã hiểu'),
+            child: Text('Đã hiểu'.tr),
           ),
         ],
       );

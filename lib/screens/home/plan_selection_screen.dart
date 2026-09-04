@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/service_plans.dart';
 import '../../data/subscription_store.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/app_strings.dart';
 
 class PlanSelectionScreen extends StatefulWidget {
   final String currentPlanId;
@@ -16,63 +17,36 @@ class PlanSelectionScreen extends StatefulWidget {
 class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
   late BillingCycle _cycle = SubscriptionStore.instance.currentBillingCycle;
 
+  String _formatVnd(int amount) {
+    if (amount == 0) return 'Miễn phí'.tr;
+    final s = amount.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '${buf}đ'.tr;
+  }
+
   Future<void> _requestUpgrade(ServicePlan plan) async {
-    final messageController = TextEditingController();
     try {
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Liên hệ quản lý về gói ${plan.name}',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-          content: TextField(
-            controller: messageController,
-            maxLength: 500,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Nhắn thêm cho quản lý (không bắt buộc)...',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huỷ'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Gửi yêu cầu'),
-            ),
-          ],
-        ),
-      );
-
-      if (proceed != true || !mounted) return;
-
-      final resultMessage = await SubscriptionStore.instance.requestUpgrade(
-        planId: plan.id,
-        cycle: _cycle,
-        message: messageController.text,
-      );
+      await SubscriptionStore.instance.requestUpgrade(planId: plan.id, cycle: _cycle);
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Yêu cầu đã gửi',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-          content: Text(resultMessage,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          title: Text('Đã gửi yêu cầu nâng cấp lên ${plan.name}'.tr,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          content: Text(
+            'Yêu cầu của bạn đang chờ quản trị viên duyệt. Gói sẽ tự cập nhật '.tr + 'trong mục "Gói dịch vụ" ngay sau khi được duyệt.'.tr,
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Đã hiểu'),
+              child: Text('Đã hiểu'.tr),
             ),
           ],
         ),
@@ -82,8 +56,6 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), backgroundColor: AppColors.danger),
       );
-    } finally {
-      messageController.dispose();
     }
   }
 
@@ -100,12 +72,12 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    icon: Icon(Icons.arrow_back_ios_new_rounded,
                         color: AppColors.textPrimary, size: 20),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Nâng cấp gói dịch vụ',
+                      'Nâng cấp gói dịch vụ'.tr,
                       style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 17,
@@ -122,7 +94,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                 onChanged: (c) => setState(() => _cycle = c),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Expanded(
               child: ListenableBuilder(
                 listenable: SubscriptionStore.instance,
@@ -132,14 +104,14 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
 
                   if (plans.isEmpty) {
                     if (sub.loading) {
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(color: AppColors.accent),
                       );
                     }
                     return Center(
                       child: Text(
-                        sub.error ?? 'Không có dữ liệu gói dịch vụ',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        sub.error ?? 'Không có dữ liệu gói dịch vụ'.tr,
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                     );
                   }
@@ -156,7 +128,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                         return ListView.separated(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                           itemCount: plans.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          separatorBuilder: (_, __) => SizedBox(height: 12),
                           itemBuilder: (context, index) => _buildCard(plans[index]),
                         );
                       }
@@ -190,6 +162,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       cycle: _cycle,
       isCurrent: isCurrent,
       isUpgrading: SubscriptionStore.instance.upgrading,
+      formatVnd: _formatVnd,
       onUpgrade: () => _requestUpgrade(plan),
     );
   }
@@ -215,14 +188,14 @@ class _CycleToggle extends StatelessWidget {
         children: [
           Expanded(
             child: _CycleOption(
-              label: 'Theo tháng',
+              label: 'Theo tháng'.tr,
               selected: cycle == BillingCycle.monthly,
               onTap: () => onChanged(BillingCycle.monthly),
             ),
           ),
           Expanded(
             child: _CycleOption(
-              label: 'Theo năm',
+              label: 'Theo năm'.tr,
               selected: cycle == BillingCycle.yearly,
               onTap: () => onChanged(BillingCycle.yearly),
             ),
@@ -277,6 +250,7 @@ class _PlanCard extends StatelessWidget {
   final BillingCycle cycle;
   final bool isCurrent;
   final bool isUpgrading;
+  final String Function(int) formatVnd;
   final VoidCallback onUpgrade;
 
   const _PlanCard({
@@ -284,11 +258,13 @@ class _PlanCard extends StatelessWidget {
     required this.cycle,
     required this.isCurrent,
     required this.isUpgrading,
+    required this.formatVnd,
     required this.onUpgrade,
   });
 
   @override
   Widget build(BuildContext context) {
+    final price = plan.priceFor(cycle);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -306,41 +282,72 @@ class _PlanCard extends StatelessWidget {
           Row(
             children: [
               Text(plan.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               if (isCurrent) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.accent.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(99),
                   ),
-                  child: const Text('Gói hiện tại',
+                  child: Text('Gói hiện tại'.tr,
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.accent)),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(plan.tagline,
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
-          const SizedBox(height: 14),
-          const Row(
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          SizedBox(height: 14),
+          if (cycle == BillingCycle.yearly && plan.yearlySavingsPercent > 0) ...[
+            Row(
+              children: [
+                Text(
+                  formatVnd(plan.fullYearPriceVnd),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '-${plan.yearlySavingsPercent}%',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 2),
+          ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Icon(Icons.support_agent_rounded, size: 18, color: AppColors.accent),
-              SizedBox(width: 6),
-              Text('Liên hệ quản lý',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent)),
+              Text(formatVnd(price),
+                  style: TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              if (price > 0)
+                Text(cycle == BillingCycle.monthly ? ' /tháng'.tr : ' /năm'.tr,
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           _FeatureRow(icon: Icons.videocam_outlined, text: plan.cameraLabel),
-          const SizedBox(height: 6),
-          _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} GB lưu trữ'),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
+          _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} GB lưu trữ'.tr),
+          SizedBox(height: 6),
           const _FeatureRow(icon: Icons.history_rounded, text: kRetentionPolicy),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 42,
@@ -349,10 +356,10 @@ class _PlanCard extends StatelessWidget {
                     onPressed: null,
                     style: OutlinedButton.styleFrom(
                       disabledForegroundColor: AppColors.textMuted,
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: AppColors.divider),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Đang sử dụng', style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: Text('Đang sử dụng'.tr, style: TextStyle(fontWeight: FontWeight.w700)),
                   )
                 : ElevatedButton(
                     onPressed: isUpgrading ? null : onUpgrade,
@@ -363,13 +370,13 @@ class _PlanCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: isUpgrading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Liên hệ quản lý',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        : Text(plan.isFree ? 'Chuyển về Free'.tr : 'Nâng cấp'.tr,
+                            style: const TextStyle(fontWeight: FontWeight.w700)),
                   ),
           ),
         ],
@@ -394,10 +401,10 @@ class _FeatureRow extends StatelessWidget {
           padding: const EdgeInsets.only(top: 1),
           child: Icon(icon, size: 16, color: AppColors.textSecondary),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3)),
+              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3)),
         ),
       ],
     );

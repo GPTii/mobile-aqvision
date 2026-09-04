@@ -4,19 +4,20 @@ import 'package:geolocator/geolocator.dart';
 
 import '../data/weather_store.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
-const _kWeekdayNames = [
-  'Thứ Hai',
-  'Thứ Ba',
-  'Thứ Tư',
-  'Thứ Năm',
-  'Thứ Sáu',
-  'Thứ Bảy',
-  'Chủ Nhật',
+List<String> get _kWeekdayNames => [
+  'Thứ Hai'.tr,
+  'Thứ Ba'.tr,
+  'Thứ Tư'.tr,
+  'Thứ Năm'.tr,
+  'Thứ Sáu'.tr,
+  'Thứ Bảy'.tr,
+  'Chủ Nhật'.tr,
 ];
 
 /// Thin date/time + current-location weather subtitle, meant to sit right
-/// under a screen title (e.g. "Trang chủ") rather than as a boxed chip
+/// under a screen title (e.g. "Trang chủ".tr) rather than as a boxed chip
 /// competing with the notification bell — a flowing line reads calmer and
 /// closer to how modern dashboard apps present a greeting subtitle.
 class WeatherTimeHeader extends StatefulWidget {
@@ -93,7 +94,7 @@ class _Dot extends StatelessWidget {
         child: Container(
           width: 3,
           height: 3,
-          decoration: const BoxDecoration(color: AppColors.textMuted, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: AppColors.textMuted, shape: BoxShape.circle),
         ),
       );
 }
@@ -132,11 +133,11 @@ class _SubtitleRow extends StatelessWidget {
           SizedBox(
             width: fontSize,
             height: fontSize,
-            child: const CircularProgressIndicator(strokeWidth: 1.6, color: AppColors.accent),
+            child: CircularProgressIndicator(strokeWidth: 1.6, color: AppColors.accent),
           )
         else
           Text(snap?.emoji ?? '🌡️', style: TextStyle(fontSize: fontSize + 1)),
-        const SizedBox(width: 5),
+        SizedBox(width: 5),
         Flexible(
           child: Text(
             snap == null
@@ -150,7 +151,7 @@ class _SubtitleRow extends StatelessWidget {
         const _Dot(),
         if (showLabel) ...[
           Icon(Icons.access_time_rounded, size: fontSize, color: AppColors.textMuted),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
         ],
         Flexible(
           child: Text(
@@ -183,13 +184,13 @@ class _PermissionRow extends StatelessWidget {
             WeatherStore.instance.requestAndFetch();
           }
         },
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.location_on_outlined, size: 14, color: AppColors.accent),
             SizedBox(width: 5),
             Text(
-              'Bật định vị để xem thời tiết',
+              'Bật định vị để xem thời tiết'.tr,
               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.accent),
             ),
           ],

@@ -1,4 +1,6 @@
+import '../../utils/app_strings.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import '../../../main.dart' as import_main;
 
@@ -50,8 +52,8 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   Future<void> _takeSnapshot(Camera camera) async {
     if (!camera.online) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Camera đang offline, không thể chụp ảnh'),
+        SnackBar(
+          content: Text('Camera đang offline, không thể chụp ảnh'.tr),
         ),
       );
       return;
@@ -62,13 +64,13 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       final saved = await CapturedPhoto.showPreviewAndSave(context, pngBytes);
       if (saved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã lưu ảnh chụp màn hình')),
+          SnackBar(content: Text('Đã lưu ảnh chụp màn hình'.tr)),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi chụp ảnh: $e')),
+          SnackBar(content: Text('Lỗi chụp ảnh: $e'.tr)),
         );
       }
     }
@@ -77,8 +79,8 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   Future<void> _confirmDelete(BuildContext context, Camera camera) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'Xoá camera?',
-      message: 'Bạn có chắc muốn xoá "${camera.name}"? Hành động này không thể hoàn tác.',
+      title: 'Xoá camera?'.tr,
+      message: 'Bạn có chắc muốn xoá "${camera.name}"? Hành động này không thể hoàn tác.'.tr,
     );
     if (!confirmed || !context.mounted) return;
     CameraStore.instance.deleteCamera(camera.id);
@@ -95,14 +97,14 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       builder: (context, _) {
         final camera = CameraStore.instance.cameraById(widget.cameraId);
         if (camera == null) {
-          return const Scaffold(backgroundColor: AppColors.background);
+          return Scaffold(backgroundColor: AppColors.background);
         }
         final groupNames = camera.groupIds
             .map((id) => CameraStore.instance.groupById(id)?.name)
             .where((name) => name != null)
             .join(', ');
         final displayGroupName =
-            groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
+            groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm'.tr;
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -110,7 +112,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             child: Column(
               children: [
                 DecoratedBox(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.headerBackground,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24),
@@ -126,9 +128,9 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildPreview(camera),
-                        const SizedBox(height: 20),
+                        SizedBox(height: 20),
                         _buildControls(camera),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         _buildSpeakButton(),
                         _buildRecordingSection(context, camera),
                         _buildDeviceInfoSection(camera, displayGroupName),
@@ -152,7 +154,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new_rounded,
               color: AppColors.textPrimary,
               size: 20,
@@ -166,7 +168,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                   camera.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -182,7 +184,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             ),
           ),
           PopupMenuButton<String>(
-            icon: const Icon(
+            icon: Icon(
               Icons.more_vert_rounded,
               color: AppColors.textPrimary,
               size: 22,
@@ -203,23 +205,23 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                   _confirmDelete(context, camera);
               }
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'history',
-                child: Text('Lịch sử ghi hình'),
+                child: Text('Lịch sử ghi hình'.tr),
               ),
               PopupMenuItem(
                 value: 'edit',
-                child: Text('Sửa thông tin'),
+                child: Text('Sửa thông tin'.tr),
               ),
               PopupMenuItem(
                 value: 'delete',
-                child: Text('Xoá camera', style: TextStyle(color: AppColors.danger)),
+                child: Text('Xoá camera'.tr, style: TextStyle(color: AppColors.danger)),
               ),
             ],
           ),
           // _ConnectionToggleButton(camera: camera),
-          const SizedBox(width: 4),
+          SizedBox(width: 4),
         ],
       ),
     );
@@ -245,12 +247,27 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       );
     }
 
-    return _CameraPlayer(
-      key: ValueKey('player-${camera.id}-${camera.app}-${camera.cameraCode}'),
-      cameraId: camera.id,
-      app: camera.app ?? 'live',
-      stream: camera.cameraCode,
-      hlsUrl: camera.hlsUrl,
+    if (camera.playProtocol?.toLowerCase() == 'webrtc') {
+      return WebRTCPlayerWidget(
+        key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
+        app: camera.app ?? 'live',
+        stream: camera.cameraCode,
+      );
+    }
+
+    if (camera.hlsUrl?.isNotEmpty ?? false) {
+      return _DetailVideoPlayer(
+        key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
+        cameraId: camera.id,
+        hlsUrl: camera.hlsUrl!,
+      );
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+      child: Center(
+        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
+      ),
     );
   }
 
@@ -319,7 +336,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               color: Colors.white, shape: BoxShape.circle,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'LIVE',
                             style: TextStyle(
                               color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800,
@@ -343,12 +360,15 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: _CameraPlayer(
-                                    cameraId: camera.id,
-                                    app: camera.app ?? 'live',
-                                    stream: camera.cameraCode,
-                                    hlsUrl: camera.hlsUrl,
-                                  ),
+                                  child: (camera.playProtocol?.toLowerCase() == 'webrtc')
+                                      ? WebRTCPlayerWidget(
+                                          app: camera.app ?? 'live',
+                                          stream: camera.cameraCode,
+                                        )
+                                      : _DetailVideoPlayer(
+                                          cameraId: camera.id,
+                                          hlsUrl: camera.hlsUrl!,
+                                        ),
                                 ),
                               ),
                             ),
@@ -398,9 +418,9 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 : () async {
                     if (!isRec && !camera.online) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
+                        SnackBar(
                           content: Text(
-                              'Camera đang offline, không thể bắt đầu ghi hình'),
+                              'Camera đang offline, không thể bắt đầu ghi hình'.tr),
                         ),
                       );
                       return;
@@ -416,7 +436,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         );
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đã dừng ghi hình')),
+                            SnackBar(content: Text('Đã dừng ghi hình'.tr)),
                           );
                         }
                       } else {
@@ -427,8 +447,8 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         );
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Bắt đầu ghi hình...')),
+                            SnackBar(
+                                content: Text('Bắt đầu ghi hình...'.tr)),
                           );
                         }
                       }
@@ -451,7 +471,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
           ),
           (
             icon: Icons.history_rounded,
-            label: 'Lịch sử',
+            label: 'Lịch sử'.tr,
             active: false,
             onTap: () {
               showModalBottomSheet(
@@ -523,13 +543,13 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 ),
               ],
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.mic_rounded, color: Colors.white, size: 20),
                 SizedBox(width: 10),
                 Text(
-                  'Giữ để nói',
+                  'Giữ để nói'.tr,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -556,7 +576,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             children: [
               Row(
                 children: [
-                  const Text('Ghi hình',
+                  Text('Ghi hình'.tr,
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -569,7 +589,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         color: AppColors.danger,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.fiber_manual_record_rounded,
@@ -585,7 +605,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -609,27 +629,27 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                             color: AppColors.danger.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.video_library_rounded,
+                          child: Icon(Icons.video_library_rounded,
                               color: AppColors.danger, size: 20),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Xem bản ghi',
+                              Text('Xem bản ghi'.tr,
                                   style: TextStyle(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textPrimary)),
                               SizedBox(height: 2),
-                              Text('Tìm kiếm, xem và xóa video đã ghi',
+                              Text('Tìm kiếm, xem và xóa video đã ghi'.tr,
                                   style: TextStyle(
                                       fontSize: 11.5, color: AppColors.textMuted)),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right_rounded,
+                        Icon(Icons.chevron_right_rounded,
                             color: AppColors.textMuted, size: 20),
                       ],
                     ),
@@ -647,11 +667,11 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   Widget _buildDeviceInfoSection(Camera camera, String groupName) {
     final rows = [
       ('Camera ID', camera.cameraCode, Icons.qr_code_2_rounded),
-      ('Loại camera', camera.type, Icons.videocam_outlined),
-      ('Vị trí lắp đặt', camera.location, Icons.place_outlined),
-      ('Nhóm', groupName, Icons.folder_open_rounded),
+      ('Loại camera'.tr, camera.type, Icons.videocam_outlined),
+      ('Vị trí lắp đặt'.tr, camera.location, Icons.place_outlined),
+      ('Nhóm'.tr, groupName, Icons.folder_open_rounded),
       (
-        'Trạng thái',
+        'Trạng thái'.tr,
         camera.online ? 'Online' : 'Offline',
         camera.online ? Icons.check_circle_rounded : Icons.cancel_rounded,
       ),
@@ -660,10 +680,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(16, 26, 16, 12),
           child: Text(
-            'Thông tin thiết bị',
+            'Thông tin thiết bị'.tr,
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 15.5,
@@ -682,7 +702,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             child: Column(
               children: List.generate(rows.length, (i) {
                 final (label, value, icon) = rows[i];
-                final isStatus = label == 'Trạng thái';
+                final isStatus = label == 'Trạng thái'.tr;
                 return Column(
                   children: [
                     Padding(
@@ -692,7 +712,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                           Icon(icon, size: 17, color: isStatus
                               ? (camera.online ? AppColors.success : AppColors.textMuted)
                               : AppColors.textMuted),
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               label,
@@ -700,17 +720,39 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                             ),
                           ),
                           Flexible(
-                            child: Text(
-                              value,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: isStatus
-                                    ? (camera.online ? AppColors.success : AppColors.danger)
-                                    : AppColors.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            child: GestureDetector(
+                              onTap: () async {
+                                if (label == 'Vị trí lắp đặt'.tr && camera.mapLink != null && camera.mapLink!.isNotEmpty) {
+                                  final uri = Uri.tryParse(camera.mapLink!);
+                                  if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  if (label == 'Vị trí lắp đặt'.tr && camera.mapLink != null && camera.mapLink!.isNotEmpty)
+                                    Padding(
+                                      padding: EdgeInsets.only(right: 4),
+                                      child: Icon(Icons.open_in_new_rounded, size: 14, color: AppColors.info),
+                                    ),
+                                  Flexible(
+                                    child: Text(
+                                      value,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        color: isStatus
+                                            ? (camera.online ? AppColors.success : AppColors.danger)
+                                            : (label == 'Vị trí lắp đặt'.tr && camera.mapLink != null && camera.mapLink!.isNotEmpty ? AppColors.info : AppColors.textPrimary),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        decoration: label == 'Vị trí lắp đặt'.tr && camera.mapLink != null && camera.mapLink!.isNotEmpty ? TextDecoration.underline : null,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -733,10 +775,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
           child: Text(
-            'Lịch sử hoạt động',
+            'Lịch sử hoạt động'.tr,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -765,7 +807,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      'Chưa có hoạt động nào',
+                      'Chưa có hoạt động nào'.tr,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ),
@@ -787,7 +829,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         children: [
                           _ActivityTile(notification: notif),
                           if (i != cameraNotifications.length - 1)
-                            const Divider(
+                            Divider(
                               height: 1,
                               color: AppColors.divider,
                               indent: 14,
@@ -845,7 +887,7 @@ class _ControlButton extends StatelessWidget {
                 size: 20,
                 color: active ? AppColors.accent : AppColors.textSecondary,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 label,
                 style: TextStyle(
@@ -900,7 +942,7 @@ class _ActivityTile extends StatelessWidget {
             ),
             child: Icon(_icon, size: 18, color: _color),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,77 +951,23 @@ class _ActivityTile extends StatelessWidget {
                   notification.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   notification.time,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11.5),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11.5),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Plays a camera's live view, preferring WebRTC for low latency and
-/// silently falling back to HLS if WebRTC fails or times out — no protocol
-/// picker, no visible error, the user just sees the stream.
-class _CameraPlayer extends StatefulWidget {
-  final String cameraId;
-  final String app;
-  final String stream;
-  final String? hlsUrl;
-
-  const _CameraPlayer({
-    super.key,
-    required this.cameraId,
-    required this.app,
-    required this.stream,
-    this.hlsUrl,
-  });
-
-  @override
-  State<_CameraPlayer> createState() => _CameraPlayerState();
-}
-
-class _CameraPlayerState extends State<_CameraPlayer> {
-  bool _useWebRTC = true;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_useWebRTC) {
-      return WebRTCPlayerWidget(
-        key: ValueKey('webrtc-${widget.cameraId}-${widget.app}-${widget.stream}'),
-        app: widget.app,
-        stream: widget.stream,
-        onError: () {
-          if (mounted) setState(() => _useWebRTC = false);
-        },
-      );
-    }
-
-    if (widget.hlsUrl?.isNotEmpty ?? false) {
-      return _DetailVideoPlayer(
-        key: ValueKey('detail-${widget.cameraId}-${widget.hlsUrl}'),
-        cameraId: widget.cameraId,
-        hlsUrl: widget.hlsUrl!,
-      );
-    }
-
-    return const DecoratedBox(
-      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-      child: Center(
-        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
       ),
     );
   }
@@ -1131,18 +1119,18 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
     return Stack(
       fit: StackFit.expand,
       children: [
-        const DecoratedBox(
+        DecoratedBox(
           decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
         ),
         Center(
           child: _hasError
               ? IconButton(
-                  icon: const Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
+                  icon: Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
                   onPressed: _initializeVideo,
                 )
               : _obscured
                   ? const SizedBox.shrink()
-                  : const SizedBox(
+                  : SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
@@ -1203,7 +1191,7 @@ class _ConnectionToggleButtonState extends State<_ConnectionToggleButton> {
           ),
         ),
         child: _loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
@@ -1218,9 +1206,9 @@ class _ConnectionToggleButtonState extends State<_ConnectionToggleButton> {
                     color: isOnline ? AppColors.success : AppColors.danger,
                     size: 16,
                   ),
-                  const SizedBox(width: 4),
+                  SizedBox(width: 4),
                   Text(
-                    isOnline ? 'Ngắt' : 'Kết nối',
+                    isOnline ? 'Ngắt'.tr : 'Kết nối'.tr,
                     style: TextStyle(
                       color: isOnline ? AppColors.success : AppColors.danger,
                       fontSize: 11,

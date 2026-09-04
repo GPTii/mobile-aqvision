@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../utils/app_strings.dart';
 
 enum NotificationSeverity { danger, warning, info, subscription }
 
@@ -109,7 +110,7 @@ class NotificationStore extends ChangeNotifier {
 
           // Filter by user preferences
           final title = item['title'] ?? '';
-          if (!offlineAlertsEnabled && (title.contains('Camera') || title.contains('ngắt kết nối') || title.contains('kết nối lại'))) continue;
+          if (!offlineAlertsEnabled && (title.contains('Camera') || title.contains('ngắt kết nối'.tr) || title.contains('kết nối lại'.tr))) continue;
           if (!systemAlertsEnabled && (title.contains('CPU') || title.contains('Memory') || title.contains('Disk') || title.contains('Cập nhật'))) continue;
           if (!motionAlertsEnabled && (title.contains('chuyển động') || title.toLowerCase().contains('motion'))) continue;
 

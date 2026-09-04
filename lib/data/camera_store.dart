@@ -11,10 +11,11 @@ import 'debounced_notifier.dart';
 import 'video_preload_cache.dart';
 import '../utils/network_error_handler.dart';
 import 'notification_store.dart';
+import '../utils/app_strings.dart';
 
-const kCameraTypes = [
+List<String> get kCameraTypes => [
   'Camera Dome',
-  'Camera thân trụ',
+  'Camera thân trụ'.tr,
   'Camera PTZ xoay',
   'Camera mini Wifi',
 ];
@@ -45,6 +46,7 @@ class Camera {
   String? fmp4Url;
   String? targetUrl;
   String? playProtocol;
+  String? mapLink;
 
   Camera({
     required this.id,
@@ -63,6 +65,7 @@ class Camera {
     this.fmp4Url,
     this.targetUrl,
     this.playProtocol,
+    this.mapLink,
   });
 }
 
@@ -143,7 +146,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       for (final item in data) {
         _groups.add(CameraGroup(
           id: item['id'].toString(),
-          name: item['name'] ?? 'Nhóm',
+          name: item['name'] ?? 'Nhóm'.tr,
         ));
       }
       notifyNow();
@@ -195,9 +198,9 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           id: (item['id'] ?? 0).toString(),
           name: item['stream'] ?? 'Camera',
           cameraCode: item['stream'] ?? 'CAM-0000',
-          type: kCameraTypes[0],
+          type: item['cameraType'] ?? kCameraTypes[0],
           ipAddress: item['url'] ?? '',
-          location: 'Góc camera',
+          location: item['location'] ?? 'Chưa xác định',
           groupIds: (item['groupIds'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList() ??
@@ -211,6 +214,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           fmp4Url: fmp4Url,
           targetUrl: item['url'],
           playProtocol: item['playProtocol'],
+          mapLink: item['mapLink'],
         );
       }).toList();
       notifyNow();
@@ -385,7 +389,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       NotificationStore.instance.fetchAlerts();
     } else {
       throw Exception(
-          'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối' : 'kết nối lại'} camera');
+          'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối'.tr : 'kết nối lại'.tr} camera');
     }
   }
 

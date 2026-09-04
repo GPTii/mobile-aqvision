@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
 /// Shows a small dialog with a single text field and returns the trimmed
 /// value on confirm, or null if cancelled / left empty.
@@ -9,7 +10,7 @@ Future<String?> showTextPromptDialog(
   required String title,
   String initialValue = '',
   String hint = '',
-  String confirmLabel = 'Lưu',
+  String? confirmLabel,
 }) {
   return showDialog<String>(
     context: context,
@@ -17,7 +18,7 @@ Future<String?> showTextPromptDialog(
       title: title,
       initialValue: initialValue,
       hint: hint,
-      confirmLabel: confirmLabel,
+      confirmLabel: confirmLabel ?? 'Lưu'.tr,
     ),
   );
 }
@@ -63,24 +64,24 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
     return AlertDialog(
       backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text(widget.title, style: const TextStyle(color: AppColors.textPrimary)),
+      title: Text(widget.title, style: TextStyle(color: AppColors.textPrimary)),
       content: TextField(
         controller: _controller,
         autofocus: true,
-        style: const TextStyle(color: AppColors.textPrimary),
+        style: TextStyle(color: AppColors.textPrimary),
         decoration: InputDecoration(
           hintText: widget.hint,
-          hintStyle: const TextStyle(color: AppColors.textMuted),
+          hintStyle: TextStyle(color: AppColors.textMuted),
           filled: true,
           fillColor: AppColors.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderSide: BorderSide(color: AppColors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+            borderSide: BorderSide(color: AppColors.accent, width: 1.4),
           ),
         ),
         onSubmitted: (_) => _submit(),
@@ -88,13 +89,13 @@ class _TextPromptDialogState extends State<_TextPromptDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Huỷ', style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Huỷ'.tr, style: TextStyle(color: AppColors.textSecondary)),
         ),
         TextButton(
           onPressed: _submit,
           child: Text(
             widget.confirmLabel,
-            style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
+            style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700),
           ),
         ),
       ],
@@ -107,25 +108,24 @@ Future<bool> showConfirmDialog(
   BuildContext context, {
   required String title,
   required String message,
-  String confirmLabel = 'Xoá',
+  String? confirmLabel,
 }) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text(title, style: const TextStyle(color: AppColors.textPrimary)),
-      content: Text(message, style: const TextStyle(color: AppColors.textSecondary)),
+      title: Text(title, style: TextStyle(color: AppColors.textPrimary)),
+      content: Text(message, style: TextStyle(color: AppColors.textSecondary)),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Huỷ', style: TextStyle(color: AppColors.textSecondary)),
+          child: Text('Huỷ'.tr, style: TextStyle(color: AppColors.textSecondary)),
         ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: Text(
-            confirmLabel,
-            style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700),
+          child: Text(confirmLabel ?? 'Xoá'.tr,
+            style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700),
           ),
         ),
       ],

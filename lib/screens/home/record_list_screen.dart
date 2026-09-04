@@ -3,13 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../data/camera_store.dart';
 import '../../data/recording_store.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/captured_photo.dart';
+import '../../utils/app_strings.dart';
 
 class RecordingListScreen extends StatefulWidget {
   final String cameraId;
@@ -87,7 +88,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: AppColors.accent),
+          colorScheme: ColorScheme.light(primary: AppColors.accent),
         ),
         child: child!,
       ),
@@ -107,17 +108,17 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
     final store = RecordingStore.instance;
     final isRec = store.isRecording(cam.id);
     if (!isRec && !cam.online) {
-      _showSnack('Camera đang offline, không thể bắt đầu ghi hình', error: true);
+      _showSnack('Camera đang offline, không thể bắt đầu ghi hình'.tr, error: true);
       return;
     }
     setState(() => _loadingToggle = true);
     try {
       if (isRec) {
         await store.stopRecord(cameraId: cam.id, app: cam.app ?? 'live', stream: cam.cameraCode);
-        _showSnack('Đã dừng ghi hình');
+        _showSnack('Đã dừng ghi hình'.tr);
       } else {
         await store.startRecord(cameraId: cam.id, app: cam.app ?? 'live', stream: cam.cameraCode);
-        _showSnack('Bắt đầu ghi hình');
+        _showSnack('Bắt đầu ghi hình'.tr);
       }
     } catch (e) {
       _showSnack(RecordingStore.errorText(e), error: true);
@@ -133,7 +134,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       await RecordingStore.instance.toggleAutoRecord(cameraId: cam.id, enable: value);
       CameraStore.instance.setRecordingFlag(cam.id, value);
       if (mounted) setState(() => _enableMp4 = value);
-      _showSnack(value ? 'Bật tự động ghi hình' : 'Tắt tự động ghi hình');
+      _showSnack(value ? 'Bật tự động ghi hình'.tr : 'Tắt tự động ghi hình'.tr);
     } catch (e) {
       _showSnack(RecordingStore.errorText(e), error: true);
     }
@@ -142,12 +143,12 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
   Future<void> _deleteRecording(RecordingFile file) async {
     final cam = _camera;
     if (cam == null) return;
-    final ok = await _confirmDialog('Xóa bản ghi?',
-        'Xóa file ${file.fileName} ngày ${file.date}? Không thể hoàn tác.');
+    final ok = await _confirmDialog('Xóa bản ghi?'.tr,
+        'Xóa file ${file.fileName} ngày ${file.date}? Không thể hoàn tác.'.tr);
     if (!ok) return;
     try {
       await RecordingStore.instance.deleteRecording(cameraId: cam.id, file: file);
-      _showSnack('Đã xóa bản ghi');
+      _showSnack('Đã xóa bản ghi'.tr);
     } catch (e) {
       _showSnack(RecordingStore.errorText(e), error: true);
     }
@@ -160,12 +161,12 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
             backgroundColor: AppColors.card,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-            content: Text(msg, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            content: Text(msg, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Hủy'.tr)),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Xóa', style: TextStyle(color: AppColors.danger)),
+                child: Text('Xóa'.tr, style: TextStyle(color: AppColors.danger)),
               ),
             ],
           ),
@@ -194,7 +195,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       ctrl.play();
       if (mounted) setState(() {});
     } catch (e) {
-      _showSnack('Không thể phát video: $e', error: true);
+      _showSnack('Không thể phát video: $e'.tr, error: true);
       _vpController?.dispose();
       if (mounted) {
         setState(() {
@@ -221,9 +222,9 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       final pngBytes = await CapturedPhoto.capture(_videoKey);
       if (!mounted) return;
       final saved = await CapturedPhoto.showPreviewAndSave(context, pngBytes);
-      if (saved) _showSnack('Đã lưu ảnh vào Photos');
+      if (saved) _showSnack('Đã lưu ảnh vào Photos'.tr);
     } catch (e) {
-      _showSnack('Lỗi chụp ảnh: $e', error: true);
+      _showSnack('Lỗi chụp ảnh: $e'.tr, error: true);
     }
   }
   
@@ -254,14 +255,14 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
       builder: (ctx) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.all(16),
-            child: Text('Tốc độ phát', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text('Tốc độ phát'.tr, style: TextStyle(fontWeight: FontWeight.w700)),
           ),
-          ListTile(title: const Text('1.0x (Bình thường)'), onTap: () => Navigator.pop(ctx, 1.0)),
-          ListTile(title: const Text('1.5x'), onTap: () => Navigator.pop(ctx, 1.5)),
-          ListTile(title: const Text('2.0x'), onTap: () => Navigator.pop(ctx, 2.0)),
-          const SizedBox(height: 16),
+          ListTile(title: Text('1.0x (Bình thường)'.tr), onTap: () => Navigator.pop(ctx, 1.0)),
+          ListTile(title: Text('1.5x'), onTap: () => Navigator.pop(ctx, 1.5)),
+          ListTile(title: Text('2.0x'), onTap: () => Navigator.pop(ctx, 2.0)),
+          SizedBox(height: 16),
         ],
       ),
     );
@@ -277,13 +278,13 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
     if (file == null || cam == null || _vpController == null) return;
 
     final pos = _vpController!.value.position.inSeconds;
-    final ok = await _confirmDialog('Cắt đoạn video', 'Hệ thống sẽ tạo 1 đoạn video dài 30 giây bắt đầu từ giây thứ $pos của bản ghi hiện tại. Tiếp tục?');
+    final ok = await _confirmDialog('Cắt đoạn video'.tr, 'Hệ thống sẽ tạo 1 đoạn video dài 30 giây bắt đầu từ giây thứ $pos của bản ghi hiện tại. Tiếp tục?'.tr);
     if (!ok) return;
 
-    _showSnack('Đang xử lý cắt video...');
+    _showSnack('Đang xử lý cắt video...'.tr);
     try {
       final clipUrl = await RecordingStore.instance.requestClip(file, pos, 30);
-      _showSnack('Cắt thành công! Đã lưu tại: $clipUrl');
+      _showSnack('Cắt thành công! Đã lưu tại: $clipUrl'.tr);
     } catch (e) {
       _showSnack(RecordingStore.errorText(e), error: true);
     }
@@ -293,7 +294,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
   Widget build(BuildContext context) {
     final cam = _camera;
     if (cam == null) {
-      return const Scaffold(backgroundColor: AppColors.background);
+      return Scaffold(backgroundColor: AppColors.background);
     }
     return ListenableBuilder(
       listenable: RecordingStore.instance.listenableFor(cam.id),
@@ -318,7 +319,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                 if (!_isFullscreen)
                   // Header
                                   DecoratedBox(
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       color: AppColors.headerBackground,
                                       borderRadius: BorderRadius.only(
                                         bottomLeft: Radius.circular(24),
@@ -333,14 +334,14 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                                             children: [
                                               IconButton(
                                                 onPressed: () => Navigator.of(context).pop(),
-                                                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                                icon: Icon(Icons.arrow_back_ios_new_rounded,
                                                     color: AppColors.textPrimary, size: 20),
                                               ),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    const Text('Bản ghi',
+                                                    Text('Bản ghi'.tr,
                                                         style: TextStyle(
                                                             color: AppColors.textPrimary,
                                                             fontSize: 17,
@@ -354,7 +355,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                                               // REC badge
                                               if (isRec)
                                                 _PulsingRecBadge(),
-                                              const SizedBox(width: 8),
+                                              SizedBox(width: 8),
                                               // Date filter button
                                               GestureDetector(
                                                 onTap: _pickDateRange,
@@ -368,12 +369,12 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                                                   child: Row(
                                                     mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      const Icon(Icons.calendar_today_rounded,
+                                                      Icon(Icons.calendar_today_rounded,
                                                           size: 13, color: AppColors.textSecondary),
-                                                      const SizedBox(width: 5),
+                                                      SizedBox(width: 5),
                                                       Text(
                                                         '${_fmtShort(_startDate)} – ${_fmtShort(_endDate)}',
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                             fontSize: 11.5,
                                                             color: AppColors.textSecondary,
                                                             fontWeight: FontWeight.w600),
@@ -389,11 +390,11 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                                             padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
                                             child: Row(
                                               children: [
-                                                const Icon(Icons.fiber_manual_record_rounded,
+                                                Icon(Icons.fiber_manual_record_rounded,
                                                     size: 14, color: AppColors.textMuted),
-                                                const SizedBox(width: 6),
-                                                const Expanded(
-                                                  child: Text('Tự động ghi hình',
+                                                SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text('Tự động ghi hình'.tr,
                                                       style: TextStyle(
                                                           fontSize: 13, color: AppColors.textSecondary)),
                                                 ),
@@ -515,7 +516,7 @@ class _RecordingListScreenState extends State<RecordingListScreen> {
                   // List
                                   Expanded(
                                     child: isLoading
-                                        ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+                                        ? Center(child: CircularProgressIndicator(color: AppColors.accent))
                                         : recordings.isEmpty
                                             ? _EmptyRecordings(onRefresh: _load)
                                             : RefreshIndicator(
@@ -590,7 +591,7 @@ class _PulsingRecBadgeState extends State<_PulsingRecBadge>
           color: AppColors.danger,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.fiber_manual_record_rounded, size: 8, color: Colors.white),
@@ -618,16 +619,16 @@ class _DateHeader extends StatelessWidget {
         .split('T')[0];
     String label;
     if (date == today) {
-      label = 'Hôm nay · $date';
+      label = 'Hôm nay · $date'.tr;
     } else if (date == yesterday) {
-      label = 'Hôm qua · $date';
+      label = 'Hôm qua · $date'.tr;
     } else {
       label = date;
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
       child: Text(label,
-          style: const TextStyle(
+          style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12.5,
               fontWeight: FontWeight.w700)),
@@ -662,7 +663,7 @@ class _RecordingTile extends StatelessWidget {
             color: AppColors.danger.withOpacity(0.1),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 22),
+          child: Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 22),
         ),
         confirmDismiss: (_) async {
           onDelete();
@@ -694,7 +695,7 @@ class _RecordingTile extends StatelessWidget {
                       height: 44,
                       child: Stack(
                         children: [
-                          const Positioned.fill(
+                          Positioned.fill(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
                                   gradient: AppColors.mediaPlaceholderGradient),
@@ -713,7 +714,7 @@ class _RecordingTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,19 +723,19 @@ class _RecordingTile extends StatelessWidget {
                           recording.fileName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 13,
                               fontWeight: FontWeight.w600),
                         ),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(
                           recording.displayTime,
                           style: TextStyle(
                               color: AppColors.textMuted, fontSize: 11.5),
                         ),
                         if (recording.durationText.isNotEmpty) ...[
-                          const SizedBox(height: 2),
+                          SizedBox(height: 2),
                           Text(
                             recording.durationText,
                             style: TextStyle(
@@ -746,12 +747,12 @@ class _RecordingTile extends StatelessWidget {
                   ),
                   // Download button
                   IconButton(
-                    icon: const Icon(Icons.download_rounded,
+                    icon: Icon(Icons.download_rounded,
                         size: 20, color: AppColors.accent),
                     onPressed: () async {
                       try {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đang tải video...')),
+                          SnackBar(content: Text('Đang tải video...'.tr)),
                         );
                         final uri = Uri.parse(recording.mp4Url);
                         final res = await http.Client().send(http.Request('GET', uri));
@@ -762,20 +763,20 @@ class _RecordingTile extends StatelessWidget {
                           await res.stream.pipe(file.openWrite());
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã lưu video vào thư mục Download')),
+                              SnackBar(content: Text('Đã lưu video vào thư mục Download'.tr)),
                             );
                           }
                         } else {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Lỗi tải video')),
+                              SnackBar(content: Text('Lỗi tải video'.tr)),
                             );
                           }
                         }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Lỗi: $e')),
+                            SnackBar(content: Text('Lỗi: $e'.tr)),
                           );
                         }
                       }
@@ -783,10 +784,10 @@ class _RecordingTile extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   // Delete button
                   IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded,
+                    icon: Icon(Icons.delete_outline_rounded,
                         size: 18, color: AppColors.textMuted),
                     onPressed: onDelete,
                     padding: EdgeInsets.zero,
@@ -813,21 +814,21 @@ class _EmptyRecordings extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.videocam_off_rounded, size: 56, color: AppColors.textMuted.withOpacity(0.4)),
-          const SizedBox(height: 12),
-          const Text('Không có bản ghi',
+          SizedBox(height: 12),
+          Text('Không có bản ghi'.tr,
               style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Bật tự động ghi hình hoặc nhấn "Ghi hình"',
+          SizedBox(height: 6),
+          Text('Bật tự động ghi hình hoặc nhấn "Ghi hình".tr'.tr,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
               textAlign: TextAlign.center),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextButton.icon(
             onPressed: onRefresh,
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.accent),
-            label: const Text('Tải lại', style: TextStyle(color: AppColors.accent)),
+            icon: Icon(Icons.refresh_rounded, color: AppColors.accent),
+            label: Text('Tải lại'.tr, style: TextStyle(color: AppColors.accent)),
           ),
         ],
       ),
