@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../../data/auth_store.dart';
-import '../../../data/camera_store.dart';
-import '../../../data/service_plans.dart';
+import '../../../data/settings_store.dart';
 import '../../../data/storage_store.dart';
 import '../../../data/subscription_store.dart';
 import '../../../theme/app_colors.dart';
-import '../../../widgets/change_password_sheet.dart';
-import '../../../widgets/edit_profile_sheet.dart';
-import '../../../widgets/prompt_dialog.dart';
-import '../../auth/login_screen.dart';
-import '../plan_selection_screen.dart';
+import '../account_security_screen.dart';
+import '../appearance_screen.dart';
+import '../auto_update_screen.dart';
+import '../language_screen.dart';
+import '../plan_detail_screen.dart';
+import '../version_history_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -26,414 +24,205 @@ class _ProfileTabState extends State<ProfileTab> {
     super.initState();
     SubscriptionStore.instance.fetchAll();
     StorageStore.instance.fetchStorage();
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Đăng xuất?',
-      message: 'Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng ứng dụng.',
-      confirmLabel: 'Đăng xuất',
-    );
-    if (!confirmed || !context.mounted) return;
-    await AuthStore.instance.logout();
-    
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
+    SettingsStore.instance.load();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: AuthStore.instance,
-      builder: (context, _) {
-        final user = AuthStore.instance.currentUser;
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                DecoratedBox(
-                  decoration: const BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.accentGradient,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            _initials(user?.name),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          user?.name ?? 'Chưa đăng nhập',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user?.role ?? '',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.headerBackground,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _SectionLabel('Thông tin tài khoản'),
-                      const SizedBox(height: 10),
-                      _InfoCard(
-                        children: [
-                          _InfoRow(icon: Icons.email_outlined, label: 'Email', value: user?.email ?? '--'),
-                          _InfoRow(icon: Icons.phone_outlined, label: 'Số điện thoại', value: user?.phone.isNotEmpty == true ? user!.phone : '--'),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Cài đặt'),
-                      const SizedBox(height: 10),
-                      _ActionCard(
-                        children: [
-                          _ActionRow(
-                            icon: Icons.person_outline_rounded,
-                            label: 'Chỉnh sửa thông tin cá nhân',
-                            onTap: () => showEditProfileSheet(context),
-                          ),
-                          _ActionRow(
-                            icon: Icons.lock_outline_rounded,
-                            label: 'Đổi mật khẩu',
-                            onTap: () => showChangePasswordSheet(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _ActionCard(
-                        children: [
-                          _ActionRow(
-                            icon: Icons.logout_rounded,
-                            label: 'Đăng xuất',
-                            danger: true,
-                            onTap: () => _logout(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Gói dịch vụ'),
-                      const SizedBox(height: 10),
-                      const _ServicePackageCard(),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Thông tin ứng dụng'),
-                      const SizedBox(height: 10),
-                      const _AppVersionCard(),
-                    ],
-                  ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Text(
+                  'Cài đặt',
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w800),
                 ),
-              ],
+              ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Card(children: [
+                    _ActionRow(
+                      icon: Icons.shield_outlined,
+                      iconColor: AppColors.accentSecondary,
+                      iconBg: const Color(0xFFFDEAEC),
+                      label: 'Tài khoản & bảo mật',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AccountSecurityScreen()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+
+                  ListenableBuilder(
+                    listenable: SubscriptionStore.instance,
+                    builder: (context, _) => _Card(children: [
+                      _ActionRow(
+                        icon: Icons.workspace_premium_outlined,
+                        iconColor: AppColors.accentSecondary,
+                        iconBg: const Color(0xFFFDEAEC),
+                        label: 'Gói dịch vụ',
+                        value: SubscriptionStore.instance.currentPlan?.name,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const PlanDetailScreen()),
+                        ),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 20),
+
+                  const _SectionLabel('Trải nghiệm'),
+                  const SizedBox(height: 10),
+                  _Card(children: [
+                    _ActionRow(
+                      icon: Icons.dark_mode_outlined,
+                      iconColor: AppColors.info,
+                      iconBg: AppColors.info.withOpacity(0.1),
+                      label: 'Ngoại hình',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+                      ),
+                    ),
+                    _ActionRow(
+                      icon: Icons.language_rounded,
+                      iconColor: AppColors.info,
+                      iconBg: AppColors.info.withOpacity(0.1),
+                      label: 'Ngôn ngữ',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LanguageScreen()),
+                      ),
+                    ),
+                    const _MobileDataToggleRow(),
+                  ]),
+                  const SizedBox(height: 20),
+
+                  const _SectionLabel('Hệ thống'),
+                  const SizedBox(height: 10),
+                  _Card(children: [
+                    _ActionRow(
+                      icon: Icons.system_update_alt_rounded,
+                      iconColor: AppColors.warning,
+                      iconBg: AppColors.warning.withOpacity(0.12),
+                      label: 'Tự động cập nhật',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AutoUpdateScreen()),
+                      ),
+                    ),
+                    _ActionRow(
+                      icon: Icons.receipt_long_rounded,
+                      iconColor: AppColors.success,
+                      iconBg: AppColors.success.withOpacity(0.1),
+                      label: 'Nhật ký',
+                      subtitle: kAppVersionHistory.isEmpty
+                          ? null
+                          : 'Phiên bản ${kAppVersionHistory.first.version} · cập nhật & sửa lỗi',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const VersionHistoryScreen()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+
+                  _Card(children: [
+                    _ActionRow(
+                      icon: Icons.logout_rounded,
+                      iconColor: AppColors.danger,
+                      iconBg: const Color(0xFFFDEAEC),
+                      label: 'Đăng xuất',
+                      danger: true,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AccountSecurityScreen()),
+                      ),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mobile data playback toggle ──────────────────────────────────────────
+
+class _MobileDataToggleRow extends StatelessWidget {
+  const _MobileDataToggleRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: SettingsStore.instance,
+      builder: (context, _) {
+        final value = SettingsStore.instance.playOnMobileData;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                alignment: Alignment.center,
+                child: const Icon(Icons.signal_cellular_alt_rounded, size: 17, color: AppColors.success),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Phát bằng mạng di động',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text('Khi bật lên, luôn cho phép phát lại trên mạng di động',
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.4)),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: (v) => SettingsStore.instance.setPlayOnMobileData(v),
+                activeTrackColor: AppColors.success,
+              ),
+            ],
           ),
         );
       },
     );
   }
-
-  String _initials(String? name) {
-    if (name == null || name.trim().isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    final first = parts.first.characters.first;
-    final last = parts.length > 1 ? parts.last.characters.first : '';
-    return (first + last).toUpperCase();
-  }
 }
 
-class _ServicePackageCard extends StatelessWidget {
-  const _ServicePackageCard();
-
-  static const _tierLabels = {
-    'good': 'Bình thường',
-    'warn': 'Sắp đầy',
-    'warn2': 'Gần đầy',
-    'bad': 'Nguy cấp',
-    'full': 'Đã đầy',
-  };
-
-  static const _tierColors = {
-    'good': AppColors.success,
-    'warn': AppColors.warning,
-    'warn2': Color(0xFFC2410C),
-    'bad': AppColors.danger,
-    'full': AppColors.danger,
-  };
-
-  String _formatMb(double mb) {
-    if (mb >= 1024) return '${(mb / 1024).toStringAsFixed(1)} GB';
-    return '${mb.toStringAsFixed(0)} MB';
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return '--';
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        StorageStore.instance,
-        CameraStore.instance,
-        SubscriptionStore.instance,
-      ]),
-      builder: (context, _) {
-        final store = StorageStore.instance;
-        final sub = SubscriptionStore.instance;
-        final hasData = store.storageQuotaMb > 0;
-        final tierLabel = _tierLabels[store.tier] ?? 'Bình thường';
-        final tierColor = _tierColors[store.tier] ?? AppColors.success;
-        final plan = sub.currentPlan;
-        final cameraCount = CameraStore.instance.cameras.length;
-
-        if (sub.loading && plan == null) {
-          return const _InfoCard(children: [
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
-                ),
-              ),
-            ),
-          ]);
-        }
-
-        if (plan == null) {
-          return _InfoCard(children: [
-            _InfoRow(
-              icon: Icons.error_outline_rounded,
-              label: 'Gói dịch vụ',
-              value: sub.error ?? 'Chưa có dữ liệu',
-            ),
-          ]);
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InfoCard(
-              children: [
-                _InfoRow(icon: Icons.workspace_premium_outlined, label: 'Gói hiện tại', value: plan.name),
-                _InfoRow(
-                  icon: Icons.videocam_outlined,
-                  label: 'Camera',
-                  value: plan.maxCameras < 0
-                      ? '$cameraCount (không giới hạn)'
-                      : '$cameraCount / ${plan.maxCameras}',
-                ),
-                _InfoRow(
-                  icon: Icons.cloud_outlined,
-                  label: 'Dung lượng lưu trữ',
-                  value: hasData
-                      ? '${_formatMb(store.usedStorageMb)} / ${_formatMb(store.storageQuotaMb)}'
-                      : '${plan.storageGb.toStringAsFixed(0)} GB',
-                ),
-                _InfoRow(
-                  icon: Icons.event_repeat_rounded,
-                  label: 'Chu kỳ thanh toán',
-                  value: sub.currentBillingCycle == BillingCycle.monthly ? 'Theo tháng' : 'Theo năm',
-                ),
-                _InfoRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Ngày bắt đầu gói',
-                  value: _formatDate(sub.startedAt),
-                ),
-                _InfoRow(
-                  icon: Icons.info_outline_rounded,
-                  label: 'Trạng thái dung lượng',
-                  value: hasData ? tierLabel : '--',
-                ),
-              ],
-            ),
-            if (hasData && store.tier != 'good') ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: tierColor.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tierColor.withOpacity(0.25)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_rounded, size: 16, color: tierColor),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Dung lượng đang ở mức "$tierLabel" — cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.',
-                        style: TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            _ActionCard(
-              children: [
-                _ActionRow(
-                  icon: Icons.upgrade_rounded,
-                  label: 'Nâng cấp gói dịch vụ',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PlanSelectionScreen(currentPlanId: plan.id),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _AppVersionCard extends StatelessWidget {
-  const _AppVersionCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<PackageInfo>(
-      future: PackageInfo.fromPlatform(),
-      builder: (context, snapshot) {
-        final info = snapshot.data;
-        return _InfoCard(
-          children: [
-            _InfoRow(
-              icon: Icons.info_outline_rounded,
-              label: 'Phiên bản',
-              value: info == null ? '--' : '${info.version} (${info.buildNumber})',
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
+// ── Shared row / card widgets ────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   final String text;
-
   const _SectionLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, fontWeight: FontWeight.w700),
-    );
+    return Text(text.toUpperCase(),
+        style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5));
   }
 }
 
-class _InfoCard extends StatelessWidget {
+class _Card extends StatelessWidget {
   final List<Widget> children;
-
-  const _InfoCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i != children.length - 1)
-              Divider(height: 1, color: AppColors.divider, indent: 16, endIndent: 16),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  final List<Widget> children;
-
-  const _ActionCard({required this.children});
+  const _Card({required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -448,8 +237,7 @@ class _ActionCard extends StatelessWidget {
         children: [
           for (var i = 0; i < children.length; i++) ...[
             children[i],
-            if (i != children.length - 1)
-              Divider(height: 1, color: AppColors.divider, indent: 16, endIndent: 16),
+            if (i != children.length - 1) Divider(height: 1, color: AppColors.divider, indent: 14, endIndent: 14),
           ],
         ],
       ),
@@ -459,39 +247,69 @@ class _ActionCard extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
   final String label;
+  final String? subtitle;
+  final String? value;
   final VoidCallback onTap;
   final bool danger;
 
   const _ActionRow({
     required this.icon,
+    required this.iconColor,
+    required this.iconBg,
     required this.label,
     required this.onTap,
+    this.subtitle,
+    this.value,
     this.danger = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.danger : AppColors.textPrimary;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.textSecondary),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 17, color: iconColor),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w600),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: TextStyle(
+                            color: danger ? AppColors.danger : AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600)),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ),
+                  ],
                 ),
               ),
-              if (!danger)
-                Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
+              if (value != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(value!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                ),
+              if (!danger) const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
             ],
           ),
         ),
