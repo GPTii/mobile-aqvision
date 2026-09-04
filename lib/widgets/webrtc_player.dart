@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
 class WebRTCPlayerWidget extends StatefulWidget {
   final String app;
@@ -73,7 +74,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
             _iceState = state.name;
             if (state == RTCIceConnectionState.RTCIceConnectionStateFailed || 
                 state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
-              _error = 'ICE Connection Failed (Có thể do mạng Simulator chặn UDP)';
+              _error = 'ICE Connection Failed (Có thể do mạng Simulator chặn UDP)'.tr;
             }
           });
         }
@@ -128,10 +129,10 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
             RTCSessionDescription(json['sdp'], 'answer'),
           );
         } else {
-          throw Exception(json['msg'] ?? 'Server không trả SDP answer');
+          throw Exception(json['msg'] ?? 'Server không trả SDP answer'.tr);
         }
       } else {
-        throw Exception('Server lỗi ${res.statusCode}');
+        throw Exception('Server lỗi ${res.statusCode}'.tr);
       }
     } catch (e) {
       if (mounted) {
@@ -166,8 +167,8 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.danger, size: 34),
-              const SizedBox(height: 8),
+              Icon(Icons.error_outline, color: AppColors.danger, size: 34),
+              SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Text(
@@ -178,14 +179,14 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () {
                   _cleanup();
                   _initWebRTC();
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('Thử lại'),
+                label: Text('Thử lại'.tr),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.accent,
                 ),
@@ -198,7 +199,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
     if (!_initialized) {
       return Container(
         color: Colors.black,
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -212,7 +213,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
               ),
               SizedBox(height: 10),
               Text(
-                'Đang kết nối WebRTC…',
+                'Đang kết nối WebRTC…'.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 11),
               ),
             ],

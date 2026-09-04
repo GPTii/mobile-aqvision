@@ -11,6 +11,7 @@ import '../config/api_config.dart';
 import '../utils/network_error_handler.dart';
 import '../screens/auth/login_screen.dart';
 import 'video_preload_cache.dart';
+import '../utils/app_strings.dart';
 
 class UserAccount {
   final String id;
@@ -78,10 +79,10 @@ class AuthStore extends ChangeNotifier {
       ).timeout(const Duration(seconds: 10));
     } on SocketException catch (_) {
       showNetworkErrorDialog();
-      throw Exception("Không thể kết nối máy chủ");
+      throw Exception("Không thể kết nối máy chủ".tr);
     } on TimeoutException catch (_) {
       showNetworkErrorDialog();
-      throw Exception("Kết nối quá hạn");
+      throw Exception("Kết nối quá hạn".tr);
     } catch (e) {
       debugPrint("[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e");
       rethrow;
@@ -104,7 +105,7 @@ class AuthStore extends ChangeNotifier {
       }
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Đăng nhập thất bại");
+      throw Exception(json["error"] ?? "Đăng nhập thất bại".tr);
     }
   }
 
@@ -162,10 +163,10 @@ class AuthStore extends ChangeNotifier {
       
       _currentUser = UserAccount(
         id: user["id"]?.toString() ?? "",
-        name: user["name"] ?? user["fullName"] ?? user["username"] ?? "Người dùng",
+        name: user["name"] ?? user["fullName"] ?? user["username"] ?? "Người dùng".tr,
         email: user["username"] ?? "",
         phone: user["phone"] ?? "--",
-        role: user["role"] ?? "Quản trị viên",
+        role: user["role"] ?? "Quản trị viên".tr,
         agencyId: agency != null ? agency["agencyId"] : null,
         apiSecret: agency != null ? agency["apiSecret"] : null,
       );
@@ -216,7 +217,7 @@ class AuthStore extends ChangeNotifier {
       try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi cập nhật thông tin");
+      throw Exception(json["error"] ?? "Lỗi cập nhật thông tin".tr);
     }
   }
 
@@ -231,7 +232,7 @@ class AuthStore extends ChangeNotifier {
     );
     if (res.statusCode != 200) {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi đổi mật khẩu");
+      throw Exception(json["error"] ?? "Lỗi đổi mật khẩu".tr);
     }
   }
 

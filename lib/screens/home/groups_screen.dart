@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/camera_store.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/app_strings.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -27,9 +28,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await CameraStore.instance.addGroup(name);
       _addCtrl.clear();
       setState(() => _adding = false);
-      _showSnack('Đã thêm nhóm "$name"');
+      _showSnack('Đã thêm nhóm "$name"'.tr);
     } catch (e) {
-      _showSnack('Lỗi: $e', error: true);
+      _showSnack('Lỗi: $e'.tr, error: true);
     }
   }
 
@@ -40,27 +41,27 @@ class _GroupsScreenState extends State<GroupsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Đổi tên nhóm',
+        title: Text('Đổi tên nhóm'.tr,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Tên nhóm mới'),
+          decoration: InputDecoration(hintText: 'Tên nhóm mới'.tr),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Hủy')),
+              child: Text('Hủy'.tr)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('Lưu',
+              child: Text('Lưu'.tr,
                   style: TextStyle(color: AppColors.accent))),
         ],
       ),
     );
     if (newName != null && newName.isNotEmpty && newName != group.name) {
       await CameraStore.instance.renameGroup(group.id, newName);
-      _showSnack('Đã đổi tên thành "$newName"');
+      _showSnack('Đã đổi tên thành "$newName"'.tr);
     }
   }
 
@@ -71,22 +72,21 @@ class _GroupsScreenState extends State<GroupsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Xóa nhóm?',
+        title: Text('Xóa nhóm?'.tr,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         content: Text(
           cameras.isNotEmpty
-              ? 'Nhóm "${group.name}" có ${cameras.length} camera. '
-                  'Camera sẽ không bị xóa nhưng sẽ không còn thuộc nhóm này.'
-              : 'Xóa nhóm "${group.name}"?',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ? 'Nhóm "${group.name}" có ${cameras.length} camera. '.tr + 'Camera sẽ không bị xóa nhưng sẽ không còn thuộc nhóm này.'.tr
+              : 'Xóa nhóm "${group.name}"?'.tr,
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
+              child: Text('Hủy'.tr)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Xóa',
+              child: Text('Xóa'.tr,
                   style: TextStyle(color: AppColors.danger))),
         ],
       ),
@@ -94,9 +94,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
     if (ok) {
       try {
         await CameraStore.instance.deleteGroup(group.id);
-        _showSnack('Đã xóa nhóm "${group.name}"');
+        _showSnack('Đã xóa nhóm "${group.name}"'.tr);
       } catch (e) {
-        _showSnack('Lỗi: $e', error: true);
+        _showSnack('Lỗi: $e'.tr, error: true);
       }
     }
   }
@@ -124,7 +124,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               children: [
                 // Header
                 DecoratedBox(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.headerBackground,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24),
@@ -137,11 +137,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       children: [
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          icon: Icon(Icons.arrow_back_ios_new_rounded,
                               color: AppColors.textPrimary, size: 20),
                         ),
-                        const Expanded(
-                          child: Text('Quản lý nhóm',
+                        Expanded(
+                          child: Text('Quản lý nhóm'.tr,
                               style: TextStyle(
                                   color: AppColors.textPrimary,
                                   fontSize: 17,
@@ -153,8 +153,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             color: AppColors.accent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('${groups.length} nhóm',
-                              style: const TextStyle(
+                          child: Text('${groups.length} nhóm'.tr,
+                              style: TextStyle(
                                   color: AppColors.accent,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700)),
@@ -179,28 +179,28 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                   onSubmitted: (_) => _addGroup(),
                                   style: const TextStyle(fontSize: 14),
                                   decoration: InputDecoration(
-                                    hintText: 'Tên nhóm mới...',
-                                    hintStyle: const TextStyle(color: AppColors.textMuted),
+                                    hintText: 'Tên nhóm mới...'.tr,
+                                    hintStyle: TextStyle(color: AppColors.textMuted),
                                     filled: true,
                                     fillColor: AppColors.card,
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 14, vertical: 10),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: AppColors.border),
+                                      borderSide: BorderSide(color: AppColors.border),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: AppColors.accent),
+                                      borderSide: BorderSide(color: AppColors.accent),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: AppColors.border),
+                                      borderSide: BorderSide(color: AppColors.border),
                                     ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               ElevatedButton(
                                 onPressed: _addGroup,
                                 style: ElevatedButton.styleFrom(
@@ -211,11 +211,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 12),
                                 ),
-                                child: const Text('Thêm'),
+                                child: Text('Thêm'.tr),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4),
                               IconButton(
-                                icon: const Icon(Icons.close_rounded,
+                                icon: Icon(Icons.close_rounded,
                                     color: AppColors.textMuted),
                                 onPressed: () {
                                   _addCtrl.clear();
@@ -238,14 +238,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
                               Icon(Icons.folder_off_rounded,
                                   size: 52,
                                   color: AppColors.textMuted.withOpacity(0.4)),
-                              const SizedBox(height: 12),
-                              const Text('Chưa có nhóm nào',
+                              SizedBox(height: 12),
+                              Text('Chưa có nhóm nào'.tr,
                                   style: TextStyle(
                                       color: AppColors.textPrimary,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 6),
-                              const Text('Nhấn "+" để thêm nhóm mới',
+                              SizedBox(height: 6),
+                              Text('Nhấn "+" để thêm nhóm mới'.tr,
                                   style: TextStyle(
                                       color: AppColors.textMuted, fontSize: 12)),
                             ],
@@ -254,7 +254,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                           itemCount: groups.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (_, __) => SizedBox(height: 8),
                           itemBuilder: (ctx, i) {
                             final group = groups[i];
                             final cameras = CameraStore.instance.camerasInGroup(group.id);
@@ -303,16 +303,16 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Text('Nhóm: ${group.name}',
-                style: const TextStyle(
+            SizedBox(height: 14),
+            Text('Nhóm: ${group.name}'.tr,
+                style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (cameras.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(
-                  child: Text('Chưa có camera nào trong nhóm này',
+                  child: Text('Chưa có camera nào trong nhóm này'.tr,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 ),
               )
@@ -331,7 +331,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         style: const TextStyle(
                             fontSize: 13.5, fontWeight: FontWeight.w600)),
                     subtitle: Text(c.cameraCode,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5, color: AppColors.textMuted)),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -396,25 +396,25 @@ class _GroupTile extends StatelessWidget {
                 ),
                 child: const Icon(Icons.folder_rounded, color: Colors.white, size: 20),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(group.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary)),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text('$cameraCount camera',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5, color: AppColors.textMuted)),
                   ],
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded,
+                icon: Icon(Icons.more_vert_rounded,
                     color: AppColors.textMuted, size: 20),
                 color: AppColors.card,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -422,11 +422,11 @@ class _GroupTile extends StatelessWidget {
                   if (v == 'rename') onRename();
                   if (v == 'delete') onDelete();
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'rename', child: Text('Đổi tên')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'rename', child: Text('Đổi tên'.tr)),
                   PopupMenuItem(
                       value: 'delete',
-                      child: Text('Xóa nhóm',
+                      child: Text('Xóa nhóm'.tr,
                           style: TextStyle(color: AppColors.danger))),
                 ],
               ),

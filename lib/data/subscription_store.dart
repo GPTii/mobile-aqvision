@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'service_plans.dart';
+import '../utils/app_strings.dart';
 
 class SubscriptionStore extends ChangeNotifier {
   static final SubscriptionStore instance = SubscriptionStore._();
@@ -46,7 +47,7 @@ class SubscriptionStore extends ChangeNotifier {
       await Future.wait([_fetchPlans(token), _fetchCurrent(token)]);
       error = null;
     } catch (_) {
-      error = 'Không tải được thông tin gói dịch vụ';
+      error = 'Không tải được thông tin gói dịch vụ'.tr;
     }
 
     loading = false;
@@ -91,7 +92,7 @@ class SubscriptionStore extends ChangeNotifier {
   /// success-as-if-upgraded one.
   Future<void> requestUpgrade({required String planId, required BillingCycle cycle}) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập');
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
 
     _upgrading = true;
     notifyListeners();
@@ -108,7 +109,7 @@ class SubscriptionStore extends ChangeNotifier {
       ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) {
-        throw Exception('Lỗi gửi yêu cầu nâng cấp (${res.statusCode}): ${res.body}');
+        throw Exception('Lỗi gửi yêu cầu nâng cấp (${res.statusCode}): ${res.body}'.tr);
       }
     } finally {
       _upgrading = false;

@@ -1,4 +1,5 @@
-/// Subscription-plan models for the "Gói dịch vụ" UI, backed by the real
+import '../utils/app_strings.dart';
+/// Subscription-plan models for the "Gói dịch vụ".tr UI, backed by the real
 /// GET /api/v1/subscription/plans and GET /api/v1/subscription endpoints
 /// (see SubscriptionStore).
 enum BillingCycle {
@@ -43,9 +44,9 @@ class ServicePlan {
   int priceFor(BillingCycle cycle) =>
       cycle == BillingCycle.monthly ? priceMonthlyVnd : priceYearlyVnd;
 
-  String get cameraLabel => maxCameras < 0 ? 'Không giới hạn camera' : '$maxCameras camera';
+  String get cameraLabel => maxCameras < 0 ? 'Không giới hạn camera'.tr : '$maxCameras camera';
 
-  /// 12x the monthly price — the "giá gốc" shown struck-through next to the
+  /// 12x the monthly price — the "giá gốc".tr shown struck-through next to the
   /// discounted yearly price.
   int get fullYearPriceVnd => priceMonthlyVnd * 12;
 

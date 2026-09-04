@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../data/camera_store.dart';
+import '../utils/app_strings.dart';
 
 Future<void> showCameraSelectionSheet(BuildContext context, {required String groupId}) {
   return showModalBottomSheet(
@@ -29,7 +30,7 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
     final cameras = CameraStore.instance.cameras.where((c) => !c.groupIds.contains(widget.groupId)).toList();
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -40,16 +41,16 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          const Text('Chọn camera vào nhóm', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
+          Text('Chọn camera vào nhóm'.tr, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          SizedBox(height: 16),
           
           if (cameras.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(32),
-              child: Text("Không có camera nào khả dụng.", style: TextStyle(color: AppColors.textMuted)),
+              child: Text("Không có camera nào khả dụng.".tr, style: TextStyle(color: AppColors.textMuted)),
             )
           else
             Expanded(
@@ -60,12 +61,12 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
                   final cam = cameras[index];
                   final isSelected = _selectedIds.contains(cam.id);
                   return CheckboxListTile(
-                    title: Text(cam.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15)),
-                    subtitle: Text(cam.cameraCode, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    title: Text(cam.name, style: TextStyle(color: AppColors.textPrimary, fontSize: 15)),
+                    subtitle: Text(cam.cameraCode, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     value: isSelected,
                     activeColor: AppColors.accent,
                     checkColor: Colors.white,
-                    side: const BorderSide(color: AppColors.textMuted),
+                    side: BorderSide(color: AppColors.textMuted),
                     onChanged: (val) {
                       setState(() {
                         if (val == true) {
@@ -92,10 +93,10 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       backgroundColor: AppColors.surface,
                     ),
-                    child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                    child: Text('Hủy'.tr, style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: TextButton(
                     onPressed: (_isLoading || _selectedIds.isEmpty) ? null : _submit,
@@ -105,8 +106,8 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
                       backgroundColor: AppColors.accent,
                     ),
                     child: _isLoading 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Thêm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                      ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('Thêm'.tr, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],

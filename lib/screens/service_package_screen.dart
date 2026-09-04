@@ -1,194 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../../../data/auth_store.dart';
-import '../../../data/camera_store.dart';
-import '../../../data/service_plans.dart';
-import '../../../data/storage_store.dart';
-import '../../../data/subscription_store.dart';
-import '../../../theme/app_colors.dart';
-import '../../../widgets/change_password_sheet.dart';
-import '../../../widgets/edit_profile_sheet.dart';
-import '../../../widgets/prompt_dialog.dart';
-import '../../auth/login_screen.dart';
-import '../plan_selection_screen.dart';
+import '../data/auth_store.dart';
+import '../data/camera_store.dart';
+import '../data/service_plans.dart';
+import '../data/storage_store.dart';
+import '../data/subscription_store.dart';
+import '../theme/app_colors.dart';
+// import '../widgets/change_password_sheet.dart';
+// import '../widgets/edit_profile_sheet.dart';
+import '../widgets/prompt_dialog.dart';
 
-class ProfileTab extends StatefulWidget {
-  const ProfileTab({super.key});
+import 'home/plan_selection_screen.dart';
+import '../utils/app_strings.dart';
+
+// import '../../gallery_screen.dart';
+
+class ServicePackageScreen extends StatefulWidget {
+  const ServicePackageScreen({super.key});
 
   @override
-  State<ProfileTab> createState() => _ProfileTabState();
+  State<ServicePackageScreen> createState() => _ServicePackageScreenState();
 }
 
-class _ProfileTabState extends State<ProfileTab> {
+class _ServicePackageScreenState extends State<ServicePackageScreen> {
   @override
   void initState() {
     super.initState();
     SubscriptionStore.instance.fetchAll();
   }
 
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Đăng xuất?',
-      message: 'Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng ứng dụng.',
-      confirmLabel: 'Đăng xuất',
-    );
-    if (!confirmed || !context.mounted) return;
-    await AuthStore.instance.logout();
-    
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: AuthStore.instance,
-      builder: (context, _) {
-        final user = AuthStore.instance.currentUser;
-
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                DecoratedBox(
-                  decoration: const BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.accentGradient,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            _initials(user?.name),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          user?.name ?? 'Chưa đăng nhập',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          user?.role ?? '',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _SectionLabel('Thông tin tài khoản'),
-                      const SizedBox(height: 10),
-                      _InfoCard(
-                        children: [
-                          _InfoRow(icon: Icons.email_outlined, label: 'Email', value: user?.email ?? '--'),
-                          _InfoRow(icon: Icons.phone_outlined, label: 'Số điện thoại', value: user?.phone.isNotEmpty == true ? user!.phone : '--'),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Cài đặt'),
-                      const SizedBox(height: 10),
-                      _ActionCard(
-                        children: [
-                          _ActionRow(
-                            icon: Icons.person_outline_rounded,
-                            label: 'Chỉnh sửa thông tin cá nhân',
-                            onTap: () => showEditProfileSheet(context),
-                          ),
-                          _ActionRow(
-                            icon: Icons.lock_outline_rounded,
-                            label: 'Đổi mật khẩu',
-                            onTap: () => showChangePasswordSheet(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _ActionCard(
-                        children: [
-                          _ActionRow(
-                            icon: Icons.logout_rounded,
-                            label: 'Đăng xuất',
-                            danger: true,
-                            onTap: () => _logout(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Gói dịch vụ'),
-                      const SizedBox(height: 10),
-                      const _ServicePackageCard(),
-                      const SizedBox(height: 24),
-                      const _SectionLabel('Thông tin ứng dụng'),
-                      const SizedBox(height: 10),
-                      const _AppVersionCard(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Gói dịch vụ'.tr, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.card,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _SectionLabel('Chi tiết gói'.tr),
+          SizedBox(height: 10),
+          const _ServicePackageCard(),
+          SizedBox(height: 24),
+          _SectionLabel('Thông tin ứng dụng'.tr),
+          SizedBox(height: 10),
+          const _AppVersionCard(),
+        ],
+      ),
     );
   }
 
-  String _initials(String? name) {
-    if (name == null || name.trim().isEmpty) return '?';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    final first = parts.first.characters.first;
-    final last = parts.length > 1 ? parts.last.characters.first : '';
-    return (first + last).toUpperCase();
-  }
+  
 }
 
 class _ServicePackageCard extends StatelessWidget {
   const _ServicePackageCard();
 
-  static const _tierLabels = {
-    'good': 'Bình thường',
-    'warn': 'Sắp đầy',
-    'warn2': 'Gần đầy',
-    'bad': 'Nguy cấp',
-    'full': 'Đã đầy',
+  static final _tierLabels = {
+    'good': 'Bình thường'.tr,
+    'warn': 'Sắp đầy'.tr,
+    'warn2': 'Gần đầy'.tr,
+    'bad': 'Nguy cấp'.tr,
+    'full': 'Đã đầy'.tr,
   };
 
-  static const _tierColors = {
+  static final _tierColors = {
     'good': AppColors.success,
     'warn': AppColors.warning,
     'warn2': Color(0xFFC2410C),
@@ -207,15 +91,15 @@ class _ServicePackageCard extends StatelessWidget {
   }
 
   String _formatVnd(int amount, BillingCycle cycle) {
-    if (amount == 0) return 'Miễn phí';
+    if (amount == 0) return 'Miễn phí'.tr;
     final s = amount.toString();
     final buf = StringBuffer();
     for (var i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
       buf.write(s[i]);
     }
-    final suffix = cycle == BillingCycle.monthly ? '/tháng' : '/năm';
-    return '${buf}đ$suffix';
+    final suffix = cycle == BillingCycle.monthly ? '/tháng'.tr : '/năm'.tr;
+    return '${buf}đ$suffix'.tr;
   }
 
   @override
@@ -230,13 +114,13 @@ class _ServicePackageCard extends StatelessWidget {
         final store = StorageStore.instance;
         final sub = SubscriptionStore.instance;
         final hasData = store.storageQuotaMb > 0;
-        final tierLabel = _tierLabels[store.tier] ?? 'Bình thường';
+        final tierLabel = _tierLabels[store.tier] ?? 'Bình thường'.tr;
         final tierColor = _tierColors[store.tier] ?? AppColors.success;
         final plan = sub.currentPlan;
         final cameraCount = CameraStore.instance.cameras.length;
 
         if (sub.loading && plan == null) {
-          return const _InfoCard(children: [
+          return _InfoCard(children: [
             Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Center(
@@ -254,8 +138,8 @@ class _ServicePackageCard extends StatelessWidget {
           return _InfoCard(children: [
             _InfoRow(
               icon: Icons.error_outline_rounded,
-              label: 'Gói dịch vụ',
-              value: sub.error ?? 'Chưa có dữ liệu',
+              label: 'Gói dịch vụ'.tr,
+              value: sub.error ?? 'Chưa có dữ liệu'.tr,
             ),
           ]);
         }
@@ -265,45 +149,45 @@ class _ServicePackageCard extends StatelessWidget {
           children: [
             _InfoCard(
               children: [
-                _InfoRow(icon: Icons.workspace_premium_outlined, label: 'Gói hiện tại', value: plan.name),
+                _InfoRow(icon: Icons.workspace_premium_outlined, label: 'Gói hiện tại'.tr, value: plan.name),
                 _InfoRow(
                   icon: Icons.videocam_outlined,
                   label: 'Camera',
                   value: plan.maxCameras < 0
-                      ? '$cameraCount (không giới hạn)'
+                      ? '$cameraCount (không giới hạn)'.tr
                       : '$cameraCount / ${plan.maxCameras}',
                 ),
                 _InfoRow(
                   icon: Icons.cloud_outlined,
-                  label: 'Dung lượng lưu trữ',
+                  label: 'Dung lượng lưu trữ'.tr,
                   value: hasData
                       ? '${_formatMb(store.usedStorageMb)} / ${_formatMb(store.storageQuotaMb)}'
                       : '${plan.storageGb.toStringAsFixed(0)} GB',
                 ),
                 _InfoRow(
                   icon: Icons.event_repeat_rounded,
-                  label: 'Chu kỳ thanh toán',
-                  value: sub.currentBillingCycle == BillingCycle.monthly ? 'Theo tháng' : 'Theo năm',
+                  label: 'Chu kỳ thanh toán'.tr,
+                  value: sub.currentBillingCycle == BillingCycle.monthly ? 'Theo tháng'.tr : 'Theo năm'.tr,
                 ),
                 _InfoRow(
                   icon: Icons.calendar_today_outlined,
-                  label: 'Ngày bắt đầu gói',
+                  label: 'Ngày bắt đầu gói'.tr,
                   value: _formatDate(sub.startedAt),
                 ),
                 _InfoRow(
                   icon: Icons.payments_outlined,
-                  label: 'Giá gói',
+                  label: 'Giá gói'.tr,
                   value: _formatVnd(plan.priceFor(sub.currentBillingCycle), sub.currentBillingCycle),
                 ),
                 _InfoRow(
                   icon: Icons.info_outline_rounded,
-                  label: 'Trạng thái dung lượng',
+                  label: 'Trạng thái dung lượng'.tr,
                   value: hasData ? tierLabel : '--',
                 ),
               ],
             ),
             if (hasData && store.tier != 'good') ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -315,10 +199,10 @@ class _ServicePackageCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.info_rounded, size: 16, color: tierColor),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Dung lượng đang ở mức "$tierLabel" — cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.',
+                        'Dung lượng đang ở mức "$tierLabel" — cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.'.tr,
                         style: TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
                       ),
                     ),
@@ -326,12 +210,12 @@ class _ServicePackageCard extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             _ActionCard(
               children: [
                 _ActionRow(
                   icon: Icons.upgrade_rounded,
-                  label: 'Nâng cấp gói dịch vụ',
+                  label: 'Nâng cấp gói dịch vụ'.tr,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => PlanSelectionScreen(currentPlanId: plan.id),
@@ -360,7 +244,7 @@ class _AppVersionCard extends StatelessWidget {
           children: [
             _InfoRow(
               icon: Icons.info_outline_rounded,
-              label: 'Phiên bản',
+              label: 'Phiên bản'.tr,
               value: info == null ? '--' : '${info.version} (${info.buildNumber})',
             ),
           ],
@@ -424,7 +308,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
@@ -437,7 +321,7 @@ class _InfoRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -499,7 +383,7 @@ class _ActionRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(icon, size: 19, color: danger ? AppColors.danger : AppColors.textSecondary),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   label,

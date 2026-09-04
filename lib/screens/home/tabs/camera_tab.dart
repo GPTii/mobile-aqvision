@@ -1,3 +1,4 @@
+import '../../../utils/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -32,7 +33,7 @@ class _CameraTabState extends State<CameraTab> {
       body: Column(
         children: [
           DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.headerBackground,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(28),
@@ -68,7 +69,7 @@ class _CameraTabState extends State<CameraTab> {
                           scrollDirection: Axis.horizontal,
                           children: [
                             _GroupChip(
-                              label: 'Tất cả',
+                              label: 'Tất cả'.tr,
                               selected: _selectedGroupId == null,
                               onTap: () =>
                                   setState(() => _selectedGroupId = null),
@@ -177,7 +178,7 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Camera',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -187,7 +188,7 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$total thiết bị · $online đang hoạt động',
+                  '$total ' + 'thiết bị'.tr + ' · $online ' + 'đang hoạt động'.tr,
                   style: TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,
@@ -300,7 +301,7 @@ class _CameraGridCard extends StatelessWidget {
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        const DecoratedBox(
+                        DecoratedBox(
                           decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
                         ),
                         const Center(
@@ -402,7 +403,7 @@ class _CameraListTile extends StatelessWidget {
         .map((id) => CameraStore.instance.groupById(id)?.name)
         .where((name) => name != null)
         .join(', ');
-    final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm';
+    final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm'.tr;
 
     return Material(
       color: Colors.transparent,
@@ -434,7 +435,7 @@ class _CameraListTile extends StatelessWidget {
                               return Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  const DecoratedBox(
+                                  DecoratedBox(
                                     decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
                                   ),
                                   const Center(
@@ -485,7 +486,7 @@ class _CameraListTile extends StatelessWidget {
                       camera.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -656,8 +657,8 @@ class _EmptyState extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Chưa có camera nào',
+                  Text(
+                    'Chưa có camera nào'.tr,
                     style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
@@ -665,8 +666,8 @@ class _EmptyState extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Nhấn nút + phía trên để thêm camera đầu tiên.',
+                  Text(
+                    'Nhấn nút + phía trên để thêm camera đầu tiên.'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -794,13 +795,13 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
       content = Stack(
         fit: StackFit.expand,
         children: [
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
           ),
           Center(
             child: _hasError
                 ? IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
+                    icon: Icon(Icons.refresh_rounded, color: AppColors.danger, size: 34),
                     onPressed: _attach,
                   )
                 : const SizedBox(

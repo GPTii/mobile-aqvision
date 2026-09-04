@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../data/auth_store.dart';
+import '../utils/app_strings.dart';
 
 Future<void> showChangePasswordSheet(BuildContext context) {
   return showModalBottomSheet(
@@ -43,10 +44,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.textPrimary,
-          content: Text('Đổi mật khẩu thành công', style: TextStyle(color: Colors.white)),
+          content: Text('Đổi mật khẩu thành công'.tr, style: TextStyle(color: Colors.white)),
         ),
       );
     } catch (e) {
@@ -61,7 +62,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(24),
@@ -90,43 +91,43 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                     ),
                   ),
                   Text(
-                    _isLoading ? 'Đang đổi...' : 'Đổi mật khẩu',
+                    _isLoading ? 'Đang đổi...'.tr : 'Đổi mật khẩu'.tr,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   _field(
                     controller: _currentController,
-                    hint: 'Mật khẩu hiện tại',
+                    hint: 'Mật khẩu hiện tại'.tr,
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu hiện tại';
+                      if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu hiện tại'.tr;
                       
                       return null;
                     },
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _field(
                     controller: _newController,
-                    hint: 'Mật khẩu mới',
+                    hint: 'Mật khẩu mới'.tr,
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu mới';
-                      if (value.length < 4) return 'Mật khẩu phải có ít nhất 4 ký tự';
+                      if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu mới'.tr;
+                      if (value.length < 4) return 'Mật khẩu phải có ít nhất 4 ký tự'.tr;
                       return null;
                     },
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   _field(
                     controller: _confirmController,
-                    hint: 'Xác nhận mật khẩu mới',
+                    hint: 'Xác nhận mật khẩu mới'.tr,
                     validator: (value) {
-                      if (value != _newController.text) return 'Mật khẩu xác nhận không khớp';
+                      if (value != _newController.text) return 'Mật khẩu xác nhận không khớp'.tr;
                       return null;
                     },
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   SizedBox(
                     height: 50,
                     child: DecoratedBox(
@@ -141,7 +142,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                           onTap: _isLoading ? null : _submit,
                           child: Center(
                             child: Text(
-                              _isLoading ? 'Đang đổi...' : 'Đổi mật khẩu',
+                              _isLoading ? 'Đang đổi...'.tr : 'Đổi mật khẩu'.tr,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
@@ -170,11 +171,11 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     return TextFormField(
       controller: controller,
       obscureText: _obscure,
-      style: const TextStyle(color: AppColors.textPrimary),
+      style: TextStyle(color: AppColors.textPrimary),
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textMuted),
         suffixIcon: IconButton(
           onPressed: () => setState(() => _obscure = !_obscure),
           icon: Icon(
@@ -188,19 +189,19 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+          borderSide: BorderSide(color: AppColors.accent, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.danger),
+          borderSide: BorderSide(color: AppColors.danger),
         ),
       ),
     );

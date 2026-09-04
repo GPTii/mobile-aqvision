@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../utils/app_strings.dart';
 
 class CameraStorageUsage {
   final String id;
@@ -67,10 +68,10 @@ class StorageStore extends ChangeNotifier {
           ..sort((a, b) => b.usedStorageMb.compareTo(a.usedStorageMb));
         error = null;
       } else {
-        error = "Không tải được dung lượng lưu trữ";
+        error = "Không tải được dung lượng lưu trữ".tr;
       }
     } catch (_) {
-      error = "Không tải được dung lượng lưu trữ";
+      error = "Không tải được dung lượng lưu trữ".tr;
     }
 
     loading = false;

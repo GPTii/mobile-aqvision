@@ -11,10 +11,11 @@ import 'debounced_notifier.dart';
 import 'video_preload_cache.dart';
 import '../utils/network_error_handler.dart';
 import 'notification_store.dart';
+import '../utils/app_strings.dart';
 
-const kCameraTypes = [
+List<String> get kCameraTypes => [
   'Camera Dome',
-  'Camera thân trụ',
+  'Camera thân trụ'.tr,
   'Camera PTZ xoay',
   'Camera mini Wifi',
 ];
@@ -145,7 +146,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       for (final item in data) {
         _groups.add(CameraGroup(
           id: item['id'].toString(),
-          name: item['name'] ?? 'Nhóm',
+          name: item['name'] ?? 'Nhóm'.tr,
         ));
       }
       notifyNow();
@@ -388,7 +389,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       NotificationStore.instance.fetchAlerts();
     } else {
       throw Exception(
-          'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối' : 'kết nối lại'} camera');
+          'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối'.tr : 'kết nối lại'.tr} camera');
     }
   }
 

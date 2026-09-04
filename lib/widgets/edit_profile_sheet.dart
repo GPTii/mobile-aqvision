@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/auth_store.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
 Future<void> showEditProfileSheet(BuildContext context) {
   return showModalBottomSheet(
@@ -51,10 +52,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     );
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.textPrimary,
-        content: Text('Đã cập nhật thông tin cá nhân', style: TextStyle(color: Colors.white)),
+        content: Text('Đã cập nhật thông tin cá nhân'.tr, style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -64,7 +65,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(24),
@@ -92,49 +93,49 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                       ),
                     ),
                   ),
-                  const Text(
-                    'Chỉnh sửa thông tin cá nhân',
+                  Text(
+                    'Chỉnh sửa thông tin cá nhân'.tr,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  _label('Họ và tên'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 20),
+                  _label('Họ và tên'.tr),
+                  SizedBox(height: 8),
                   TextFormField(
                     controller: _nameController,
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    decoration: _decoration('Nhập họ và tên'),
+                    style: TextStyle(color: AppColors.textPrimary),
+                    decoration: _decoration('Nhập họ và tên'.tr),
                     validator: (value) =>
-                        (value == null || value.trim().isEmpty) ? 'Vui lòng nhập họ tên' : null,
+                        (value == null || value.trim().isEmpty) ? 'Vui lòng nhập họ tên'.tr : null,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   _label('Email'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextFormField(
                     controller: _emailController,
                     readOnly: true,
                     keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(color: AppColors.textMuted),
+                    style: TextStyle(color: AppColors.textMuted),
                     decoration: _decoration('you@example.com'),
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';
-                      if (!value.contains('@')) return 'Email không hợp lệ';
+                      if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email'.tr;
+                      if (!value.contains('@')) return 'Email không hợp lệ'.tr;
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
-                  _label('Số điện thoại'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 16),
+                  _label('Số điện thoại'.tr),
+                  SizedBox(height: 8),
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: AppColors.textPrimary),
                     decoration: _decoration('090 xxx xxxx'),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   SizedBox(
                     height: 50,
                     child: DecoratedBox(
@@ -147,9 +148,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),
                           onTap: _save,
-                          child: const Center(
+                          child: Center(
                             child: Text(
-                              'Lưu thay đổi',
+                              'Lưu thay đổi'.tr,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
@@ -172,7 +173,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   Widget _label(String text) => Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
           color: AppColors.textSecondary,
@@ -182,25 +183,25 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   InputDecoration _decoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       filled: true,
       fillColor: AppColors.surface,
       contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+        borderSide: BorderSide(color: AppColors.accent, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.danger),
+        borderSide: BorderSide(color: AppColors.danger),
       ),
     );
   }

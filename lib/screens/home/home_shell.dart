@@ -1,3 +1,4 @@
+import '../../utils/app_strings.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
@@ -6,7 +7,7 @@ import '../../data/camera_store.dart';
 import '../../data/notification_store.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
-import 'tabs/profile_tab.dart';
+import '../settings_screen.dart';
 import 'tabs/report_tab.dart';
 
 class HomeShell extends StatefulWidget {
@@ -19,18 +20,18 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
 
-  static const _tabs = [
+  List<Widget> get _tabs => [
     HomeTab(),
     CameraTab(),
     ReportTab(),
-    ProfileTab(),
+    SettingsScreen(),
   ];
 
-  static const _navItems = [
-    _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'),
-    _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'),
-    _NavItemData(icon: Icons.bar_chart_rounded, outlineIcon: Icons.bar_chart_outlined, label: 'Báo cáo'),
-    _NavItemData(icon: Icons.person_rounded, outlineIcon: Icons.person_outline_rounded, label: 'Hồ sơ'),
+  List<_NavItemData> get _navItems => [
+    _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'.tr),
+    _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'.tr),
+    _NavItemData(icon: Icons.bar_chart_rounded, outlineIcon: Icons.bar_chart_outlined, label: 'Báo cáo'.tr),
+    _NavItemData(icon: Icons.settings_rounded, outlineIcon: Icons.settings_outlined, label: 'Cài đặt'.tr),
   ];
 
   @override

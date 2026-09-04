@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'debounced_notifier.dart';
+import '../utils/app_strings.dart';
 
 class RecordingFile {
   final String date;       // YYYY-MM-DD
@@ -58,9 +59,9 @@ class RecordingFile {
   String get displayTime {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 6 && parts[0].length == 4) {
-      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}';
+      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}'.tr;
     } else if (parts.length >= 3) {
-      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}';
+      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}'.tr;
     }
     return fileName;
   }
@@ -69,7 +70,7 @@ class RecordingFile {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 7 && parts[0].length == 4) {
       int? dur = int.tryParse(parts[6]);
-      if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
+      if (dur != null && dur > 0) return 'Thời lượng: $dur giây'.tr;
     }
     return '';
   }
@@ -122,7 +123,7 @@ class RecordingStore extends ChangeNotifier {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     final authToken = await _getAuthToken();
-    if (authToken == null) throw Exception('Chưa đăng nhập');
+    if (authToken == null) throw Exception('Chưa đăng nhập'.tr);
 
     final uri = Uri.parse('$_baseUrl/rapidmedia/$action').replace(
       queryParameters: query,
@@ -326,7 +327,7 @@ class RecordingStore extends ChangeNotifier {
     required bool enable,
   }) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập');
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
     final uri = Uri.parse('$_baseUrl/proxies/$cameraId');
     final res = await http.patch(
       uri,
@@ -369,7 +370,7 @@ class RecordingStore extends ChangeNotifier {
   /// Request a 30s clip from the backend.
   Future<String> requestClip(RecordingFile file, int startTime, int duration) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập');
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
     
     final uri = Uri.parse('$_baseUrl/recordings/clip');
     final res = await http.post(

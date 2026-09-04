@@ -1,3 +1,4 @@
+import '../../../utils/app_strings.dart';
 import 'package:flutter/material.dart';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -47,7 +48,7 @@ class _ReportTabState extends State<ReportTab> {
               // Header
               SliverToBoxAdapter(
                 child: DecoratedBox(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.headerBackground,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(28),
@@ -64,15 +65,15 @@ class _ReportTabState extends State<ReportTab> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Báo cáo',
+                            Text('Báo cáo'.tr,
                                 style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.textPrimary)),
                             const SizedBox(height: 2),
                             Text(
-                              '${cameras.length} camera · ${groups.length} nhóm',
-                              style: const TextStyle(
+                              '${cameras.length} ' + 'camera'.tr + ' · ${groups.length} ' + 'nhóm'.tr,
+                              style: TextStyle(
                                   fontSize: 12.5,
                                   color: AppColors.textSecondary,
                                   fontWeight: FontWeight.w500),
@@ -102,7 +103,7 @@ class _ReportTabState extends State<ReportTab> {
                         children: [
                           Expanded(
                             child: _StatCard(
-                              label: 'Đang hoạt động',
+                              label: 'Đang hoạt động'.tr,
                               value: '$online',
                               icon: Icons.check_circle_rounded,
                               color: AppColors.success,
@@ -120,7 +121,7 @@ class _ReportTabState extends State<ReportTab> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: _StatCard(
-                              label: 'Tổng nhóm',
+                              label: 'Tổng nhóm'.tr,
                               value: '${groups.length}',
                               icon: Icons.folder_rounded,
                               color: AppColors.info,
@@ -167,7 +168,7 @@ class _ReportTabState extends State<ReportTab> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Tỷ lệ Camera', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                  Text('Tỷ lệ Camera'.tr, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 16),
                                   SizedBox(
                                     height: 150,
@@ -199,9 +200,9 @@ class _ReportTabState extends State<ReportTab> {
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      _Dot(color: AppColors.success), const SizedBox(width: 4), const Text('Online', style: TextStyle(fontSize: 12)),
+                                      _Dot(color: AppColors.success), SizedBox(width: 4), Text('Online', style: TextStyle(fontSize: 12)),
                                       const SizedBox(width: 16),
-                                      _Dot(color: AppColors.danger), const SizedBox(width: 4), const Text('Offline', style: TextStyle(fontSize: 12)),
+                                      _Dot(color: AppColors.danger), SizedBox(width: 4), Text('Offline', style: TextStyle(fontSize: 12)),
                                     ],
                                   ),
                                 ],
@@ -221,7 +222,7 @@ class _ReportTabState extends State<ReportTab> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Dung lượng lưu trữ (GB)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                  Text('Dung lượng lưu trữ (GB)'.tr, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 24),
                                   SizedBox(
                                     height: 150,
@@ -236,8 +237,8 @@ class _ReportTabState extends State<ReportTab> {
                                             sideTitles: SideTitles(
                                               showTitles: true,
                                               getTitlesWidget: (value, meta) {
-                                                if (value == 0) return const Text('Đã dùng', style: TextStyle(fontSize: 10));
-                                                if (value == 1) return const Text('Trống', style: TextStyle(fontSize: 10));
+                                                if (value == 0) return Text('Đã dùng'.tr, style: TextStyle(fontSize: 10));
+                                                if (value == 1) return Text('Trống'.tr, style: TextStyle(fontSize: 10));
                                                 return const Text('');
                                               },
                                             ),
@@ -292,7 +293,7 @@ class _ReportTabState extends State<ReportTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Truy cập nhanh',
+                            Text('Truy cập nhanh'.tr,
                                 style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -303,8 +304,8 @@ class _ReportTabState extends State<ReportTab> {
                                 Expanded(
                                   child: _QuickAction(
                                     icon: Icons.video_library_rounded,
-                                    label: 'Bản ghi',
-                                    sublabel: 'Xem & quản lý',
+                                    label: 'Bản ghi'.tr,
+                                    sublabel: 'Xem & quản lý'.tr,
                                     color: AppColors.danger,
                                     onTap: cameras.isEmpty
                                         ? null
@@ -321,8 +322,8 @@ class _ReportTabState extends State<ReportTab> {
                                 Expanded(
                                   child: _QuickAction(
                                     icon: Icons.folder_rounded,
-                                    label: 'Nhóm',
-                                    sublabel: 'Quản lý nhóm',
+                                    label: 'Nhóm'.tr,
+                                    sublabel: 'Quản lý nhóm'.tr,
                                     color: AppColors.info,
                                     onTap: () => Navigator.of(context).push(
                                       MaterialPageRoute(
@@ -337,8 +338,8 @@ class _ReportTabState extends State<ReportTab> {
                               const SizedBox(height: 20),
                               Row(
                                 children: [
-                                  const Expanded(
-                                    child: Text('Camera theo nhóm',
+                                  Expanded(
+                                    child: Text('Camera theo nhóm'.tr,
                                         style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w700,
@@ -350,7 +351,7 @@ class _ReportTabState extends State<ReportTab> {
                                           builder: (_) =>
                                               const GroupsScreen()),
                                     ),
-                                    child: const Text('Quản lý →',
+                                    child: Text('Quản lý →'.tr,
                                         style: TextStyle(
                                             fontSize: 12,
                                             color: AppColors.accent,
@@ -385,7 +386,7 @@ class _ReportTabState extends State<ReportTab> {
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                           ),
-                                          child: const Icon(
+                                          child: Icon(
                                               Icons.folder_rounded,
                                               color: AppColors.info,
                                               size: 20),
@@ -397,7 +398,7 @@ class _ReportTabState extends State<ReportTab> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(group.name,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                       fontSize: 13.5,
                                                       fontWeight:
                                                           FontWeight.w700,
@@ -427,7 +428,7 @@ class _ReportTabState extends State<ReportTab> {
                                               CrossAxisAlignment.end,
                                           children: [
                                             Text('${cams.length}',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                     fontSize: 16,
                                                     fontWeight:
                                                         FontWeight.w800,
@@ -448,7 +449,7 @@ class _ReportTabState extends State<ReportTab> {
                             ],
                             if (ungrouped.isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              const Text('Chưa phân nhóm',
+                              Text('Chưa phân nhóm'.tr,
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
@@ -519,7 +520,7 @@ class _StatCard extends StatelessWidget {
                   fontSize: 22, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(height: 2),
           Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 10.5, color: AppColors.textMuted)),
         ],
       ),
@@ -580,7 +581,7 @@ class _QuickAction extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: color)),
                 Text(sublabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 11, color: AppColors.textMuted)),
               ],
             ),
@@ -611,7 +612,7 @@ class _CameraRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(camera.name,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13, color: AppColors.textSecondary)),
           ),
           Text(camera.online ? 'Online' : 'Offline',
@@ -639,31 +640,31 @@ const _warn2Color = Color(0xFFC2410C);
 _TierInfo _tierInfo(String tier) {
   switch (tier) {
     case 'warn':
-      return const _TierInfo(
-        'Sắp đầy',
+      return _TierInfo(
+        'Sắp đầy'.tr,
         AppColors.warning,
-        'Dung lượng sắp đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.',
+        'Dung lượng sắp đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.'.tr,
       );
     case 'warn2':
-      return const _TierInfo(
-        'Gần đầy',
+      return _TierInfo(
+        'Gần đầy'.tr,
         _warn2Color,
-        'Dung lượng gần đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.',
+        'Dung lượng gần đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.'.tr,
       );
     case 'bad':
-      return const _TierInfo(
-        'Nguy cấp',
+      return _TierInfo(
+        'Nguy cấp'.tr,
         AppColors.danger,
-        'Dung lượng sắp hết. Liên hệ quản trị viên ngay để tránh gián đoạn ghi hình.',
+        'Dung lượng sắp hết. Liên hệ quản trị viên ngay để tránh gián đoạn ghi hình.'.tr,
       );
     case 'full':
-      return const _TierInfo(
-        'Đã đầy',
+      return _TierInfo(
+        'Đã đầy'.tr,
         AppColors.danger,
-        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.',
+        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.'.tr,
       );
     default:
-      return const _TierInfo('Bình thường', AppColors.success, null);
+      return _TierInfo('Bình thường'.tr, AppColors.success, null);
   }
 }
 
@@ -699,7 +700,7 @@ class _StorageSection extends StatelessWidget {
     final store = StorageStore.instance;
 
     if (store.loading && store.storageQuotaMb == 0) {
-      return const _StorageCard(
+      return _StorageCard(
         child: Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -717,11 +718,11 @@ class _StorageSection extends StatelessWidget {
       return _StorageCard(
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 20),
+            Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(store.error!,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
             ),
           ],
         ),
@@ -737,8 +738,8 @@ class _StorageSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text('Dung lượng Cloud',
+              Expanded(
+                child: Text('Dung lượng Cloud'.tr,
                     style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               ),
@@ -751,10 +752,10 @@ class _StorageSection extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(_formatMb(store.usedStorageMb),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               Text(' / ${_formatMb(store.storageQuotaMb)}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               const Spacer(),
               Text('${store.percent.toStringAsFixed(0)}%',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: tierInfo.color)),
@@ -798,7 +799,7 @@ class _StorageSection extends StatelessWidget {
           ],
           if (store.cameras.isNotEmpty) ...[
             const SizedBox(height: 14),
-            const Text('Camera chiếm nhiều dung lượng nhất',
+            Text('Camera chiếm nhiều dung lượng nhất'.tr,
                 style: TextStyle(
                     fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
             const SizedBox(height: 8),
@@ -843,11 +844,11 @@ class _StorageCameraRow extends StatelessWidget {
             child: Text(camera.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
           ),
           const SizedBox(width: 8),
           Text(_formatMb(camera.usedStorageMb),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
         ],
       ),

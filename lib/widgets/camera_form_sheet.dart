@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/camera_store.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
 
 /// Opens the shared add/edit camera form. Pass [camera] to edit an existing
@@ -122,7 +123,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(24),
@@ -153,40 +154,40 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       ),
                     ),
                     Text(
-                      _isEditing ? 'Sửa thông tin camera' : 'Thêm camera mới',
-                      style: const TextStyle(
+                      _isEditing ? 'Sửa thông tin camera'.tr : 'Thêm camera mới'.tr,
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    _FieldLabel('Tên luồng (Stream ID)'),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 20),
+                    _FieldLabel('Tên luồng (Stream ID)'.tr),
+                    SizedBox(height: 8),
                     TextFormField(
                       controller: _codeController,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                       decoration: _fieldDecoration('VD: cam_cong_chinh'),
                       validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập Stream ID'
+                          ? 'Vui lòng nhập Stream ID'.tr
                           : null,
                     ),
-                    const SizedBox(height: 16),
-                    _FieldLabel('Nguồn RTSP / URL'),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 16),
+                    _FieldLabel('Nguồn RTSP / URL'.tr),
+                    SizedBox(height: 8),
                     TextFormField(
                       controller: _ipController,
                       keyboardType: TextInputType.url,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                       decoration: _fieldDecoration('rtsp://user:pass@192.168.1.100/stream'),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) return 'Vui lòng nhập URL nguồn';
+                        if (value == null || value.trim().isEmpty) return 'Vui lòng nhập URL nguồn'.tr;
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
-                    _FieldLabel('Nhóm / phòng'),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 16),
+                    _FieldLabel('Nhóm / phòng'.tr),
+                    SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -210,7 +211,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ActionChip(
-                          label: Text('+ Tạo nhóm mới', style: TextStyle(color: _creatingNewGroup ? AppColors.accent : AppColors.textSecondary)),
+                          label: Text('+ Tạo nhóm mới'.tr, style: TextStyle(color: _creatingNewGroup ? AppColors.accent : AppColors.textSecondary)),
                           backgroundColor: AppColors.card,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           onPressed: () => setState(() => _creatingNewGroup = !_creatingNewGroup),
@@ -218,35 +219,35 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       ],
                     ),
                     if (_creatingNewGroup) ...[
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       TextFormField(
                         controller: _newGroupController,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration: _fieldDecoration('Tên nhóm mới'),
+                        style: TextStyle(color: AppColors.textPrimary),
+                        decoration: _fieldDecoration('Tên nhóm mới'.tr),
                         validator: (value) {
                           if (!_creatingNewGroup) return null;
                           return (value == null || value.trim().isEmpty)
-                              ? 'Vui lòng nhập tên nhóm'
+                              ? 'Vui lòng nhập tên nhóm'.tr
                               : null;
                         },
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
                       activeColor: AppColors.accent,
-                      title: const Text(
-                        'Ghi hình (MP4)',
+                      title: Text(
+                        'Ghi hình (MP4)'.tr,
                         style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        _recording ? 'Đang bật ghi hình' : 'Tắt ghi hình',
+                        _recording ? 'Đang bật ghi hình'.tr : 'Tắt ghi hình'.tr,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                       value: _recording,
                       onChanged: (value) => setState(() => _recording = value),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     SizedBox(
                       height: 50,
                       child: DecoratedBox(
@@ -261,7 +262,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                             onTap: _isLoading ? null : _save,
                             child: Center(
                               child: Text(
-                                _isLoading ? 'Đang lưu...' : (_isEditing ? 'Lưu thay đổi' : 'Thêm camera'),
+                                _isLoading ? 'Đang lưu...'.tr : (_isEditing ? 'Lưu thay đổi'.tr : 'Thêm camera'.tr),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -286,25 +287,25 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   InputDecoration _fieldDecoration(String? hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.textMuted),
+      hintStyle: TextStyle(color: AppColors.textMuted),
       filled: true,
       fillColor: AppColors.surface,
       contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
+        borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+        borderSide: BorderSide(color: AppColors.accent, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.danger),
+        borderSide: BorderSide(color: AppColors.danger),
       ),
     );
   }
@@ -319,7 +320,7 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,

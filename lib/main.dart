@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'screens/auth/login_screen.dart';
 import 'data/auth_store.dart';
+import 'data/app_theme_store.dart';
 import 'screens/home/home_shell.dart';
 import 'theme/app_colors.dart';
 import 'utils/network_error_handler.dart';
@@ -40,6 +41,7 @@ void main() async {
   }
 
   await AuthStore.instance.init();
+  await AppThemeStore.instance.init();
   runApp(const RapidMediaApp());
 }
 
@@ -48,27 +50,33 @@ class RapidMediaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AQPC',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.accent,
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Roboto',
-      ),
-      home: ListenableBuilder(
-        listenable: AuthStore.instance,
-        builder: (context, _) {
-          return AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen();
-        },
-      ),
-      navigatorKey: globalNavigatorKey,
-      navigatorObservers: [routeObserver],
+    return ListenableBuilder(
+      listenable: AppThemeStore.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          key: ValueKey('${AppThemeStore.instance.isDark}_${AppThemeStore.instance.lang}'),
+          title: 'AQPC',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: AppThemeStore.instance.isDark ? Brightness.dark : Brightness.light,
+            scaffoldBackgroundColor: AppColors.background,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.accent,
+              brightness: AppThemeStore.instance.isDark ? Brightness.dark : Brightness.light,
+            ),
+            fontFamily: 'Roboto',
+          ),
+          home: ListenableBuilder(
+            listenable: AuthStore.instance,
+            builder: (context, _) {
+              return AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen();
+            },
+          ),
+          navigatorKey: globalNavigatorKey,
+          navigatorObservers: [routeObserver],
+        );
+      },
     );
   }
 }
