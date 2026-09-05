@@ -33,11 +33,32 @@ class AppVersion {
 /// bumps — nothing reads it automatically from the build number.
 const List<AppVersion> kAppVersionHistory = [
   AppVersion(
+    version: '1.1.0',
+    build: 'Build 12',
+    date: '4 tháng 9, 2026',
+    teaser: 'Đổi tab Hồ sơ thành Cài đặt, thêm chế độ tối, đa ngôn ngữ và thư viện ảnh.',
+    isLatest: true,
+    sections: [
+      ReleaseSection(ReleaseNoteKind.newFeature, [
+        'Đổi tab "Hồ sơ" thành "Cài đặt" — thiết kế lại toàn bộ bố cục, phân nhóm rõ ràng, gọn gàng và dễ dùng hơn hẳn.',
+        'Thêm chế độ giao diện Sáng / Tối, đổi được ngay trong app.',
+        'Thêm chuyển đổi ngôn ngữ Tiếng Việt / English.',
+        'Thêm Thư viện ảnh để xem lại các ảnh đã chụp từ camera.',
+        'Thêm mục Thông tin doanh nghiệp trong Tài khoản & bảo mật — nhập và lưu lại được ngay trong app.',
+      ]),
+      ReleaseSection(ReleaseNoteKind.improvement, [
+        'Tab Báo cáo hỗ trợ đổi sang tiếng Anh (trước đây chỉ có tiếng Việt).',
+        'Màn "Gói dịch vụ" thiết kế lại gọn gàng, dễ nhìn hơn, nút Nâng cấp gói rõ ràng hơn.',
+        'Chỉnh sửa thông tin cá nhân chuyển từ cửa sổ nhỏ sang trang riêng để chứa được nhiều thông tin hơn.',
+        'Mục "Nhật ký" hiện sẵn số phiên bản đang dùng, không cần bấm vào mới biết.',
+      ]),
+    ],
+  ),
+  AppVersion(
     version: '1.0.10',
     build: 'Build 11',
     date: '28 tháng 8, 2026',
     teaser: 'Thêm màn hình Lịch sử phiên bản ngay trong Hồ sơ.',
-    isLatest: true,
     sections: [
       ReleaseSection(ReleaseNoteKind.newFeature, [
         'Thêm màn hình "Lịch sử phiên bản" trong Hồ sơ — xem nhanh các bản cập nhật, tính năng mới và lỗi đã sửa ngay trong app, không cần hỏi lại đội kỹ thuật.',

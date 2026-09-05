@@ -3,6 +3,7 @@ import '../data/app_theme_store.dart';
 class AppStrings {
   static const Map<String, Map<String, String>> _translations = {
     'Dung lượng gần đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.': {'en': 'Storage is nearly full. Delete old recordings or contact admin to increase storage.'},
+    'Tổng quan hệ thống': {'en': 'System overview'},
     'Gói dịch vụ': {'en': 'Service Package'},
     'Chủ Nhật': {'en': 'Sunday'},
     'App (Thường là \'live\')': {'en': 'App (Usually \'live\')'},
