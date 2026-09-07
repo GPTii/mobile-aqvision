@@ -62,12 +62,12 @@ class _ServicePackageScreenState extends State<ServicePackageScreen> {
 }
 
 class _ServicePackageBody extends StatelessWidget {
-  static final _tierLabels = {
-    'good': 'Bình thường'.tr,
-    'warn': 'Sắp đầy'.tr,
-    'warn2': 'Gần đầy'.tr,
-    'bad': 'Nguy cấp'.tr,
-    'full': 'Đã đầy'.tr,
+  static const _tierLabels = {
+    'good': 'Bình thường',
+    'warn': 'Sắp đầy',
+    'warn2': 'Gần đầy',
+    'bad': 'Nguy cấp',
+    'full': 'Đã đầy',
   };
 
   static final _tierColors = {
@@ -110,7 +110,7 @@ class _ServicePackageBody extends StatelessWidget {
         }
 
         final hasData = store.storageQuotaMb > 0;
-        final tierLabel = _tierLabels[store.tier] ?? 'Bình thường'.tr;
+        final tierLabel = (_tierLabels[store.tier] ?? 'Bình thường').tr;
         final tierColor = _tierColors[store.tier] ?? AppColors.success;
         final usedGb = store.usedStorageMb / 1024;
 
@@ -193,7 +193,7 @@ class _ServicePackageBody extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Dung lượng đang ở mức "$tierLabel" — cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.'.tr,
+                        '${'Dung lượng đang ở mức'.tr} "$tierLabel" — ${'cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.'.tr}',
                         style:
                             TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
                       ),

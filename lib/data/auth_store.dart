@@ -10,6 +10,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../config/api_config.dart';
 import '../utils/network_error_handler.dart';
 import '../screens/auth/login_screen.dart';
+import 'business_info_store.dart';
 import 'video_preload_cache.dart';
 import '../utils/app_strings.dart';
 
@@ -170,7 +171,9 @@ class AuthStore extends ChangeNotifier {
         agencyId: agency != null ? agency["agencyId"] : null,
         apiSecret: agency != null ? agency["apiSecret"] : null,
       );
-      
+
+      BusinessInfoStore.instance.hydrateFromAgency(agency);
+
       // Register device token for push notifications
       _registerDeviceToken();
       

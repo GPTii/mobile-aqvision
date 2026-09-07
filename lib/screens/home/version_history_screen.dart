@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../utils/app_strings.dart';
 
 enum ReleaseNoteKind { newFeature, improvement, fix, note }
 
@@ -160,7 +161,7 @@ class VersionHistoryScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Lịch sử phiên bản',
+                            'Lịch sử phiên bản'.tr,
                             style: TextStyle(
                                 color: AppColors.textPrimary,
                                 fontSize: 20,
@@ -168,7 +169,7 @@ class VersionHistoryScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${kAppVersionHistory.length} bản cập nhật gần đây',
+                            '${kAppVersionHistory.length} ${'bản cập nhật gần đây'.tr}',
                             style: TextStyle(
                                 fontSize: 12.5,
                                 color: AppColors.textSecondary,
@@ -259,7 +260,7 @@ class _VersionListTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text('Phiên bản ${version.version}',
+                        Text('${'Phiên bản'.tr} ${version.version}',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         if (version.isLatest) ...[
                           const SizedBox(width: 8),
@@ -269,7 +270,7 @@ class _VersionListTile extends StatelessWidget {
                               color: const Color(0xFFFDEAEC),
                               borderRadius: BorderRadius.circular(99),
                             ),
-                            child: Text('MỚI NHẤT',
+                            child: Text('MỚI NHẤT'.tr,
                                 style: TextStyle(
                                     fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
                           ),
@@ -277,9 +278,9 @@ class _VersionListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(version.date, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                    Text(version.date.tr, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                     const SizedBox(height: 6),
-                    Text(version.teaser,
+                    Text(version.teaser.tr,
                         style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -295,7 +296,7 @@ class _VersionListTile extends StatelessWidget {
                             children: [
                               Icon(style.icon, size: 11, color: style.color),
                               const SizedBox(width: 4),
-                              Text('${e.value} ${style.label.toLowerCase()}',
+                              Text('${e.value} ${style.label.tr.toLowerCase()}',
                                   style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: style.color)),
                             ],
                           ),
@@ -349,7 +350,7 @@ class VersionDetailScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text('Phiên bản ${version.version}',
+                              Text('${'Phiên bản'.tr} ${version.version}',
                                   style: TextStyle(
                                       color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
                               if (version.isLatest) ...[
@@ -360,7 +361,7 @@ class VersionDetailScreen extends StatelessWidget {
                                     color: Colors.white.withOpacity(0.6),
                                     borderRadius: BorderRadius.circular(99),
                                   ),
-                                  child: Text('MỚI NHẤT',
+                                  child: Text('MỚI NHẤT'.tr,
                                       style: TextStyle(
                                           fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
                                 ),
@@ -368,7 +369,7 @@ class VersionDetailScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text('${version.build} · ${version.date}',
+                          Text('${version.build} · ${version.date.tr}',
                               style: TextStyle(
                                   fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                         ],
@@ -415,7 +416,7 @@ class _SectionBlock extends StatelessWidget {
             Icon(style.icon, size: 16, color: style.color),
             const SizedBox(width: 9),
             Expanded(
-              child: Text(section.items.join(' '),
+              child: Text(section.items.map((i) => i.tr).join(' '),
                   style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textPrimary)),
             ),
           ],
@@ -438,7 +439,7 @@ class _SectionBlock extends StatelessWidget {
                 child: Icon(style.icon, size: 13, color: style.color),
               ),
               const SizedBox(width: 7),
-              Text(style.label.toUpperCase(),
+              Text(style.label.tr.toUpperCase(),
                   style: TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w700, color: style.color, letterSpacing: 0.6)),
             ],
@@ -456,7 +457,7 @@ class _SectionBlock extends StatelessWidget {
                   Icon(style.icon, size: 15, color: style.color),
                   const SizedBox(width: 9),
                   Expanded(
-                    child: Text(section.items[i],
+                    child: Text(section.items[i].tr,
                         style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textPrimary)),
                   ),
                 ],

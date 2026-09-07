@@ -90,7 +90,11 @@ class SubscriptionStore extends ChangeNotifier {
   /// Sends an upgrade request for admin approval — does not flip the plan
   /// immediately. Callers should show a "request sent" message, not a
   /// success-as-if-upgraded one.
-  Future<void> requestUpgrade({required String planId, required BillingCycle cycle}) async {
+  Future<String> requestUpgrade({
+    required String planId,
+    required BillingCycle cycle,
+    String? message,
+  }) async {
     final token = await _getToken();
     if (token == null) throw Exception('Chưa đăng nhập'.tr);
 
@@ -105,12 +109,17 @@ class SubscriptionStore extends ChangeNotifier {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'planId': planId, 'billingCycle': cycle.name}),
+        body: jsonEncode({
+          'planId': planId,
+          'billingCycle': cycle.name,
+          if (message != null && message.trim().isNotEmpty) 'message': message.trim(),
+        }),
       ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) {
         throw Exception('Lỗi gửi yêu cầu nâng cấp (${res.statusCode}): ${res.body}'.tr);
       }
+      return 'trong mục "Gói dịch vụ" ngay sau khi được duyệt.'.tr;
     } finally {
       _upgrading = false;
       notifyListeners();

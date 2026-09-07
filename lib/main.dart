@@ -8,6 +8,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/auth/login_screen.dart';
 import 'data/auth_store.dart';
 import 'data/app_theme_store.dart';
+import 'data/push_notification_service.dart';
 import 'screens/home/home_shell.dart';
 import 'theme/app_colors.dart';
 import 'utils/network_error_handler.dart';
@@ -15,7 +16,12 @@ import 'utils/network_error_handler.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print("Handling a background message: ${message.messageId}");
+  // Notification-payload messages are auto-displayed by the OS while the
+  // app is backgrounded/terminated. Data-only payloads are not, so draw
+  // one ourselves — same rendering path as the foreground listener.
+  if (message.notification == null) {
+    await PushNotificationService.showFromRemoteMessageInBackground(message);
+  }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
@@ -35,6 +41,8 @@ void main() async {
         badge: true,
         sound: true,
       );
+
+      await PushNotificationService.init();
     } catch (e) {
       print("Firebase initialize error: $e");
     }

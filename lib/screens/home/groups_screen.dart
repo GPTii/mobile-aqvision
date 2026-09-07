@@ -153,7 +153,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             color: AppColors.accent.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text('${groups.length} nhóm'.tr,
+                          child: Text('${groups.length} ${'nhóm'.tr}',
                               style: TextStyle(
                                   color: AppColors.accent,
                                   fontSize: 12,

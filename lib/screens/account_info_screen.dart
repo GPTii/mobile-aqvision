@@ -16,12 +16,6 @@ class AccountInfoScreen extends StatefulWidget {
 }
 
 class _AccountInfoScreenState extends State<AccountInfoScreen> {
-  @override
-  void initState() {
-    super.initState();
-    BusinessInfoStore.instance.load();
-  }
-
   Future<void> _logout(BuildContext context) async {
     final confirmed = await showConfirmDialog(
       context,

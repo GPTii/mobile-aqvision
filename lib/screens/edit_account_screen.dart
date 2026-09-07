@@ -85,6 +85,16 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           content: Text('Đã cập nhật thông tin'.tr, style: const TextStyle(color: Colors.white)),
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.danger,
+          content: Text(message, style: const TextStyle(color: Colors.white)),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }

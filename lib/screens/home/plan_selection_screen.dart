@@ -17,30 +17,59 @@ class PlanSelectionScreen extends StatefulWidget {
 class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
   late BillingCycle _cycle = SubscriptionStore.instance.currentBillingCycle;
 
-  String _formatVnd(int amount) {
-    if (amount == 0) return 'Miễn phí'.tr;
-    final s = amount.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
-    }
-    return '${buf}đ'.tr;
-  }
-
   Future<void> _requestUpgrade(ServicePlan plan) async {
+    final messageController = TextEditingController();
     try {
-      await SubscriptionStore.instance.requestUpgrade(planId: plan.id, cycle: _cycle);
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('${'Liên hệ quản lý về gói'.tr} ${plan.name}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          content: TextField(
+            controller: messageController,
+            maxLength: 500,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Nhắn thêm cho quản lý (không bắt buộc)...'.tr,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Huỷ'.tr),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Gửi yêu cầu'.tr),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true || !mounted) return;
+
+      final resultMessage = await SubscriptionStore.instance.requestUpgrade(
+        planId: plan.id,
+        cycle: _cycle,
+        message: messageController.text,
+      );
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Đã gửi yêu cầu nâng cấp lên ${plan.name}'.tr,
+          title: Text('Yêu cầu đã gửi'.tr,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           content: Text(
-            'Yêu cầu của bạn đang chờ quản trị viên duyệt. Gói sẽ tự cập nhật '.tr + 'trong mục "Gói dịch vụ" ngay sau khi được duyệt.'.tr,
+            'Yêu cầu của bạn đang chờ quản trị viên duyệt. Gói sẽ tự cập nhật '.tr + resultMessage,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           actions: [
@@ -56,6 +85,8 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), backgroundColor: AppColors.danger),
       );
+    } finally {
+      messageController.dispose();
     }
   }
 
@@ -94,7 +125,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                 onChanged: (c) => setState(() => _cycle = c),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Expanded(
               child: ListenableBuilder(
                 listenable: SubscriptionStore.instance,
@@ -128,7 +159,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                         return ListView.separated(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                           itemCount: plans.length,
-                          separatorBuilder: (_, __) => SizedBox(height: 12),
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (context, index) => _buildCard(plans[index]),
                         );
                       }
@@ -162,7 +193,6 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
       cycle: _cycle,
       isCurrent: isCurrent,
       isUpgrading: SubscriptionStore.instance.upgrading,
-      formatVnd: _formatVnd,
       onUpgrade: () => _requestUpgrade(plan),
     );
   }
@@ -250,7 +280,6 @@ class _PlanCard extends StatelessWidget {
   final BillingCycle cycle;
   final bool isCurrent;
   final bool isUpgrading;
-  final String Function(int) formatVnd;
   final VoidCallback onUpgrade;
 
   const _PlanCard({
@@ -258,13 +287,11 @@ class _PlanCard extends StatelessWidget {
     required this.cycle,
     required this.isCurrent,
     required this.isUpgrading,
-    required this.formatVnd,
     required this.onUpgrade,
   });
 
   @override
   Widget build(BuildContext context) {
-    final price = plan.priceFor(cycle);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -285,7 +312,7 @@ class _PlanCard extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               if (isCurrent) ...[
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -298,56 +325,25 @@ class _PlanCard extends StatelessWidget {
               ],
             ],
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(plan.tagline,
               style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-          SizedBox(height: 14),
-          if (cycle == BillingCycle.yearly && plan.yearlySavingsPercent > 0) ...[
-            Row(
-              children: [
-                Text(
-                  formatVnd(plan.fullYearPriceVnd),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                    decoration: TextDecoration.lineThrough,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '-${plan.yearlySavingsPercent}%',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 2),
-          ],
+          const SizedBox(height: 14),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(formatVnd(price),
-                  style: TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              if (price > 0)
-                Text(cycle == BillingCycle.monthly ? ' /tháng'.tr : ' /năm'.tr,
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              Icon(Icons.support_agent_rounded, size: 18, color: AppColors.accent),
+              const SizedBox(width: 6),
+              Text('Liên hệ quản lý'.tr,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent)),
             ],
           ),
-          SizedBox(height: 14),
+          const SizedBox(height: 14),
           _FeatureRow(icon: Icons.videocam_outlined, text: plan.cameraLabel),
-          SizedBox(height: 6),
-          _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} GB lưu trữ'.tr),
-          SizedBox(height: 6),
-          const _FeatureRow(icon: Icons.history_rounded, text: kRetentionPolicy),
-          SizedBox(height: 16),
+          const SizedBox(height: 6),
+          _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} ${'GB lưu trữ'.tr}'),
+          const SizedBox(height: 6),
+          _FeatureRow(icon: Icons.history_rounded, text: kRetentionPolicy.tr),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 42,
@@ -359,7 +355,7 @@ class _PlanCard extends StatelessWidget {
                       side: BorderSide(color: AppColors.divider),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: Text('Đang sử dụng'.tr, style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: Text('Đang sử dụng'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
                   )
                 : ElevatedButton(
                     onPressed: isUpgrading ? null : onUpgrade,
@@ -370,12 +366,12 @@ class _PlanCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: isUpgrading
-                        ? SizedBox(
+                        ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(plan.isFree ? 'Chuyển về Free'.tr : 'Nâng cấp'.tr,
+                        : Text('Liên hệ quản lý'.tr,
                             style: const TextStyle(fontWeight: FontWeight.w700)),
                   ),
           ),
@@ -401,7 +397,7 @@ class _FeatureRow extends StatelessWidget {
           padding: const EdgeInsets.only(top: 1),
           child: Icon(icon, size: 16, color: AppColors.textSecondary),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(text,
               style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3)),

@@ -242,16 +242,16 @@ class NotificationStore extends ChangeNotifier {
   String _extractSource(String titleOrSource) {
     if (titleOrSource == 'camera') return 'Camera';
     if (titleOrSource.contains('Camera')) return 'Camera';
-    if (titleOrSource.contains('CPU') || titleOrSource.contains('Memory') || titleOrSource.contains('Disk')) return 'Hệ thống';
-    return titleOrSource.isNotEmpty ? titleOrSource : 'Hệ thống';
+    if (titleOrSource.contains('CPU') || titleOrSource.contains('Memory') || titleOrSource.contains('Disk')) return 'Hệ thống'.tr;
+    return titleOrSource.isNotEmpty ? titleOrSource : 'Hệ thống'.tr;
   }
 
   String _formatTime(DateTime time) {
     final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+    if (diff.inMinutes < 1) return 'Vừa xong'.tr;
+    if (diff.inMinutes < 60) return '${diff.inMinutes} ${'phút trước'.tr}';
+    if (diff.inHours < 24) return '${diff.inHours} ${'giờ trước'.tr}';
+    if (diff.inDays < 7) return '${diff.inDays} ${'ngày trước'.tr}';
     return '${time.day}/${time.month}/${time.year}';
   }
 }

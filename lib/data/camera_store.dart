@@ -200,7 +200,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           cameraCode: item['stream'] ?? 'CAM-0000',
           type: item['cameraType'] ?? kCameraTypes[0],
           ipAddress: item['url'] ?? '',
-          location: item['location'] ?? 'Chưa xác định',
+          location: item['location'] ?? 'Chưa xác định'.tr,
           groupIds: (item['groupIds'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList() ??
@@ -208,7 +208,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           online: item['status'] == 'Online',
           resolution: '1080p',
           recording: item['enableMp4'] == true,
-          lastSeen: 'Vừa mới',
+          lastSeen: 'Vừa mới'.tr,
           app: app,
           hlsUrl: hlsUrl,
           fmp4Url: fmp4Url,
@@ -252,7 +252,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       return group;
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi thêm nhóm');
+      throw Exception(json['error'] ?? 'Lỗi thêm nhóm'.tr);
     }
   }
 
@@ -286,8 +286,9 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     String resolution = '1080p',
     bool online = true,
     bool recording = false,
-    String lastSeen = 'Vừa thêm',
+    String? lastSeen,
   }) async {
+    lastSeen ??= 'Vừa thêm'.tr;
     final token = await _getToken();
     final uri = Uri.parse('$_baseUrl/proxies');
     final res = await http.post(uri, headers: {
@@ -310,7 +311,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       );
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi thêm camera');
+      throw Exception(json['error'] ?? 'Lỗi thêm camera'.tr);
     }
   }
 
@@ -343,7 +344,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     if (res.statusCode == 200) {
       await fetchCameras();
     } else {
-      throw Exception('Lỗi cập nhật camera');
+      throw Exception('Lỗi cập nhật camera'.tr);
     }
   }
 
@@ -358,7 +359,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       _cameras.removeWhere((c) => c.id == cameraId);
       notifyNow();
     } else {
-      throw Exception('Lỗi xóa camera');
+      throw Exception('Lỗi xóa camera'.tr);
     }
   }
 

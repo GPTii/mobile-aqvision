@@ -406,6 +406,10 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       listenable: RecordingStore.instance.listenableFor(camera.id),
       builder: (context, _) {
         final isRec = RecordingStore.instance.isRecording(camera.id);
+        // Auto-record already covers this camera continuously — manual
+        // start would just conflict with it. Only block *starting*; an
+        // already-running manual session can still be stopped.
+        final recordDisabled = camera.recording && !isRec;
         final controls = [
           (
             icon: isRec
@@ -413,9 +417,17 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                 : Icons.fiber_manual_record_rounded,
             label: 'Record',
             active: isRec,
+            disabled: recordDisabled,
             onTap: _recordBusy
                 ? () {}
-                : () async {
+                : recordDisabled
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Đang bật tự động ghi hình — tắt tự động ghi hình trước khi ghi thủ công.'.tr),
+                          ),
+                        )
+                    : () async {
                     if (!isRec && !camera.online) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -467,12 +479,14 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
             icon: Icons.camera_alt_rounded,
             label: 'Capture',
             active: false,
+            disabled: false,
             onTap: () => _takeSnapshot(camera),
           ),
           (
             icon: Icons.history_rounded,
             label: 'Lịch sử'.tr,
             active: false,
+            disabled: false,
             onTap: () {
               showModalBottomSheet(
                 context: context,
@@ -510,6 +524,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                         icon: c.icon,
                         label: c.label,
                         active: c.active,
+                        disabled: c.disabled,
                         onTap: c.onTap,
                       ),
                     ),
@@ -853,17 +868,20 @@ class _ControlButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final bool disabled;
   final VoidCallback onTap;
 
   const _ControlButton({
     required this.icon,
     required this.label,
     required this.active,
+    this.disabled = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isActive = active && !disabled;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -872,31 +890,34 @@ class _ControlButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: active
+            color: isActive
                 ? AppColors.accent.withOpacity(0.12)
                 : AppColors.card,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: active ? AppColors.accent : AppColors.border,
+              color: isActive ? AppColors.accent : AppColors.border,
             ),
           ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: active ? AppColors.accent : AppColors.textSecondary,
-              ),
-              SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: active ? AppColors.accent : AppColors.textSecondary,
+          child: Opacity(
+            opacity: disabled ? 0.45 : 1,
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isActive ? AppColors.accent : AppColors.textSecondary,
                 ),
-              ),
-            ],
+                SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? AppColors.accent : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -140,7 +140,7 @@ class RecordingStore extends ChangeNotifier {
       }
       json = decoded;
     } catch (_) {
-      throw Exception('Máy chủ ghi hình trả về lỗi (${res.statusCode})');
+      throw Exception('${'Máy chủ ghi hình trả về lỗi'.tr} (${res.statusCode})');
     }
 
     final payload = json.containsKey('code')
@@ -150,7 +150,7 @@ class RecordingStore extends ChangeNotifier {
             : json);
 
     if (res.statusCode != 200) {
-      throw Exception(_messageFrom(json, payload, fallback: 'Lỗi ghi hình (${res.statusCode})'));
+      throw Exception(_messageFrom(json, payload, fallback: '${'Lỗi ghi hình'.tr} (${res.statusCode})'));
     }
     return payload;
   }
@@ -170,10 +170,10 @@ class RecordingStore extends ChangeNotifier {
         ?.toString();
     final code = payload['code'];
     if (code == -500 || raw == 'can not find the stream') {
-      return 'Camera chưa online trên máy chủ ghi hình';
+      return 'Camera chưa online trên máy chủ ghi hình'.tr;
     }
-    if (code == -100) return 'Không có quyền ghi hình';
-    if (code == -300) return 'Thiếu thông tin camera để ghi hình';
+    if (code == -100) return 'Không có quyền ghi hình'.tr;
+    if (code == -300) return 'Thiếu thông tin camera để ghi hình'.tr;
     if (raw == null || raw.isEmpty || raw.toLowerCase() == 'success') {
       return fallback;
     }
@@ -291,7 +291,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'.tr));
   }
 
   /// Stop manual MP4 recording (`type=1`).
@@ -311,7 +311,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'.tr));
   }
 
   /// Toggle enableMp4 auto-record for a proxy camera.
@@ -331,7 +331,7 @@ class RecordingStore extends ChangeNotifier {
       body: jsonEncode({'enableMp4': enable}),
     ).timeout(const Duration(seconds: 10));
     if (res.statusCode != 200) {
-      throw Exception('Lỗi cập nhật cài đặt ghi hình');
+      throw Exception('Lỗi cập nhật cài đặt ghi hình'.tr);
     }
   }
 
@@ -352,7 +352,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'.tr));
   }
 
   static String errorText(Object e) {
@@ -387,10 +387,10 @@ class RecordingStore extends ChangeNotifier {
       if (json['success'] == true) {
         return json['url'] as String;
       }
-      throw Exception('Lỗi tạo bản cắt');
+      throw Exception('Lỗi tạo bản cắt'.tr);
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt');
+      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt'.tr);
     }
   }
 

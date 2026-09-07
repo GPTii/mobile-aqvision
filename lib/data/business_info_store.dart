@@ -1,19 +1,19 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// User-entered business/company identity shown on the account screen
-/// ("Thông tin doanh nghiệp"). No backend endpoint exists for this yet —
-/// persisted locally only, per device.
+import '../config/api_config.dart';
+import '../utils/app_strings.dart';
+
+/// Business/company identity for the signed-in account's agency
+/// ("Thông tin doanh nghiệp"), shared across every user under the agency.
+/// Backed by `GET/PATCH /api/v1/agency`. Hydrated from the `agency` object
+/// already returned by `/auth/me` (see [hydrateFromAgency], called by
+/// `AuthStore.fetchProfile`) — saving goes through [save].
 class BusinessInfoStore extends ChangeNotifier {
   static final BusinessInfoStore instance = BusinessInfoStore._();
   BusinessInfoStore._();
-
-  static const _kCompanyName = 'biz_company_name';
-  static const _kRegistrationNo = 'biz_registration_no';
-  static const _kAddress = 'biz_address';
-  static const _kTaxCode = 'biz_tax_code';
-  static const _kContactEmail = 'biz_contact_email';
-  static const _kHotline = 'biz_hotline';
 
   String companyName = '';
   String registrationNo = '';
@@ -21,51 +21,72 @@ class BusinessInfoStore extends ChangeNotifier {
   String taxCode = '';
   String contactEmail = '';
   String hotline = '';
-  bool _loaded = false;
 
-  bool get hasAnyData =>
-      companyName.isNotEmpty ||
-      registrationNo.isNotEmpty ||
-      address.isNotEmpty ||
-      taxCode.isNotEmpty ||
-      contactEmail.isNotEmpty ||
-      hotline.isNotEmpty;
+  bool saving = false;
 
-  Future<void> load() async {
-    if (_loaded) return;
+  String get _baseUrl => ApiConfig.apiV1Base;
+
+  Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    companyName = prefs.getString(_kCompanyName) ?? '';
-    registrationNo = prefs.getString(_kRegistrationNo) ?? '';
-    address = prefs.getString(_kAddress) ?? '';
-    taxCode = prefs.getString(_kTaxCode) ?? '';
-    contactEmail = prefs.getString(_kContactEmail) ?? '';
-    hotline = prefs.getString(_kHotline) ?? '';
-    _loaded = true;
+    return prefs.getString('token');
+  }
+
+  /// Populates fields from the `agency` object of an `/auth/me` response —
+  /// avoids a second network round trip for data AuthStore already fetched.
+  void hydrateFromAgency(Map<String, dynamic>? agency) {
+    if (agency == null) return;
+    companyName = agency['companyName'] ?? '';
+    registrationNo = agency['registrationNo'] ?? '';
+    address = agency['address'] ?? '';
+    taxCode = agency['taxCode'] ?? '';
+    contactEmail = agency['contactEmail'] ?? '';
+    hotline = agency['hotline'] ?? '';
     notifyListeners();
   }
 
   Future<void> save({
-    required String companyName,
-    required String registrationNo,
-    required String address,
-    required String taxCode,
-    required String contactEmail,
-    required String hotline,
+    String? companyName,
+    String? registrationNo,
+    String? address,
+    String? taxCode,
+    String? contactEmail,
+    String? hotline,
   }) async {
-    this.companyName = companyName.trim();
-    this.registrationNo = registrationNo.trim();
-    this.address = address.trim();
-    this.taxCode = taxCode.trim();
-    this.contactEmail = contactEmail.trim();
-    this.hotline = hotline.trim();
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+
+    saving = true;
     notifyListeners();
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kCompanyName, this.companyName);
-    await prefs.setString(_kRegistrationNo, this.registrationNo);
-    await prefs.setString(_kAddress, this.address);
-    await prefs.setString(_kTaxCode, this.taxCode);
-    await prefs.setString(_kContactEmail, this.contactEmail);
-    await prefs.setString(_kHotline, this.hotline);
+    try {
+      final uri = Uri.parse('$_baseUrl/agency');
+      final res = await http.patch(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          if (companyName != null) 'companyName': companyName.trim(),
+          if (registrationNo != null) 'registrationNo': registrationNo.trim(),
+          if (address != null) 'address': address.trim(),
+          if (taxCode != null) 'taxCode': taxCode.trim(),
+          if (contactEmail != null) 'contactEmail': contactEmail.trim(),
+          if (hotline != null) 'hotline': hotline.trim(),
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        hydrateFromAgency(json['agency']);
+      } else {
+        final json = jsonDecode(res.body);
+        final message = (json['error'] as String?) ?? 'Lỗi cập nhật thông tin doanh nghiệp';
+        throw Exception(message.tr);
+      }
+    } finally {
+      saving = false;
+      notifyListeners();
+    }
   }
 }
