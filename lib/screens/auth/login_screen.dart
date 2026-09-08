@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/auth_store.dart';
 import '../../theme/app_colors.dart';
 import '../home/home_shell.dart';
+import '../../utils/app_strings.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -84,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen>
                 color: AppColors.danger,
                 size: 20,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   e.toString().replaceAll("Exception: ", ""),
@@ -176,22 +177,22 @@ class _LoginScreenState extends State<LoginScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Đăng nhập',
+          Text(
+            'Đăng nhập'.tr,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Truy cập hệ thống camera của bạn',
+          SizedBox(height: 4),
+          Text(
+            'Truy cập hệ thống camera của bạn'.tr,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 28),
-          _buildLabel('Email hoặc tên đăng nhập'),
-          const SizedBox(height: 8),
+          SizedBox(height: 28),
+          _buildLabel('Email hoặc tên đăng nhập'.tr),
+          SizedBox(height: 8),
           _buildTextField(
             controller: _emailController,
             hint: 'you@example.com',
@@ -199,14 +200,14 @@ class _LoginScreenState extends State<LoginScreen>
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
-                return 'Vui lòng nhập email hoặc tên đăng nhập';
+                return 'Vui lòng nhập email hoặc tên đăng nhập'.tr;
               }
               return null;
             },
           ),
-          const SizedBox(height: 18),
-          _buildLabel('Mật khẩu'),
-          const SizedBox(height: 8),
+          SizedBox(height: 18),
+          _buildLabel('Mật khẩu'.tr),
+          SizedBox(height: 8),
           _buildTextField(
             controller: _passwordController,
             hint: '••••••••',
@@ -225,15 +226,15 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
-                return 'Vui lòng nhập mật khẩu';
+                return 'Vui lòng nhập mật khẩu'.tr;
               }
               if (value.length < 4) {
-                return 'Mật khẩu phải có ít nhất 4 ký tự';
+                return 'Mật khẩu phải có ít nhất 4 ký tự'.tr;
               }
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               Transform.scale(
@@ -244,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen>
                       setState(() => _rememberMe = value ?? false),
                   activeColor: AppColors.accent,
                   checkColor: Colors.white,
-                  side: const BorderSide(color: AppColors.border, width: 1.4),
+                  side: BorderSide(color: AppColors.border, width: 1.4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -252,10 +253,10 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               Flexible(
                 child: Text(
-                  'Ghi nhớ',
+                  'Ghi nhớ'.tr,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
               ),
               const Spacer(),
@@ -266,8 +267,8 @@ class _LoginScreenState extends State<LoginScreen>
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
-                  'Quên mật khẩu?',
+                child: Text(
+                  'Quên mật khẩu?'.tr,
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.accent,
@@ -277,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _buildLoginButton(),
         ],
       ),
@@ -287,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: AppColors.textSecondary,
@@ -309,11 +310,11 @@ class _LoginScreenState extends State<LoginScreen>
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 14.5),
       cursorColor: AppColors.accent,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted),
+        hintStyle: TextStyle(color: AppColors.textMuted),
         prefixIcon: Icon(icon, color: AppColors.textMuted, size: 20),
         suffixIcon: suffixIcon,
         filled: true,
@@ -324,25 +325,25 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.4),
+          borderSide: BorderSide(color: AppColors.accent, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.2),
+          borderSide: BorderSide(color: AppColors.danger, width: 1.2),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.4),
+          borderSide: BorderSide(color: AppColors.danger, width: 1.4),
         ),
-        errorStyle: const TextStyle(color: AppColors.danger, fontSize: 12),
+        errorStyle: TextStyle(color: AppColors.danger, fontSize: 12),
       ),
     );
   }
@@ -369,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen>
             onTap: _isLoading ? null : _handleLogin,
             child: Center(
               child: _isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
@@ -377,8 +378,8 @@ class _LoginScreenState extends State<LoginScreen>
                         valueColor: AlwaysStoppedAnimation(Colors.white),
                       ),
                     )
-                  : const Text(
-                      'Đăng nhập',
+                  : Text(
+                      'Đăng nhập'.tr,
                       style: TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w700,

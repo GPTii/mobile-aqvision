@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/notification_store.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_strings.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -30,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Column(
               children: [
                 DecoratedBox(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.headerBackground,
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24),
@@ -45,12 +46,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                       children: [
-                        const _SectionLabel('Cài đặt cảnh báo'),
-                        const SizedBox(height: 10),
+                        _SectionLabel('Cài đặt cảnh báo'.tr),
+                        SizedBox(height: 10),
                         const _SettingsCard(),
-                        const SizedBox(height: 24),
-                        const _SectionLabel('Gần đây'),
-                        const SizedBox(height: 10),
+                        SizedBox(height: 24),
+                        _SectionLabel('Gần đây'.tr),
+                        SizedBox(height: 10),
                         if (notifications.isEmpty)
                           const _EmptyNotifications()
                         else
@@ -82,15 +83,15 @@ class _Header extends StatelessWidget {
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new_rounded,
               color: AppColors.textPrimary,
               size: 20,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Thông báo',
+              'Thông báo'.tr,
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 17,
@@ -101,7 +102,7 @@ class _Header extends StatelessWidget {
           TextButton(
             onPressed: hasUnread ? () => NotificationStore.instance.markAllAsRead() : null,
             child: Text(
-              'Đánh dấu đã đọc',
+              'Đánh dấu đã đọc'.tr,
               style: TextStyle(
                 color: hasUnread ? AppColors.accent : AppColors.textMuted,
                 fontSize: 12.5,
@@ -146,21 +147,21 @@ class _SettingsCard extends StatelessWidget {
         children: [
           _SettingRow(
             icon: Icons.directions_walk_rounded,
-            label: 'Phát hiện chuyển động',
+            label: 'Phát hiện chuyển động'.tr,
             value: store.motionAlertsEnabled,
             onChanged: (v) => store.setMotionAlertsEnabled(v),
           ),
           Divider(height: 1, color: AppColors.divider, indent: 16, endIndent: 16),
           _SettingRow(
             icon: Icons.wifi_off_rounded,
-            label: 'Camera mất kết nối',
+            label: 'Camera mất kết nối'.tr,
             value: store.offlineAlertsEnabled,
             onChanged: (v) => store.setOfflineAlertsEnabled(v),
           ),
           Divider(height: 1, color: AppColors.divider, indent: 16, endIndent: 16),
           _SettingRow(
             icon: Icons.info_outline_rounded,
-            label: 'Cập nhật hệ thống',
+            label: 'Cập nhật hệ thống'.tr,
             value: store.systemAlertsEnabled,
             onChanged: (v) => store.setSystemAlertsEnabled(v),
           ),
@@ -190,11 +191,11 @@ class _SettingRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
             ),
           ),
           Switch.adaptive(
@@ -287,7 +288,7 @@ class _NotificationTile extends StatelessWidget {
                 ),
                 child: Icon(_icon, size: 18, color: _color),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,7 +304,7 @@ class _NotificationTile extends StatelessWidget {
                       ),
                     ),
                     if (notification.message.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: 2),
                       Text(
                         notification.message,
                         maxLines: 2,
@@ -311,7 +312,7 @@ class _NotificationTile extends StatelessWidget {
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                       ),
                     ],
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       '${notification.source} · ${notification.time}',
                       maxLines: 1,
@@ -326,7 +327,7 @@ class _NotificationTile extends StatelessWidget {
                   width: 8,
                   height: 8,
                   margin: const EdgeInsets.only(left: 8),
-                  decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
                 ),
             ],
           ),
@@ -350,7 +351,7 @@ class _EmptyNotifications extends StatelessWidget {
         border: Border.all(color: AppColors.divider),
       ),
       child: Text(
-        'Không có thông báo nào',
+        'Không có thông báo nào'.tr,
         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5),
       ),
     );

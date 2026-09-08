@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'screens/auth/login_screen.dart';
 import 'data/auth_store.dart';
+import 'data/app_theme_store.dart';
+import 'data/push_notification_service.dart';
 import 'screens/home/home_shell.dart';
 import 'theme/app_colors.dart';
 import 'utils/network_error_handler.dart';
@@ -16,24 +16,20 @@ import 'utils/network_error_handler.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  print("Handling a background message: ${message.messageId}");
+  // Notification-payload messages are auto-displayed by the OS while the
+  // app is backgrounded/terminated. Data-only payloads are not, so draw
+  // one ourselves — same rendering path as the foreground listener.
+  if (message.notification == null) {
+    await PushNotificationService.showFromRemoteMessageInBackground(message);
+  }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
 void main() async {
   HttpOverrides.global = MyHttpOverrides();
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
-  // Boss's call: the app stays portrait-only for regular navigation.
-  // Individual screens (e.g. fullscreen video playback) can still switch
-  // to landscape on their own and are expected to restore this on exit.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
+  WidgetsFlutterBinding.ensureInitialized();
+  
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
@@ -45,14 +41,16 @@ void main() async {
         badge: true,
         sound: true,
       );
+
+      await PushNotificationService.init();
     } catch (e) {
       print("Firebase initialize error: $e");
     }
   }
 
   await AuthStore.instance.init();
+  await AppThemeStore.instance.init();
   runApp(const RapidMediaApp());
-  FlutterNativeSplash.remove();
 }
 
 class RapidMediaApp extends StatelessWidget {
@@ -60,27 +58,33 @@ class RapidMediaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AQPCamera',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.accent,
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Roboto',
-      ),
-      home: ListenableBuilder(
-        listenable: AuthStore.instance,
-        builder: (context, _) {
-          return AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen();
-        },
-      ),
-      navigatorKey: globalNavigatorKey,
-      navigatorObservers: [routeObserver],
+    return ListenableBuilder(
+      listenable: AppThemeStore.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          key: ValueKey('${AppThemeStore.instance.isDark}_${AppThemeStore.instance.lang}'),
+          title: 'AQPC',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: AppThemeStore.instance.isDark ? Brightness.dark : Brightness.light,
+            scaffoldBackgroundColor: AppColors.background,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.accent,
+              brightness: AppThemeStore.instance.isDark ? Brightness.dark : Brightness.light,
+            ),
+            fontFamily: 'Roboto',
+          ),
+          home: ListenableBuilder(
+            listenable: AuthStore.instance,
+            builder: (context, _) {
+              return AuthStore.instance.isLoggedIn ? const HomeShell() : const LoginScreen();
+            },
+          ),
+          navigatorKey: globalNavigatorKey,
+          navigatorObservers: [routeObserver],
+        );
+      },
     );
   }
 }

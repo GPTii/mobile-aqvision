@@ -1,3 +1,4 @@
+import '../../../utils/app_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../../data/app_state.dart';
@@ -30,7 +31,7 @@ class HomeTab extends StatelessWidget {
       body: Column(
         children: [
           DecoratedBox(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.headerBackground,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(28),
@@ -47,9 +48,9 @@ class HomeTab extends StatelessWidget {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
-                            'Trang chủ',
+                            'Trang chủ'.tr,
                             style: TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 22,
@@ -169,8 +170,8 @@ class _UngroupedHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Chưa phân nhóm',
+          Text(
+            'Chưa phân nhóm'.tr,
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 16,
@@ -184,14 +185,14 @@ class _UngroupedHeader extends StatelessWidget {
               Container(
                 width: 6,
                 height: 6,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.textMuted,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                '$cameraCount camera · chưa xếp vào nhóm nào',
+                '$cameraCount ' + 'camera · chưa xếp vào nhóm nào'.tr,
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12,
@@ -345,7 +346,7 @@ class _EmptyRoomHint extends StatelessWidget {
               border: Border.all(color: AppColors.border),
             ),
             child: Text(
-              'Chưa có camera · Nhấn để thêm',
+              'Chưa có camera · Nhấn để thêm'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12.5, fontWeight: FontWeight.w500),
             ),
@@ -365,9 +366,9 @@ class _RoomHeader extends StatelessWidget {
   Future<void> _rename(BuildContext context) async {
     final name = await showTextPromptDialog(
       context,
-      title: 'Đổi tên nhóm',
+      title: 'Đổi tên nhóm'.tr,
       initialValue: group.name,
-      hint: 'Tên nhóm camera',
+      hint: 'Tên nhóm camera'.tr,
     );
     if (name != null) CameraStore.instance.renameGroup(group.id, name);
   }
@@ -375,8 +376,8 @@ class _RoomHeader extends StatelessWidget {
   Future<void> _delete(BuildContext context) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'Xoá nhóm "${group.name}"?',
-      message: 'Toàn bộ camera trong nhóm này ($cameraCount camera) sẽ bị xoá theo.',
+      title: 'Xoá nhóm'.tr + ' "${group.name}"?',
+      message: 'Toàn bộ camera trong nhóm này'.tr + ' ($cameraCount ' + 'camera'.tr + ') ' + 'sẽ bị xoá theo.'.tr,
     );
     if (confirmed) {
       try {
@@ -399,7 +400,7 @@ class _RoomHeader extends StatelessWidget {
               children: [
                 Text(
                   group.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -412,7 +413,7 @@ class _RoomHeader extends StatelessWidget {
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
@@ -447,13 +448,13 @@ class _RoomHeader extends StatelessWidget {
                   _delete(context);
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'add', child: Text('Thêm camera mới')),
-              PopupMenuItem(value: 'add_existing', child: Text('Thêm camera có sẵn')),
-              PopupMenuItem(value: 'rename', child: Text('Đổi tên nhóm')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'add', child: Text('Thêm camera mới'.tr)),
+              PopupMenuItem(value: 'add_existing', child: Text('Thêm camera có sẵn'.tr)),
+              PopupMenuItem(value: 'rename', child: Text('Đổi tên nhóm'.tr)),
               PopupMenuItem(
                 value: 'delete',
-                child: Text('Xoá nhóm', style: TextStyle(color: AppColors.danger)),
+                child: Text('Xoá nhóm'.tr, style: TextStyle(color: AppColors.danger)),
               ),
             ],
           ),
@@ -469,9 +470,9 @@ class _AddRoomCard extends StatelessWidget {
   Future<void> _addGroup(BuildContext context) async {
     final name = await showTextPromptDialog(
       context,
-      title: 'Thêm nhóm camera',
-      hint: 'VD: Phòng ngủ',
-      confirmLabel: 'Thêm',
+      title: 'Thêm nhóm camera'.tr,
+      hint: 'VD: Phòng ngủ'.tr,
+      confirmLabel: 'Thêm'.tr,
     );
     if (name != null) {
       try {
@@ -504,7 +505,7 @@ class _AddRoomCard extends StatelessWidget {
                 Icon(Icons.add_rounded, size: 18, color: AppColors.accent),
                 const SizedBox(width: 6),
                 Text(
-                  'Thêm nhóm camera',
+                  'Thêm nhóm camera'.tr,
                   style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -807,12 +808,12 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const DecoratedBox(
+        DecoratedBox(
           decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
         ),
         Center(
           child: _hasError
-              ? const Icon(Icons.error_outline, color: AppColors.danger, size: 34)
+              ? Icon(Icons.error_outline, color: AppColors.danger, size: 34)
               : const SizedBox(
                   width: 24,
                   height: 24,
@@ -853,10 +854,10 @@ class _CameraOptionsMenu extends StatelessWidget {
           }
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: 'remove',
-          child: Text('Xoá khỏi nhóm', style: TextStyle(color: AppColors.danger)),
+          child: Text('Xoá khỏi nhóm'.tr, style: TextStyle(color: AppColors.danger)),
         ),
       ],
     );

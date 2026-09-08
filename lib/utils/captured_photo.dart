@@ -1,22 +1,22 @@
+import 'app_strings.dart';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../theme/app_colors.dart';
 
 class CapturedPhoto {
-  static const MethodChannel _channel = MethodChannel('aqvision/photo_library');
-
   static Future<Uint8List> capture(GlobalKey repaintBoundaryKey) async {
     await WidgetsBinding.instance.endOfFrame;
     final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (boundary == null) {
-      throw StateError('Không tìm thấy khung hình camera');
+      throw StateError('Không tìm thấy khung hình camera'.tr);
     }
 
     final devicePixelRatio =
@@ -26,26 +26,27 @@ class CapturedPhoto {
     );
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) throw StateError('Không thể tạo ảnh chụp');
+      if (data == null) throw StateError('Không thể tạo ảnh chụp'.tr);
       return data.buffer.asUint8List();
     } finally {
       image.dispose();
     }
   }
 
-  static Future<String> saveToPhotos(Uint8List bytes) async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      throw UnsupportedError('Thiết bị này chưa hỗ trợ lưu vào Photos');
+  static Future<String> saveToLocalAppStorage(Uint8List bytes) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Thiết bị này chưa hỗ trợ lưu trữ cục bộ'.tr);
+    }
+    final directory = await getApplicationDocumentsDirectory();
+    final galleryDir = Directory('${directory.path}/AQVision_Screenshots');
+    if (!await galleryDir.exists()) {
+      await galleryDir.create(recursive: true);
     }
     final timestamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:.]'), '-');
-    final path = await _channel.invokeMethod<String>('saveImage', {
-      'bytes': bytes,
-      'fileName': 'AQVision_$timestamp.png',
-    });
-    if (path == null || path.isEmpty) {
-      throw StateError('Photos không trả về vị trí ảnh đã lưu');
-    }
-    return path;
+    final filePath = '${galleryDir.path}/AQVision_$timestamp.png';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes);
+    return filePath;
   }
 
   static Future<bool> showPreviewAndSave(
@@ -80,13 +81,13 @@ class _CapturedPhotoDialogState extends State<_CapturedPhotoDialog> {
       _error = null;
     });
     try {
-      await CapturedPhoto.saveToPhotos(widget.bytes);
+      await CapturedPhoto.saveToLocalAppStorage(widget.bytes);
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = 'Không thể lưu ảnh vào Photos: $error';
+          _error = 'Không thể lưu ảnh cục bộ: '.tr + error.toString();
         });
       }
     }
@@ -101,14 +102,14 @@ class _CapturedPhotoDialogState extends State<_CapturedPhotoDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
                 Icon(Icons.photo_camera_rounded, size: 22),
                 SizedBox(width: 10),
                 Text(
-                  'Ảnh vừa chụp',
+                  'Ảnh vừa chụp'.tr,
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -129,7 +130,7 @@ class _CapturedPhotoDialogState extends State<_CapturedPhotoDialog> {
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: Text(
                 _error!,
-                style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                style: TextStyle(color: AppColors.danger, fontSize: 12),
               ),
             ),
           Padding(
@@ -140,7 +141,7 @@ class _CapturedPhotoDialogState extends State<_CapturedPhotoDialog> {
                   child: OutlinedButton.icon(
                     onPressed: _saving ? null : () => Navigator.of(context).pop(false),
                     icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Xóa'),
+                    label: Text('Xóa'.tr),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.danger,
                       minimumSize: const Size.fromHeight(48),
@@ -160,7 +161,7 @@ class _CapturedPhotoDialogState extends State<_CapturedPhotoDialog> {
                             ),
                           )
                         : const Icon(Icons.save_alt_rounded),
-                    label: Text(_saving ? 'Đang lưu...' : 'Lưu'),
+                    label: Text(_saving ? 'Đang lưu...'.tr : 'Lưu'.tr),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.success,
                       minimumSize: const Size.fromHeight(48),

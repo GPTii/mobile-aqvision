@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../data/camera_store.dart';
 import '../../../data/storage_store.dart';
 import '../../../theme/app_colors.dart';
+import '../../../utils/app_strings.dart';
 
 class ReportTab extends StatefulWidget {
   const ReportTab({super.key});
@@ -37,7 +38,7 @@ class _ReportTabState extends State<ReportTab> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              const SliverToBoxAdapter(child: _Header()),
+              SliverToBoxAdapter(child: _Header()),
               const SliverToBoxAdapter(child: SizedBox(height: 18)),
               SliverToBoxAdapter(
                 child: Padding(
@@ -45,11 +46,11 @@ class _ReportTabState extends State<ReportTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const _OverviewCard(),
+                      _OverviewCard(),
                       const SizedBox(height: 16),
                       ListenableBuilder(
                         listenable: StorageStore.instance,
-                        builder: (ctx, _) => const _StorageSection(),
+                        builder: (ctx, _) => _StorageSection(),
                       ),
                     ],
                   ),
@@ -71,7 +72,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.headerBackground,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(28),
@@ -88,15 +89,15 @@ class _Header extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Báo cáo',
+                Text('Báo cáo'.tr,
                     style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 2),
                 Text(
-                  '${cameras.length} camera · ${groups.length} nhóm',
-                  style: const TextStyle(
+                  '${cameras.length} camera · ${groups.length} ${'nhóm'.tr}',
+                  style: TextStyle(
                       fontSize: 12.5,
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500),
@@ -141,7 +142,7 @@ class _SectionCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: Text(title!,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary)),
@@ -169,12 +170,12 @@ class _OverviewCard extends StatelessWidget {
         final offline = cameras.length - online;
 
         return _SectionCard(
-          title: 'Tổng quan hệ thống',
+          title: 'Tổng quan hệ thống'.tr,
           child: Column(
             children: [
               _StatTile(
                   icon: Icons.check_circle_rounded,
-                  label: 'Đang hoạt động',
+                  label: 'Đang hoạt động'.tr,
                   value: '$online',
                   color: AppColors.success),
               const SizedBox(height: 12),
@@ -186,7 +187,7 @@ class _OverviewCard extends StatelessWidget {
               const SizedBox(height: 12),
               _StatTile(
                   icon: Icons.folder_rounded,
-                  label: 'Tổng nhóm',
+                  label: 'Tổng nhóm'.tr,
                   value: '${groups.length}',
                   color: AppColors.info),
             ],
@@ -222,7 +223,7 @@ class _StatTile extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
         ),
         Text(value,
@@ -246,31 +247,31 @@ const _warn2Color = Color(0xFFC2410C);
 _TierInfo _tierInfo(String tier) {
   switch (tier) {
     case 'warn':
-      return const _TierInfo(
-        'Sắp đầy',
+      return _TierInfo(
+        'Sắp đầy'.tr,
         AppColors.warning,
-        'Dung lượng sắp đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.',
+        'Dung lượng sắp đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.'.tr,
       );
     case 'warn2':
-      return const _TierInfo(
-        'Gần đầy',
+      return _TierInfo(
+        'Gần đầy'.tr,
         _warn2Color,
-        'Dung lượng gần đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.',
+        'Dung lượng gần đầy. Xoá bớt recording cũ hoặc liên hệ quản trị viên để tăng dung lượng.'.tr,
       );
     case 'bad':
-      return const _TierInfo(
-        'Nguy cấp',
+      return _TierInfo(
+        'Nguy cấp'.tr,
         AppColors.danger,
-        'Dung lượng sắp hết. Liên hệ quản trị viên ngay để tránh gián đoạn ghi hình.',
+        'Dung lượng sắp hết. Liên hệ quản trị viên ngay để tránh gián đoạn ghi hình.'.tr,
       );
     case 'full':
-      return const _TierInfo(
-        'Đã đầy',
+      return _TierInfo(
+        'Đã đầy'.tr,
         AppColors.danger,
-        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.',
+        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.'.tr,
       );
     default:
-      return const _TierInfo('Bình thường', AppColors.success, null);
+      return _TierInfo('Bình thường'.tr, AppColors.success, null);
   }
 }
 
@@ -306,7 +307,7 @@ class _StorageSection extends StatelessWidget {
     final store = StorageStore.instance;
 
     if (store.loading && store.storageQuotaMb == 0) {
-      return const _StorageCard(
+      return _StorageCard(
         child: Center(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -324,11 +325,11 @@ class _StorageSection extends StatelessWidget {
       return _StorageCard(
         child: Row(
           children: [
-            const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 20),
+            Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(store.error!,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textMuted)),
             ),
           ],
         ),
@@ -344,8 +345,8 @@ class _StorageSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text('Dung lượng Cloud',
+              Expanded(
+                child: Text('Dung lượng Cloud'.tr,
                     style: TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               ),
@@ -358,10 +359,10 @@ class _StorageSection extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(_formatMb(store.usedStorageMb),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               Text(' / ${_formatMb(store.storageQuotaMb)}',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               const Spacer(),
               Text('${store.percent.toStringAsFixed(0)}%',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: tierInfo.color)),
@@ -405,7 +406,7 @@ class _StorageSection extends StatelessWidget {
           ],
           if (store.cameras.isNotEmpty) ...[
             const SizedBox(height: 14),
-            const Text('Camera chiếm nhiều dung lượng nhất',
+            Text('Camera chiếm nhiều dung lượng nhất'.tr,
                 style: TextStyle(
                     fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
             const SizedBox(height: 8),
@@ -450,11 +451,11 @@ class _StorageCameraRow extends StatelessWidget {
             child: Text(camera.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
           ),
           const SizedBox(width: 8),
           Text(_formatMb(camera.usedStorageMb),
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
         ],
       ),
