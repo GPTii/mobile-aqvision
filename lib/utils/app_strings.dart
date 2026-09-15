@@ -41,6 +41,12 @@ class AppStrings {
     'Lỗi cập nhật cài đặt ghi hình': {'en': 'Error updating recording settings'},
     'Lỗi xóa bản ghi': {'en': 'Error deleting recording'},
     'Lỗi tạo bản cắt': {'en': 'Error creating video clip'},
+    // --- News (Tin tức) tab ---
+    'Tin tức': {'en': 'News'},
+    'bài viết mới trong tuần này': {'en': 'new articles this week'},
+    'TIN MỚI NHẤT': {'en': 'LATEST'},
+    'Không tải được tin tức': {'en': 'Could not load news'},
+    'Chưa có tin tức nào': {'en': 'No news yet'},
     // --- Version history (Nhật ký) screen ---
     'Lịch sử phiên bản': {'en': 'Version history'},
     'bản cập nhật gần đây': {'en': 'recent updates'},

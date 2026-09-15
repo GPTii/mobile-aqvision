@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../data/app_theme_store.dart';
 import '../data/auth_store.dart';
 import 'account_info_screen.dart';
+import 'cloud_storage_screen.dart';
 import 'service_package_screen.dart';
 import '../widgets/prompt_dialog.dart';
 import 'gallery_screen.dart';
@@ -156,6 +157,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'Gói dịch vụ'.tr,
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => const ServicePackageScreen())),
+                    ),
+                    _SettingsRow(
+                      icon: Icons.cloud_outlined,
+                      iconColor: AppColors.accentSecondary,
+                      iconBg: AppColors.headerBackground,
+                      label: 'Dung lượng Cloud'.tr,
+                      onTap: () => Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const CloudStorageScreen())),
                     ),
                   ]),
                   const SizedBox(height: 20),

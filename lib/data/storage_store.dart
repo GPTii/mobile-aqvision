@@ -81,12 +81,11 @@ class StorageStore extends ChangeNotifier {
 
   Future<void>? _inFlight;
 
-  /// ReportTab and ProfileTab both call this from their own `initState()` —
-  /// `IndexedStack` mounts every tab eagerly, so both fire the moment
-  /// `HomeShell` builds. Without de-duping, two concurrent requests race to
-  /// write the same singleton fields and whichever resolves last wins, even
-  /// if it's stale/incomplete — the class of bug behind "shows 0MB on first
-  /// login, correct after logging back in". One in-flight request, shared.
+  /// De-dupes concurrent callers (e.g. a fast back-and-forth into
+  /// CloudStorageScreen) so they share one request instead of racing to
+  /// write the same singleton fields, where whichever resolves last wins
+  /// even if it's stale/incomplete — the class of bug behind "shows 0MB on
+  /// first login, correct after logging back in".
   Future<void> fetchStorage() {
     return _inFlight ??= _doFetchStorage().whenComplete(() => _inFlight = null);
   }
