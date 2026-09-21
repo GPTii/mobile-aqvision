@@ -1,113 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../data/app_release_store.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/app_strings.dart';
-
-enum ReleaseNoteKind { newFeature, improvement, fix, note }
-
-class ReleaseSection {
-  final ReleaseNoteKind kind;
-  final List<String> items;
-
-  const ReleaseSection(this.kind, this.items);
-}
-
-class AppVersion {
-  final String version;
-  final String build;
-  final String date;
-  final String teaser;
-  final bool isLatest;
-  final List<ReleaseSection> sections;
-
-  const AppVersion({
-    required this.version,
-    required this.build,
-    required this.date,
-    required this.teaser,
-    required this.sections,
-    this.isLatest = false,
-  });
-}
-
-/// Ordered newest-first. Update this list whenever `pubspec.yaml`'s version
-/// bumps — nothing reads it automatically from the build number.
-const List<AppVersion> kAppVersionHistory = [
-  AppVersion(
-    version: '1.1.0',
-    build: 'Build 12',
-    date: '4 tháng 9, 2026',
-    teaser: 'Đổi tab Hồ sơ thành Cài đặt, thêm chế độ tối, đa ngôn ngữ và thư viện ảnh.',
-    isLatest: true,
-    sections: [
-      ReleaseSection(ReleaseNoteKind.newFeature, [
-        'Đổi tab "Hồ sơ" thành "Cài đặt" — thiết kế lại toàn bộ bố cục, phân nhóm rõ ràng, gọn gàng và dễ dùng hơn hẳn.',
-        'Thêm chế độ giao diện Sáng / Tối, đổi được ngay trong app.',
-        'Thêm chuyển đổi ngôn ngữ Tiếng Việt / English.',
-        'Thêm Thư viện ảnh để xem lại các ảnh đã chụp từ camera.',
-        'Thêm mục Thông tin doanh nghiệp trong Tài khoản & bảo mật — nhập và lưu lại được ngay trong app.',
-      ]),
-      ReleaseSection(ReleaseNoteKind.improvement, [
-        'Tab Báo cáo hỗ trợ đổi sang tiếng Anh (trước đây chỉ có tiếng Việt).',
-        'Màn "Gói dịch vụ" thiết kế lại gọn gàng, dễ nhìn hơn, nút Nâng cấp gói rõ ràng hơn.',
-        'Chỉnh sửa thông tin cá nhân chuyển từ cửa sổ nhỏ sang trang riêng để chứa được nhiều thông tin hơn.',
-        'Mục "Nhật ký" hiện sẵn số phiên bản đang dùng, không cần bấm vào mới biết.',
-      ]),
-    ],
-  ),
-  AppVersion(
-    version: '1.0.10',
-    build: 'Build 11',
-    date: '28 tháng 8, 2026',
-    teaser: 'Thêm màn hình Lịch sử phiên bản ngay trong Hồ sơ.',
-    sections: [
-      ReleaseSection(ReleaseNoteKind.newFeature, [
-        'Thêm màn hình "Lịch sử phiên bản" trong Hồ sơ — xem nhanh các bản cập nhật, tính năng mới và lỗi đã sửa ngay trong app, không cần hỏi lại đội kỹ thuật.',
-      ]),
-    ],
-  ),
-  AppVersion(
-    version: '1.0.9',
-    build: 'Build 10',
-    date: '28 tháng 8, 2026',
-    teaser: 'Sửa lỗi ghi hình, chụp ảnh camera và hiển thị dung lượng Cloud.',
-    sections: [
-      ReleaseSection(ReleaseNoteKind.improvement, [
-        'Tab Báo cáo hiển thị ngay dữ liệu dung lượng đã tải lần trước ngay khi vừa mở tab, không phải chờ trắng màn hình mỗi lần vào.',
-      ]),
-      ReleaseSection(ReleaseNoteKind.fix, [
-        'Nút "Chụp" trên camera trực tiếp trước đây không lưu được ảnh nào — nay chụp và lưu ảnh thật, có xem trước và xác nhận Lưu / Xoá.',
-        'Sửa thông báo sai "Phiên ghi hình hết hạn, hãy đăng nhập lại" xuất hiện dù tài khoản vẫn đang đăng nhập bình thường.',
-        'Sửa lỗi mục "Camera chiếm nhiều dung lượng nhất" luôn hiển thị 0 MB dù camera đã có dữ liệu ghi hình thật.',
-      ]),
-      ReleaseSection(ReleaseNoteKind.note, [
-        'Khuyến nghị cập nhật cho các thiết bị đang gặp lỗi khi nhấn ghi hình hoặc chụp ảnh camera.',
-      ]),
-    ],
-  ),
-  AppVersion(
-    version: '1.0.5',
-    build: 'Build 8',
-    date: '19 tháng 8, 2026',
-    teaser: 'Thêm yêu cầu nâng cấp gói ngay trong app, ổn định kết nối camera.',
-    sections: [
-      ReleaseSection(ReleaseNoteKind.newFeature, [
-        'Thêm luồng gửi yêu cầu nâng cấp gói dịch vụ ngay trong app, có thể kèm lời nhắn.',
-        'Trang Hồ sơ hiển thị thông tin gói dịch vụ và dung lượng lưu trữ đang dùng.',
-      ]),
-      ReleaseSection(ReleaseNoteKind.improvement, [
-        'Khoá xoay màn hình dọc để thao tác ổn định hơn khi xem camera.',
-        'Tinh gọn tab Báo cáo: gộp về tổng quan hệ thống và dung lượng Cloud, bớt rối mắt.',
-        'Cải thiện độ ổn định khi xem camera trực tiếp qua WebRTC.',
-      ]),
-      ReleaseSection(ReleaseNoteKind.fix, [
-        'Sửa lỗi phát lại video HLS bị gián đoạn ở một số camera.',
-        'Sửa lỗi truy cập file ghi hình khi kết nối qua máy chủ proxy.',
-        'Sửa một số lỗi hiển thị ở màn hình chi tiết camera.',
-      ]),
-    ],
-  ),
-];
 
 class _KindStyle {
   final String label;
@@ -129,70 +24,123 @@ final Map<ReleaseNoteKind, _KindStyle> _kindStyles = {
       'Lưu ý đặc biệt', Icons.error_outline_rounded, AppColors.danger, Color(0xFFFDEAEC)),
 };
 
-class VersionHistoryScreen extends StatelessWidget {
+class VersionHistoryScreen extends StatefulWidget {
   const VersionHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
+  State<VersionHistoryScreen> createState() => _VersionHistoryScreenState();
+}
+
+class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AppReleaseStore.instance.fetchReleases();
+  }
+
+  Widget _buildBody(AppReleaseStore store) {
+    if (store.releases.isEmpty) {
+      if (store.loading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (store.error != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(store.error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: store.fetchReleases,
+                  child: Text('Thử lại'.tr),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.textPrimary, size: 20),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Lịch sử phiên bản'.tr,
-                            style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${kAppVersionHistory.length} ${'bản cập nhật gần đây'.tr}',
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                itemCount: kAppVersionHistory.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, i) => _VersionListTile(kAppVersionHistory[i]),
-              ),
-            ),
-          ],
-        ),
+          ),
+        );
+      }
+      return Center(
+        child: Text('Chưa có bản cập nhật nào'.tr,
+            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: store.fetchReleases,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        itemCount: store.releases.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, i) => _VersionListTile(store.releases[i]),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppReleaseStore.instance,
+      builder: (context, _) {
+        final store = AppReleaseStore.instance;
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: Column(
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.headerBackground,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(28),
+                      bottomRight: Radius.circular(28),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: Icon(Icons.arrow_back_ios_new_rounded,
+                              color: AppColors.textPrimary, size: 20),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Lịch sử phiên bản'.tr,
+                                style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${store.releases.length} ${'bản cập nhật gần đây'.tr}',
+                                style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(child: _buildBody(store)),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -246,7 +194,7 @@ class _VersionListTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      version.build.toUpperCase(),
+                      version.buildLabel.toUpperCase(),
                       style: TextStyle(
                           fontSize: 8.5, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 0.2),
                     ),
@@ -278,7 +226,7 @@ class _VersionListTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text(version.date.tr, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                    Text(version.dateLabel, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                     const SizedBox(height: 6),
                     Text(version.teaser.tr,
                         style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
@@ -369,7 +317,7 @@ class VersionDetailScreen extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text('${version.build} · ${version.date.tr}',
+                          Text('${version.buildLabel} · ${version.dateLabel}',
                               style: TextStyle(
                                   fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                         ],

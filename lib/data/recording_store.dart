@@ -365,7 +365,7 @@ class RecordingStore extends ChangeNotifier {
     final token = await _getToken();
     if (token == null) throw Exception('Chưa đăng nhập'.tr);
     
-    final uri = Uri.parse('$_baseUrl/recordings/clip');
+    final uri = Uri.parse('${ApiConfig.apiV1Base}/recordings/clip');
     final res = await http.post(
       uri,
       headers: {
