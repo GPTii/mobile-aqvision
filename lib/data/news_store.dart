@@ -6,6 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../utils/app_strings.dart';
 
+/// Server sometimes returns a root-relative path (e.g. "/uploads/x.jpg")
+/// instead of a full URL — browsers resolve that against the page origin
+/// automatically, but Flutter's Image.network does not, so it fails silently.
+/// Prepend the API origin ourselves when we see one.
+String _resolveImageUrl(String url) {
+  if (url.startsWith('/')) return '${ApiConfig.origin}$url';
+  return url;
+}
+
 class NewsArticle {
   final String id;
   final String title;
@@ -37,7 +46,7 @@ class NewsArticle {
       title: json['title'] ?? '',
       excerpt: json['excerpt'] ?? '',
       body: json['body'],
-      coverImageUrl: (json['coverImageUrl'] ?? '').toString(),
+      coverImageUrl: _resolveImageUrl((json['coverImageUrl'] ?? '').toString()),
       category: json['category'],
       isFeatured: json['isFeatured'] == true,
       publishedAt: DateTime.tryParse(json['publishedAt']?.toString() ?? '') ?? DateTime.now(),
@@ -105,6 +114,9 @@ class NewsStore extends ChangeNotifier {
         final List data = json['data'] ?? [];
         articles = data.map((e) => NewsArticle.fromJson(e)).toList()
           ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+        for (final a in articles) {
+          debugPrint('[NEWS] "${a.title}" coverImageUrl = "${a.coverImageUrl}"');
+        }
         error = null;
       } else {
         error = 'Không tải được tin tức'.tr;

@@ -7,7 +7,6 @@ import '../../../data/camera_store.dart';
 import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/camera_selection_sheet.dart';
-import '../../../widgets/camera_form_sheet.dart';
 import '../../../widgets/camera_navigation.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
@@ -438,8 +437,6 @@ class _RoomHeader extends StatelessWidget {
             icon: Icon(Icons.more_horiz_rounded, size: 20, color: AppColors.textSecondary),
             onSelected: (value) {
               switch (value) {
-                case 'add':
-                  showCameraFormSheet(context, initialGroupId: group.id);
                 case 'add_existing':
                   showCameraSelectionSheet(context, groupId: group.id);
                 case 'rename':
@@ -449,7 +446,6 @@ class _RoomHeader extends StatelessWidget {
               }
             },
             itemBuilder: (context) => [
-              PopupMenuItem(value: 'add', child: Text('Thêm camera mới'.tr)),
               PopupMenuItem(value: 'add_existing', child: Text('Thêm camera có sẵn'.tr)),
               PopupMenuItem(value: 'rename', child: Text('Đổi tên nhóm'.tr)),
               PopupMenuItem(

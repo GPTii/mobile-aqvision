@@ -34,6 +34,7 @@ class _NewsTabState extends State<NewsTab> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListenableBuilder(
               listenable: NewsStore.instance,
@@ -164,33 +165,16 @@ class _Header extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tin tức'.tr,
-                      style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.2)),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$count ${'bài viết mới trong tuần này'.tr}',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.card.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.bookmark_border_rounded, size: 19, color: AppColors.accentSecondary),
+            Text('Tin tức'.tr,
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.2)),
+            const SizedBox(height: 2),
+            Text(
+              '$count ${'bài viết mới trong tuần này'.tr}',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -284,15 +268,11 @@ class _ArticleCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             article.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.35),
           ),
           const SizedBox(height: 7),
           Text(
             article.excerpt,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.6),
           ),
         ],
@@ -319,7 +299,10 @@ class _NewsImage extends StatelessWidget {
       width: double.infinity,
       height: double.infinity,
       loadingBuilder: (context, child, progress) => progress == null ? child : _placeholder(),
-      errorBuilder: (context, error, stack) => _placeholder(),
+      errorBuilder: (context, error, stack) {
+        debugPrint('[NEWS_IMAGE] failed to load "$url": $error');
+        return _placeholder();
+      },
     );
   }
 

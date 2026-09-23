@@ -73,6 +73,34 @@ class RecordingFile {
     return '';
   }
 
+  /// Seconds since midnight the recording started — same filename parsing as
+  /// [displayTime], but numeric for positioning on the day timeline.
+  int? get startOfDaySeconds {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    List<String> hms;
+    if (parts.length >= 6 && parts[0].length == 4) {
+      hms = [parts[3], parts[4], parts[5]];
+    } else if (parts.length >= 3) {
+      hms = [parts[0], parts[1], parts[2]];
+    } else {
+      return null;
+    }
+    final h = int.tryParse(hms[0]);
+    final m = int.tryParse(hms[1]);
+    final s = int.tryParse(hms[2]);
+    if (h == null || m == null || s == null) return null;
+    return h * 3600 + m * 60 + s;
+  }
+
+  /// Duration in seconds — same filename parsing as [durationText], numeric.
+  int? get durationSeconds {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    if (parts.length >= 7 && parts[0].length == 4) {
+      return int.tryParse(parts[6]);
+    }
+    return null;
+  }
+
   String get id => '$date/$fileName';
 }
 
