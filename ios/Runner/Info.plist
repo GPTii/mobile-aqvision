@@ -49,5 +49,12 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
-	</dict>
+	
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Ứng dụng cần Bluetooth để kết nối và cài đặt Gateway.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Ứng dụng cần Camera để quét mã QR trên thiết bị.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Ứng dụng cần Vị trí để quét sóng WiFi xung quanh thiết bị.</string>
+    </dict>
 </plist>
