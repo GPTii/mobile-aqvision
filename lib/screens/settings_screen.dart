@@ -12,6 +12,7 @@ import 'auth/login_screen.dart';
 import '../data/app_release_store.dart';
 import 'home/version_history_screen.dart';
 import '../utils/app_strings.dart';
+import 'setup/qr_scanner_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -172,6 +173,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: 'Dung lượng Cloud'.tr,
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => const CloudStorageScreen())),
+                    ),
+                  ]),
+                  const SizedBox(height: 20),
+
+                  _GroupLabel('Thiết bị'.tr),
+                  const SizedBox(height: 8),
+                  _Card(children: [
+                    _SettingsRow(
+                      icon: Icons.qr_code_scanner_outlined,
+                      iconColor: AppColors.accent,
+                      iconBg: AppColors.accent.withOpacity(0.1),
+                      label: 'Thêm thiết bị mới'.tr,
+                      subtitle: 'Quét mã QR để cài đặt Gateway Eyerus'.tr,
+                      onTap: () => Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const QrScannerScreen())),
                     ),
                   ]),
                   const SizedBox(height: 20),
