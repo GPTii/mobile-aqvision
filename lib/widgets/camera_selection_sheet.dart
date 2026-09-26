@@ -38,7 +38,9 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-      child: Column(
+      child: SafeArea(
+        top: false,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(height: 12),
@@ -114,6 +116,7 @@ class _CameraSelectionSheetState extends State<_CameraSelectionSheet> {
             ),
           )
         ],
+        ),
       ),
     );
   }

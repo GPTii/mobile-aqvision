@@ -1,18 +1,19 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
-import '../core/commadesk_api.dart';
 import 'debounced_notifier.dart';
+import '../utils/app_strings.dart';
 
 class RecordingFile {
-  final String date;
-  final String fileName;
+  final String date;       // YYYY-MM-DD
+  final String fileName;   // e.g. 2026-08-14-12-00-00-0.mp4
   final String app;
   final String stream;
-  final String serverUrl;
-  final String token;
+  final String serverUrl;  // base URL of media server
+  final String token;      // auth token
 
   RecordingFile({
     required this.date,
@@ -25,8 +26,17 @@ class RecordingFile {
 
   String get mp4Url => mp4Uri.toString();
 
+  /// `/api/media/record/...` — encode stream names with spaces (`cam demo2`).
+  ///
+  /// Auth: `?access_token=` là cách duy nhất `/api/media/[...path]` chấp nhận
+  /// cho mobile (nó chỉ đọc cookie `session`, header Bearer, hoặc query
+  /// `access_token` — KHÔNG đọc `auth_token`). Query param cũng cần thiết cho
+  /// nút tải về vì trình duyệt ngoài app không có cookie.
   Uri get mp4Uri {
     var base = Uri.parse(serverUrl);
+    if (base.scheme == 'https' && base.host.startsWith('dev1')) {
+      base = base.replace(scheme: 'http', port: 80);
+    }
     return base.replace(
       pathSegments: [
         ...base.pathSegments.where((s) => s.isNotEmpty),
@@ -37,17 +47,19 @@ class RecordingFile {
         fileName,
       ],
       queryParameters: {
-        if (token.isNotEmpty) 'token': token,
+        'access_token': token,
       },
     );
   }
 
+  /// ZLM MP4 names: `YYYY-MM-DD-HH-MM-SS-index.mp4` → `HH:MM:SS`.
+  /// Legacy short names: `HH-MM-SS.mp4` → `HH:MM:SS`.
   String get displayTime {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 6 && parts[0].length == 4) {
-      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}';
+      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}'.tr;
     } else if (parts.length >= 3) {
-      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}';
+      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}'.tr;
     }
     return fileName;
   }
@@ -55,10 +67,38 @@ class RecordingFile {
   String get durationText {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 7 && parts[0].length == 4) {
-      final dur = int.tryParse(parts[6]);
-      if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
+      int? dur = int.tryParse(parts[6]);
+      if (dur != null && dur > 0) return 'Thời lượng: $dur giây'.tr;
     }
     return '';
+  }
+
+  /// Seconds since midnight the recording started — same filename parsing as
+  /// [displayTime], but numeric for positioning on the day timeline.
+  int? get startOfDaySeconds {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    List<String> hms;
+    if (parts.length >= 6 && parts[0].length == 4) {
+      hms = [parts[3], parts[4], parts[5]];
+    } else if (parts.length >= 3) {
+      hms = [parts[0], parts[1], parts[2]];
+    } else {
+      return null;
+    }
+    final h = int.tryParse(hms[0]);
+    final m = int.tryParse(hms[1]);
+    final s = int.tryParse(hms[2]);
+    if (h == null || m == null || s == null) return null;
+    return h * 3600 + m * 60 + s;
+  }
+
+  /// Duration in seconds — same filename parsing as [durationText], numeric.
+  int? get durationSeconds {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    if (parts.length >= 7 && parts[0].length == 4) {
+      return int.tryParse(parts[6]);
+    }
+    return null;
   }
 
   String get id => '$date/$fileName';
@@ -68,122 +108,58 @@ class RecordingStore extends ChangeNotifier {
   static final RecordingStore instance = RecordingStore._();
   RecordingStore._();
 
+  // Per-camera cache: cameraId -> list of recordings
   final Map<String, List<RecordingFile>> _cache = {};
+  // Per-camera recording status
   final Map<String, bool> _isRecording = {};
+  // Per-camera loading state
   final Map<String, bool> _loading = {};
   final IdListenables _cameraTicks = IdListenables();
 
   bool isRecording(String cameraId) => _isRecording[cameraId] ?? false;
   bool isLoading(String cameraId) => _loading[cameraId] ?? false;
-  List<RecordingFile> recordingsFor(String cameraId) => _cache[cameraId] ?? [];
+  List<RecordingFile> recordingsFor(String cameraId) =>
+      _cache[cameraId] ?? [];
 
+  /// Rebuild only UI that cares about this camera's recordings / REC state.
   Listenable listenableFor(String cameraId) => _cameraTicks.of(cameraId);
+
   void _notifyCamera(String cameraId) => _cameraTicks.bump(cameraId);
+
+  String get _baseUrl => ApiConfig.apiBase;
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
 
   String _appName(String? app) =>
       (app == null || app.trim().isEmpty) ? 'live' : app.trim();
 
-  void _recordLog(String message) => debugPrint('[RECORD] $message');
-
-  Future<bool> _shouldUseDirectMedia() async {
-    if (!ApiConfig.hasMediaRecording) return false;
-    final token = await CommaDeskApi.instance.readAccessToken();
-    // Đã login → proxy CommaDesk (backend gọi 127.0.0.1, tránh IP allowlist MediaServer).
-    if (token != null && token.isNotEmpty) return false;
-    return true;
-  }
-
-  Future<String> _recordingTransport() async {
-    if (await _shouldUseDirectMedia()) return 'direct';
-    return 'proxy';
-  }
-
-  Map<String, String> _queryForLog(Map<String, String> query) {
-    return Map.fromEntries(
-      query.entries.map((e) {
-        if (e.key.toLowerCase() == 'secret') {
-          return MapEntry(e.key, '***');
-        }
-        return MapEntry(e.key, e.value);
-      }),
-    );
-  }
-
-  String _summarizeMediaJson(Map<String, dynamic> json) {
-    final code = json['code'];
-    final msg = (json['msg'] ?? json['error'] ?? json['message'])?.toString();
-    final status = json['status'];
-    final result = json['result'];
-    return 'code=$code msg=${msg ?? '-'} status=$status result=$result ok=${_isApiOk(json)}';
-  }
-
-  String _truncateBody(String body, {int max = 400}) {
-    final trimmed = body.trim();
-    if (trimmed.length <= max) return trimmed;
-    return '${trimmed.substring(0, max)}…';
-  }
-
-  /// MediaServer `/index/api/*` via Luồng A (secret in dart-define) or CommaDesk proxy (JWT).
-  Future<Map<String, dynamic>> _mediaGet(
+  /// Web proxy `/api/rapidmedia/*` — send `Authorization: Bearer`, same as
+  /// every other `/api/*` call in this file (`toggleAutoRecord`, `requestClip`).
+  Future<Map<String, dynamic>> _rapidGet(
     String action,
     Map<String, String> query, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    final useDirect = await _shouldUseDirectMedia();
-    final transport = useDirect ? 'direct' : 'proxy';
-    _recordLog(
-      '$transport $action request ${_queryForLog(query)} timeout=${timeout.inSeconds}s',
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+
+    final uri = Uri.parse('$_baseUrl/rapidmedia/$action').replace(
+      queryParameters: query,
     );
-    if (useDirect) {
-      return _directMediaGet(action, query, timeout: timeout);
+    final res = await http.get(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    }).timeout(timeout);
+
+    debugPrint('[RECORD] $action → ${res.statusCode} ${res.body}');
+
+    if (res.statusCode == 401 || res.statusCode == 403) {
+      throw Exception('Phiên đăng nhập hết hạn. Hãy đăng nhập lại.'.tr);
     }
-    return _proxyMediaGet(action, query, timeout: timeout);
-  }
 
-  Future<Map<String, dynamic>> _directMediaGet(
-    String action,
-    Map<String, String> query, {
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final params = {
-      'secret': ApiConfig.mediaApiSecret,
-      ...query,
-    };
-    final uri = Uri.parse('${ApiConfig.mediaManagementBase}/index/api/$action')
-        .replace(queryParameters: params);
-
-    _recordLog('direct GET ${uri.replace(queryParameters: _queryForLog(params))}');
-    final res = await http.get(uri).timeout(timeout);
-    _recordLog('direct $action http=${res.statusCode} body=${_truncateBody(res.body)}');
-    return _parseMediaResponse(res, action, transport: 'direct');
-  }
-
-  Future<Map<String, dynamic>> _proxyMediaGet(
-    String action,
-    Map<String, String> query, {
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final res = await CommaDeskApi.instance.get(
-      '/media-recording/$action',
-      query: query,
-      timeout: timeout,
-    );
-    _recordLog(
-      'proxy $action http=${res.statusCode} path=/media-recording/$action query=${_queryForLog(query)} body=${_truncateBody(res.body)}',
-    );
-    if (res.statusCode == 503) {
-      throw Exception(
-        'Chưa cấu hình MEDIA_MANAGEMENT_URL và MEDIA_API_SECRET trên máy chủ CommaDesk',
-      );
-    }
-    return _parseMediaResponse(res, action, transport: 'proxy');
-  }
-
-  Map<String, dynamic> _parseMediaResponse(
-    http.Response res,
-    String action, {
-    String transport = 'media',
-  }) {
     Map<String, dynamic> json;
     try {
       final decoded = jsonDecode(res.body);
@@ -191,33 +167,20 @@ class RecordingStore extends ChangeNotifier {
         throw FormatException('unexpected body');
       }
       json = decoded;
-      _recordLog('$transport $action parsed ${_summarizeMediaJson(json)}');
-    } catch (e) {
-      _recordLog(
-        '$transport $action parse failed http=${res.statusCode} error=$e body=${_truncateBody(res.body)}',
-      );
-      if (res.statusCode == 401) {
-        throw Exception('Phiên đăng nhập hết hạn — vui lòng đăng nhập lại');
-      }
-      if (res.statusCode == 403) {
-        throw Exception('Không có quyền ghi hình camera này');
-      }
-      throw Exception('Máy chủ ghi hình trả về lỗi (${res.statusCode})');
+    } catch (_) {
+      throw Exception('${'Máy chủ ghi hình trả về lỗi'.tr} (${res.statusCode})');
     }
 
+    final payload = json.containsKey('code')
+        ? json
+        : (json['data'] is Map<String, dynamic>
+            ? json['data'] as Map<String, dynamic>
+            : json);
+
     if (res.statusCode != 200) {
-      _recordLog('$transport $action failed http=${res.statusCode}');
-      final err = json['error']?.toString();
-      if (err != null && err.isNotEmpty) {
-        throw Exception(err);
-      }
-      final msg = json['message']?.toString();
-      if (msg != null && msg.isNotEmpty) {
-        throw Exception(msg);
-      }
-      throw Exception(_messageFrom(json, json, fallback: 'Lỗi ghi hình'));
+      throw Exception(_messageFrom(json, payload, fallback: '${'Lỗi ghi hình'.tr} (${res.statusCode})'));
     }
-    return json;
+    return payload;
   }
 
   bool _isApiOk(Map<String, dynamic> json) {
@@ -231,26 +194,22 @@ class RecordingStore extends ChangeNotifier {
     Map<String, dynamic> payload, {
     required String fallback,
   }) {
-    final raw = (payload['msg'] ?? json['error'] ?? json['message'])
+    final raw = (payload['msg'] ?? json['error'] ?? json['message'] ?? payload['error'])
         ?.toString();
     final code = payload['code'];
     if (code == -500 || raw == 'can not find the stream') {
-      return 'Camera chưa online trên máy chủ ghi hình';
+      return 'Camera chưa online trên máy chủ ghi hình'.tr;
     }
-    if (code == -100) {
-      final lower = (raw ?? '').toLowerCase();
-      if (lower.contains('ip is not allowed')) {
-        return 'Thiết bị không được phép gọi API ghi hình trực tiếp — đang chuyển qua CommaDesk';
-      }
-      return 'Không có quyền ghi hình (secret MediaServer sai hoặc bị từ chối)';
-    }
-    if (code == -300) return 'Thiếu thông tin camera để ghi hình';
+    if (code == -100) return 'Không có quyền ghi hình'.tr;
+    if (code == -300) return 'Thiếu thông tin camera để ghi hình'.tr;
     if (raw == null || raw.isEmpty || raw.toLowerCase() == 'success') {
       return fallback;
     }
     return raw;
   }
 
+  /// Fetch all recording files for [camera] between [startDate] and [endDate].
+  /// Dates format: "YYYY-MM-DD"
   Future<void> fetchRecordings({
     required String cameraId,
     required String app,
@@ -259,12 +218,14 @@ class RecordingStore extends ChangeNotifier {
     required String startDate,
     required String endDate,
   }) async {
-    final token = await CommaDeskApi.instance.readAccessToken() ?? '';
+    final token = await _getToken();
+    if (token == null) return;
     _loading[cameraId] = true;
     _notifyCamera(cameraId);
 
     final resolvedApp = _appName(app);
     final allDates = _datesBetween(startDate, endDate);
+    // Prefer the most recent days when the range is longer than 7.
     final dates = allDates.length <= 7
         ? allDates
         : allDates.sublist(allDates.length - 7);
@@ -273,7 +234,7 @@ class RecordingStore extends ChangeNotifier {
     try {
       await Future.wait(dates.map((d) async {
         try {
-          final json = await _mediaGet('getMP4RecordFile', {
+          final json = await _rapidGet('getMP4RecordFile', {
             'vhost': '__defaultVhost__',
             'app': resolvedApp,
             'stream': stream,
@@ -287,7 +248,7 @@ class RecordingStore extends ChangeNotifier {
                 fileName: p,
                 app: resolvedApp,
                 stream: stream,
-                serverUrl: ApiConfig.mediaPublicBase,
+                serverUrl: '$_baseUrl/media',
                 token: token,
               ));
             }
@@ -312,13 +273,14 @@ class RecordingStore extends ChangeNotifier {
     }
   }
 
+  /// Check if a camera is currently recording MP4 (`type=1`).
   Future<void> checkRecordStatus({
     required String cameraId,
     required String app,
     required String stream,
   }) async {
     try {
-      final json = await _mediaGet(
+      final json = await _rapidGet(
         'isRecording',
         {
           'type': '1',
@@ -340,63 +302,73 @@ class RecordingStore extends ChangeNotifier {
     }
   }
 
+  /// Start manual MP4 recording (`type=1`).
   Future<void> startRecord({
     required String cameraId,
     required String app,
     required String stream,
   }) async {
-    final resolvedApp = _appName(app);
-    _recordLog(
-      'startRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${await _recordingTransport()}',
-    );
-    final json = await _mediaGet('startRecord', {
+    final json = await _rapidGet('startRecord', {
       'type': '1',
       'vhost': '__defaultVhost__',
-      'app': resolvedApp,
+      'app': _appName(app),
       'stream': stream,
     });
     if (_isApiOk(json)) {
-      _recordLog('startRecord OK cameraId=$cameraId ${_summarizeMediaJson(json)}');
       _isRecording[cameraId] = true;
       _notifyCamera(cameraId);
       return;
     }
-    final err = _messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình');
-    _recordLog('startRecord business error cameraId=$cameraId $err ${_summarizeMediaJson(json)}');
-    throw Exception(err);
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'.tr));
   }
 
+  /// Stop manual MP4 recording (`type=1`).
   Future<void> stopRecord({
     required String cameraId,
     required String app,
     required String stream,
   }) async {
-    final resolvedApp = _appName(app);
-    _recordLog(
-      'stopRecord cameraId=$cameraId app=$resolvedApp stream=$stream transport=${await _recordingTransport()}',
-    );
-    final json = await _mediaGet('stopRecord', {
+    final json = await _rapidGet('stopRecord', {
       'type': '1',
       'vhost': '__defaultVhost__',
-      'app': resolvedApp,
+      'app': _appName(app),
       'stream': stream,
     });
     if (_isApiOk(json)) {
-      _recordLog('stopRecord OK cameraId=$cameraId ${_summarizeMediaJson(json)}');
       _isRecording[cameraId] = false;
       _notifyCamera(cameraId);
       return;
     }
-    final err = _messageFrom(json, json, fallback: 'Lỗi dừng ghi hình');
-    _recordLog('stopRecord business error cameraId=$cameraId $err ${_summarizeMediaJson(json)}');
-    throw Exception(err);
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'.tr));
   }
 
+  /// Toggle enableMp4 auto-record for a proxy camera.
+  Future<void> toggleAutoRecord({
+    required String cameraId,
+    required bool enable,
+  }) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+    final uri = Uri.parse('$_baseUrl/proxies/$cameraId');
+    final res = await http.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'enableMp4': enable}),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw Exception('Lỗi cập nhật cài đặt ghi hình'.tr);
+    }
+  }
+
+  /// Delete a recording file.
   Future<void> deleteRecording({
     required String cameraId,
     required RecordingFile file,
   }) async {
-    final json = await _mediaGet('deleteRecordDirectory', {
+    final json = await _rapidGet('deleteRecordDirectory', {
       'vhost': '__defaultVhost__',
       'app': file.app,
       'stream': file.stream,
@@ -404,24 +376,11 @@ class RecordingStore extends ChangeNotifier {
       'name': file.fileName,
     });
     if (_isApiOk(json)) {
-      final list = _cache[cameraId];
-      if (list != null) {
-        _cache[cameraId] = list.where((r) => r.id != file.id).toList();
-        _notifyCamera(cameraId);
-      }
+      _cache[cameraId]?.removeWhere((r) => r.id == file.id);
+      _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'));
-  }
-
-  /// Auto-record toggle is not exposed on CommaDesk catalog yet.
-  Future<void> toggleAutoRecord({
-    required String cameraId,
-    required bool enable,
-  }) async {
-    debugPrint(
-      '[RECORD] toggleAutoRecord($cameraId, $enable) — chưa có API CommaDesk tương đương',
-    );
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'.tr));
   }
 
   static String errorText(Object e) {
@@ -429,37 +388,51 @@ class RecordingStore extends ChangeNotifier {
     return s.startsWith('Exception: ') ? s.substring(11) : s;
   }
 
-  /// Request a clip — CommaDesk chưa có `/recordings/clip`; cần MediaServer trực tiếp.
-  Future<String> requestClip(
-    RecordingFile file,
-    int startTime,
-    int duration,
-  ) async {
-    if (!ApiConfig.hasMediaRecording) {
-      throw Exception(
-        'Cắt clip thủ công chưa hỗ trợ qua CommaDesk API — dùng dashboard hoặc MediaServer.',
-      );
+  /// Request a 30s clip from the backend.
+  Future<String> requestClip(RecordingFile file, int startTime, int duration) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+    
+    final uri = Uri.parse('${ApiConfig.apiV1Base}/recordings/clip');
+    final res = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'app': file.app,
+        'stream': file.stream,
+        'date': file.date,
+        'fileName': file.fileName,
+        'startTime': startTime,
+        'duration': duration,
+      }),
+    ).timeout(const Duration(seconds: 30));
+
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      if (json['success'] == true) {
+        return json['url'] as String;
+      }
+      throw Exception('Lỗi tạo bản cắt'.tr);
+    } else {
+      final json = jsonDecode(res.body);
+      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt'.tr);
     }
-    throw Exception(
-      'Cắt clip thủ công chưa hỗ trợ qua CommaDesk API — dùng dashboard hoặc MediaServer.',
-    );
   }
 
+  // helpers
   List<String> _datesBetween(String start, String end) {
-    final s = DateTime.tryParse(start);
-    final e = DateTime.tryParse(end);
-    if (s == null || e == null) return [start];
-    final out = <String>[];
-    var cur = DateTime(s.year, s.month, s.day);
-    final last = DateTime(e.year, e.month, e.day);
-    while (!cur.isAfter(last)) {
-      out.add(
-        '${cur.year.toString().padLeft(4, '0')}-'
-        '${cur.month.toString().padLeft(2, '0')}-'
-        '${cur.day.toString().padLeft(2, '0')}',
-      );
+    final dates = <String>[];
+    DateTime cur = DateTime.parse(start);
+    final endDate = DateTime.parse(end);
+    while (!cur.isAfter(endDate)) {
+      dates.add(cur.toIso8601String().split('T')[0]);
       cur = cur.add(const Duration(days: 1));
     }
-    return out;
+    return dates;
   }
+
+  String get todayStr => DateTime.now().toIso8601String().split('T')[0];
 }

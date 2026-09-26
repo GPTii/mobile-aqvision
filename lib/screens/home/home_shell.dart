@@ -8,7 +8,7 @@ import '../../data/notification_store.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
 import '../settings_screen.dart';
-import 'tabs/report_tab.dart';
+import 'tabs/news_tab.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -23,14 +23,14 @@ class _HomeShellState extends State<HomeShell> {
   List<Widget> get _tabs => [
     HomeTab(),
     CameraTab(),
-    ReportTab(),
+    NewsTab(),
     SettingsScreen(),
   ];
 
   List<_NavItemData> get _navItems => [
     _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'.tr),
     _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'.tr),
-    _NavItemData(icon: Icons.bar_chart_rounded, outlineIcon: Icons.bar_chart_outlined, label: 'Báo cáo'.tr),
+    _NavItemData(icon: Icons.article_rounded, outlineIcon: Icons.article_outlined, label: 'Tin tức'.tr),
     _NavItemData(icon: Icons.settings_rounded, outlineIcon: Icons.settings_outlined, label: 'Cài đặt'.tr),
   ];
 

@@ -4,10 +4,12 @@ import '../theme/app_colors.dart';
 import '../data/app_theme_store.dart';
 import '../data/auth_store.dart';
 import 'account_info_screen.dart';
+import 'cloud_storage_screen.dart';
 import 'service_package_screen.dart';
 import '../widgets/prompt_dialog.dart';
 import 'gallery_screen.dart';
 import 'auth/login_screen.dart';
+import '../data/app_release_store.dart';
 import 'home/version_history_screen.dart';
 import '../utils/app_strings.dart';
 
@@ -21,6 +23,12 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoPlay = true;
   bool _cellularPlay = true;
+
+  @override
+  void initState() {
+    super.initState();
+    AppReleaseStore.instance.fetchReleases();
+  }
 
   Future<void> _logout(BuildContext context) async {
     final confirmed = await showConfirmDialog(
@@ -157,6 +165,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => const ServicePackageScreen())),
                     ),
+                    _SettingsRow(
+                      icon: Icons.cloud_outlined,
+                      iconColor: AppColors.accentSecondary,
+                      iconBg: AppColors.headerBackground,
+                      label: 'Dung lượng Cloud'.tr,
+                      onTap: () => Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const CloudStorageScreen())),
+                    ),
                   ]),
                   const SizedBox(height: 20),
 
@@ -233,14 +249,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailingText: 'Giải mã phần cứng'.tr,
                       onTap: () {},
                     ),
-                    _SettingsRow(
-                      icon: Icons.article_outlined,
-                      iconColor: AppColors.success,
-                      iconBg: AppColors.success.withOpacity(0.1),
-                      label: 'Nhật ký'.tr,
-                      trailingText: kAppVersionHistory.isEmpty ? null : kAppVersionHistory.first.version,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const VersionHistoryScreen()),
+                    ListenableBuilder(
+                      listenable: AppReleaseStore.instance,
+                      builder: (context, _) => _SettingsRow(
+                        icon: Icons.article_outlined,
+                        iconColor: AppColors.success,
+                        iconBg: AppColors.success.withOpacity(0.1),
+                        label: 'Nhật ký'.tr,
+                        trailingText: AppReleaseStore.instance.latest?.version,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const VersionHistoryScreen()),
+                        ),
                       ),
                     ),
                   ]),
