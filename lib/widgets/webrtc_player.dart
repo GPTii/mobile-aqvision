@@ -107,15 +107,10 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      final query = {
-        'app': widget.app,
-        'stream': widget.stream,
-        'type': 'play',
-        if (ApiConfig.mediaApiSecret.isNotEmpty)
-          'secret': ApiConfig.mediaApiSecret,
-      };
-      final uri = Uri.parse('${ApiConfig.mediaManagementBase}/index/api/webrtc')
-          .replace(queryParameters: query);
+      final uri = Uri.parse(
+        '${ApiConfig.mediaBase}/index/api/webrtc'
+        '?app=${Uri.encodeComponent(widget.app)}&stream=${Uri.encodeComponent(widget.stream)}&type=play',
+      );
       final res = await http.post(
         uri,
         headers: {

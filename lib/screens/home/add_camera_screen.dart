@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_config.dart';
 import '../../theme/app_colors.dart';
-import '../../utils/app_strings.dart';
 
 class AddCameraScreen extends StatefulWidget {
   final Map<String, dynamic>? cameraToEdit;
@@ -101,12 +100,12 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       } else {
         if (!mounted) return;
         final json = jsonDecode(res.body);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(json["error"] ?? "Lỗi".tr)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(json["error"] ?? "Lỗi")));
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi kết nối".tr)));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi kết nối")));
     }
   }
 
@@ -117,9 +116,9 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(widget.cameraToEdit == null ? "Thêm Camera".tr : "Sửa Camera".tr, style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(widget.cameraToEdit == null ? "Thêm Camera" : "Sửa Camera", style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -132,27 +131,27 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
             children: [
               TextFormField(
                 controller: _appController,
-                style: TextStyle(color: AppColors.textPrimary),
-                decoration: InputDecoration(labelText: "App (Thường là 'live')".tr, filled: true, fillColor: AppColors.surface),
-                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập App".tr : null,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: "App (Thường là 'live')", filled: true, fillColor: AppColors.surface),
+                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập App" : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _streamController,
-                style: TextStyle(color: AppColors.textPrimary),
-                decoration: InputDecoration(labelText: "Stream ID (Mã camera)".tr, filled: true, fillColor: AppColors.surface),
-                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập Stream ID".tr : null,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: "Stream ID (Mã camera)", filled: true, fillColor: AppColors.surface),
+                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập Stream ID" : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _urlController,
-                style: TextStyle(color: AppColors.textPrimary),
-                decoration: InputDecoration(labelText: "Source URL (RTSP/RTMP/HTTP)", filled: true, fillColor: AppColors.surface),
-                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập URL nguồn".tr : null,
+                style: const TextStyle(color: AppColors.textPrimary),
+                decoration: const InputDecoration(labelText: "Source URL (RTSP/RTMP/HTTP)", filled: true, fillColor: AppColors.surface),
+                validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập URL nguồn" : null,
               ),
-              SizedBox(height: 16),
-              Text("Nhóm (Có thể chọn nhiều)".tr, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              SizedBox(height: 8),
+              const SizedBox(height: 16),
+              const Text("Nhóm (Có thể chọn nhiều)", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -177,12 +176,12 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                   );
                 }).toList(),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: CheckboxListTile(
-                      title: Text("Enable HLS", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                      title: const Text("Enable HLS", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
                       value: _enableHls,
                       onChanged: (val) => setState(() => _enableHls = val ?? true),
                       controlAffinity: ListTileControlAffinity.leading,
@@ -192,7 +191,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                   ),
                   Expanded(
                     child: CheckboxListTile(
-                      title: Text("Enable MP4", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                      title: const Text("Enable MP4", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
                       value: _enableMp4,
                       onChanged: (val) => setState(() => _enableMp4 = val ?? false),
                       controlAffinity: ListTileControlAffinity.leading,
@@ -203,28 +202,28 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                 ],
               ),
               CheckboxListTile(
-                title: Text("Cloud Sync", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                title: const Text("Cloud Sync", style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
                 value: _enableCloudSync,
                 onChanged: (val) => setState(() => _enableCloudSync = val ?? false),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
                 activeColor: AppColors.accent,
               ),
-              SizedBox(height: 32),
+              const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: _isLoading ? CircularProgressIndicator(color: AppColors.textPrimary) : Text("LƯU".tr),
+                child: _isLoading ? const CircularProgressIndicator(color: AppColors.textPrimary) : const Text("LƯU"),
               ),
               if (widget.cameraToEdit != null) ...[
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextButton(
                   onPressed: _isLoading ? null : _delete,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     foregroundColor: AppColors.danger,
                   ),
-                  child: Text("Xóa Camera".tr),
+                  child: const Text("Xóa Camera"),
                 ),
               ],
             ],
@@ -239,11 +238,11 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text("Xác nhận xóa".tr, style: TextStyle(color: AppColors.textPrimary)),
-        content: Text("Bạn có chắc chắn muốn xóa camera này không?".tr, style: TextStyle(color: AppColors.textSecondary)),
+        title: const Text("Xác nhận xóa", style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text("Bạn có chắc chắn muốn xóa camera này không?", style: TextStyle(color: AppColors.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text("Hủy".tr, style: TextStyle(color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text("Xóa".tr, style: TextStyle(color: AppColors.danger))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy", style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Xóa", style: TextStyle(color: AppColors.danger))),
         ],
       ),
     );
@@ -265,12 +264,12 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       } else {
         if (!mounted) return;
         final json = jsonDecode(res.body);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(json["error"] ?? "Lỗi".tr)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(json["error"] ?? "Lỗi")));
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi kết nối".tr)));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi kết nối")));
     }
   }
 }

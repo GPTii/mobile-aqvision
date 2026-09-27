@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/commadesk_api.dart';
+import '../config/api_config.dart';
 
 enum NotificationSeverity { danger, warning, info, subscription }
 
@@ -24,8 +27,9 @@ class AppNotification {
   });
 }
 
-/// Inbox notifications from CommaDesk `GET /api/v1/notifications`.
-/// AI retail alerts from `GET /api/v1/alerts` are merged when available.
+/// Notifications feed backed by the real `/api/system/alerts` API.
+/// When called from Mobile with Bearer token, backend returns
+/// user-scoped Notifications from DB instead of system-wide alerts.
 class NotificationStore extends ChangeNotifier {
   static final NotificationStore instance = NotificationStore._();
 
@@ -36,108 +40,100 @@ class NotificationStore extends ChangeNotifier {
   bool offlineAlertsEnabled = true;
   bool systemAlertsEnabled = true;
 
+
   NotificationStore._() {
     _loadPrefs();
   }
 
   Future<void> _loadPrefs() async {
-    // Local-only toggles until CommaDesk exposes mobile alert prefs.
+    final prefs = await SharedPreferences.getInstance();
+    motionAlertsEnabled = prefs.getBool('motionAlertsEnabled') ?? true;
+    offlineAlertsEnabled = prefs.getBool('offlineAlertsEnabled') ?? true;
+    systemAlertsEnabled = prefs.getBool('systemAlertsEnabled') ?? true;
     notifyListeners();
   }
+
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
   bool get isLoading => _loading;
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
+  String get _baseUrl => ApiConfig.apiBase;
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  /// Fetch user-scoped notifications from the backend.
+  /// The `/api/system/alerts` endpoint detects Bearer token and returns
+  /// only the current user's notifications from the Notification table.
   Future<void> fetchAlerts() async {
+    final token = await _getToken();
+    if (token == null) return;
+
     _loading = true;
     notifyListeners();
 
     try {
-      final items = <AppNotification>[];
+      final uri = Uri.parse('$_baseUrl/system/alerts');
+      final res = await http.get(uri, headers: {
+        'Authorization': 'Bearer $token',
+      }).timeout(const Duration(seconds: 10));
 
-      // In-app inbox
-      try {
-        final raw = await CommaDeskApi.instance.getJson('/notifications');
-        final data = CommaDeskApi.unwrapBody(raw);
-        final list = data is Map && data['items'] is List
-            ? CommaDeskApi.asMapList(data['items'])
-            : CommaDeskApi.asMapList(data);
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        final List data = json['data'] ?? [];
 
-        for (final item in list) {
-          final createdAt =
-              DateTime.tryParse(item['created_at']?.toString() ?? '') ??
-                  DateTime.now();
-          items.add(AppNotification(
-            id: item['id']?.toString() ?? '',
-            title: item['title']?.toString() ?? 'Thông báo',
-            message: item['body']?.toString() ?? '',
-            source: item['sender_name']?.toString() ?? 'CommaDesk',
-            time: _formatTime(createdAt),
-            severity: NotificationSeverity.info,
-            read: item['is_read'] == true || item['isRead'] == true,
+        _notifications.clear();
+        for (int i = 0; i < data.length; i++) {
+          final item = data[i];
+          final alertTime = DateTime.tryParse(item['time'] ?? '') ?? DateTime.now();
+
+          // Map server type to Flutter severity
+          NotificationSeverity severity;
+          switch (item['type']) {
+            case 'error':
+            case 'critical':
+              severity = NotificationSeverity.danger;
+              break;
+            case 'warning':
+              severity = NotificationSeverity.warning;
+              break;
+            case 'subscription':
+              severity = NotificationSeverity.subscription;
+              break;
+            default:
+              severity = NotificationSeverity.info;
+          }
+
+          // Filter by user preferences
+          final title = item['title'] ?? '';
+          if (!offlineAlertsEnabled && (title.contains('Camera') || title.contains('ngắt kết nối') || title.contains('kết nối lại'))) continue;
+          if (!systemAlertsEnabled && (title.contains('CPU') || title.contains('Memory') || title.contains('Disk') || title.contains('Cập nhật'))) continue;
+          if (!motionAlertsEnabled && (title.contains('chuyển động') || title.toLowerCase().contains('motion'))) continue;
+
+          _notifications.add(AppNotification(
+            id: item['id']?.toString() ?? 'alert_$i',
+            title: title,
+            message: item['message'] ?? '',
+            source: _extractSource(item['source'] as String? ?? title),
+            time: _formatTime(alertTime),
+            severity: severity,
+            read: item['read'] == true || item['isRead'] == true,
           ));
         }
-      } catch (e) {
-        debugPrint('[NotificationStore] inbox error: $e');
       }
-
-      // AI / retail alerts
-      if (motionAlertsEnabled || offlineAlertsEnabled) {
-        try {
-          final raw = await CommaDeskApi.instance.getJson('/alerts');
-          final list = raw is List
-              ? CommaDeskApi.asMapList(raw)
-              : CommaDeskApi.asMapList(CommaDeskApi.unwrapBody(raw));
-
-          for (final item in list) {
-            final title = item['title']?.toString() ??
-                item['ref_event_id']?.toString() ??
-                'Cảnh báo AI';
-            if (!motionAlertsEnabled &&
-                title.toLowerCase().contains('motion')) {
-              continue;
-            }
-            if (!offlineAlertsEnabled &&
-                (title.contains('Camera') || title.contains('offline'))) {
-              continue;
-            }
-
-            final createdAt =
-                DateTime.tryParse(item['created_at']?.toString() ?? '') ??
-                    DateTime.now();
-            final status = (item['status'] ?? '').toString().toLowerCase();
-            final severity = status.contains('warn') || status.contains('danger')
-                ? NotificationSeverity.warning
-                : NotificationSeverity.info;
-
-            items.add(AppNotification(
-              id: 'alert_${item['ref_event_id'] ?? item['id'] ?? title}',
-              title: title,
-              message: item['message']?.toString() ?? '',
-              source: item['instance_id']?.toString() ?? 'Camera AI',
-              time: _formatTime(createdAt),
-              severity: severity,
-              read: false,
-            ));
-          }
-        } catch (e) {
-          debugPrint('[NotificationStore] alerts error: $e');
-        }
-      }
-
-      _notifications
-        ..clear()
-        ..addAll(items);
     } catch (e) {
-      debugPrint('[NotificationStore] fetchAlerts error: $e');
+      debugPrint('NotificationStore.fetchAlerts error: $e');
     } finally {
       _loading = false;
       notifyListeners();
     }
   }
 
-  Future<void> markAsRead(String id) async {
+  /// Mark a single notification as read (synced to server).
+  void markAsRead(String id) async {
     for (final n in _notifications) {
       if (n.id == id) {
         n.read = true;
@@ -146,23 +142,44 @@ class NotificationStore extends ChangeNotifier {
     }
     notifyListeners();
 
-    try {
-      await CommaDeskApi.instance.patch('/notifications/$id/read');
-    } catch (e) {
-      debugPrint('[NotificationStore] mark read failed: $e');
+    final token = await _getToken();
+    if (token != null) {
+      try {
+        await http.patch(
+          Uri.parse('${ApiConfig.apiV1Base}/notifications'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'id': id}),
+        );
+      } catch (e) {
+        debugPrint('Failed to mark notification as read: $e');
+      }
     }
   }
 
+  /// Mark all notifications as read (synced to server).
   Future<void> markAllAsRead() async {
     for (final n in _notifications) {
       n.read = true;
     }
     notifyListeners();
 
-    try {
-      await CommaDeskApi.instance.patch('/notifications/read-all');
-    } catch (e) {
-      debugPrint('[NotificationStore] mark all read failed: $e');
+    final token = await _getToken();
+    if (token != null) {
+      try {
+        await http.patch(
+          Uri.parse('${ApiConfig.apiV1Base}/notifications'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({}),
+        );
+      } catch (e) {
+        debugPrint('Failed to mark all notifications as read: $e');
+      }
     }
   }
 
@@ -171,22 +188,61 @@ class NotificationStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setMotionAlertsEnabled(bool value) {
+  void setMotionAlertsEnabled(bool value) async {
     motionAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('motionAlertsEnabled', value);
     notifyListeners();
+    _syncPrefsWithServer();
     fetchAlerts();
   }
 
-  void setOfflineAlertsEnabled(bool value) {
+  void setOfflineAlertsEnabled(bool value) async {
     offlineAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('offlineAlertsEnabled', value);
     notifyListeners();
+    _syncPrefsWithServer();
     fetchAlerts();
   }
 
-  void setSystemAlertsEnabled(bool value) {
+  void setSystemAlertsEnabled(bool value) async {
     systemAlertsEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('systemAlertsEnabled', value);
     notifyListeners();
+    _syncPrefsWithServer();
     fetchAlerts();
+  }
+
+  Future<void> _syncPrefsWithServer() async {
+    final token = await _getToken();
+    if (token == null) return;
+    try {
+      await http.patch(
+        Uri.parse('${ApiConfig.apiV1Base}/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'motionAlerts': motionAlertsEnabled,
+          'offlineAlerts': offlineAlertsEnabled,
+          'systemAlerts': systemAlertsEnabled,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Failed to sync prefs with server: $e');
+    }
+  }
+
+  // --- Helpers ---
+
+  String _extractSource(String titleOrSource) {
+    if (titleOrSource == 'camera') return 'Camera';
+    if (titleOrSource.contains('Camera')) return 'Camera';
+    if (titleOrSource.contains('CPU') || titleOrSource.contains('Memory') || titleOrSource.contains('Disk')) return 'Hệ thống';
+    return titleOrSource.isNotEmpty ? titleOrSource : 'Hệ thống';
   }
 
   String _formatTime(DateTime time) {

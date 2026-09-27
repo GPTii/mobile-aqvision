@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'debounced_notifier.dart';
-import '../utils/app_strings.dart';
 
 class RecordingFile {
   final String date;       // YYYY-MM-DD
@@ -57,9 +56,9 @@ class RecordingFile {
   String get displayTime {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 6 && parts[0].length == 4) {
-      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}'.tr;
+      return 'Bắt đầu: ${parts[3]}:${parts[4]}:${parts[5]}';
     } else if (parts.length >= 3) {
-      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}'.tr;
+      return 'Bắt đầu: ${parts[0]}:${parts[1]}:${parts[2]}';
     }
     return fileName;
   }
@@ -68,37 +67,9 @@ class RecordingFile {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 7 && parts[0].length == 4) {
       int? dur = int.tryParse(parts[6]);
-      if (dur != null && dur > 0) return 'Thời lượng: $dur giây'.tr;
+      if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
     }
     return '';
-  }
-
-  /// Seconds since midnight the recording started — same filename parsing as
-  /// [displayTime], but numeric for positioning on the day timeline.
-  int? get startOfDaySeconds {
-    final parts = fileName.replaceAll('.mp4', '').split('-');
-    List<String> hms;
-    if (parts.length >= 6 && parts[0].length == 4) {
-      hms = [parts[3], parts[4], parts[5]];
-    } else if (parts.length >= 3) {
-      hms = [parts[0], parts[1], parts[2]];
-    } else {
-      return null;
-    }
-    final h = int.tryParse(hms[0]);
-    final m = int.tryParse(hms[1]);
-    final s = int.tryParse(hms[2]);
-    if (h == null || m == null || s == null) return null;
-    return h * 3600 + m * 60 + s;
-  }
-
-  /// Duration in seconds — same filename parsing as [durationText], numeric.
-  int? get durationSeconds {
-    final parts = fileName.replaceAll('.mp4', '').split('-');
-    if (parts.length >= 7 && parts[0].length == 4) {
-      return int.tryParse(parts[6]);
-    }
-    return null;
   }
 
   String get id => '$date/$fileName';
@@ -144,7 +115,7 @@ class RecordingStore extends ChangeNotifier {
     Duration timeout = const Duration(seconds: 10),
   }) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+    if (token == null) throw Exception('Chưa đăng nhập');
 
     final uri = Uri.parse('$_baseUrl/rapidmedia/$action').replace(
       queryParameters: query,
@@ -157,7 +128,7 @@ class RecordingStore extends ChangeNotifier {
     debugPrint('[RECORD] $action → ${res.statusCode} ${res.body}');
 
     if (res.statusCode == 401 || res.statusCode == 403) {
-      throw Exception('Phiên đăng nhập hết hạn. Hãy đăng nhập lại.'.tr);
+      throw Exception('Phiên đăng nhập hết hạn. Hãy đăng nhập lại.');
     }
 
     Map<String, dynamic> json;
@@ -168,7 +139,7 @@ class RecordingStore extends ChangeNotifier {
       }
       json = decoded;
     } catch (_) {
-      throw Exception('${'Máy chủ ghi hình trả về lỗi'.tr} (${res.statusCode})');
+      throw Exception('Máy chủ ghi hình trả về lỗi (${res.statusCode})');
     }
 
     final payload = json.containsKey('code')
@@ -178,7 +149,7 @@ class RecordingStore extends ChangeNotifier {
             : json);
 
     if (res.statusCode != 200) {
-      throw Exception(_messageFrom(json, payload, fallback: '${'Lỗi ghi hình'.tr} (${res.statusCode})'));
+      throw Exception(_messageFrom(json, payload, fallback: 'Lỗi ghi hình (${res.statusCode})'));
     }
     return payload;
   }
@@ -198,10 +169,10 @@ class RecordingStore extends ChangeNotifier {
         ?.toString();
     final code = payload['code'];
     if (code == -500 || raw == 'can not find the stream') {
-      return 'Camera chưa online trên máy chủ ghi hình'.tr;
+      return 'Camera chưa online trên máy chủ ghi hình';
     }
-    if (code == -100) return 'Không có quyền ghi hình'.tr;
-    if (code == -300) return 'Thiếu thông tin camera để ghi hình'.tr;
+    if (code == -100) return 'Không có quyền ghi hình';
+    if (code == -300) return 'Thiếu thông tin camera để ghi hình';
     if (raw == null || raw.isEmpty || raw.toLowerCase() == 'success') {
       return fallback;
     }
@@ -319,7 +290,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'.tr));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi bắt đầu ghi hình'));
   }
 
   /// Stop manual MP4 recording (`type=1`).
@@ -339,7 +310,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'.tr));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi dừng ghi hình'));
   }
 
   /// Toggle enableMp4 auto-record for a proxy camera.
@@ -348,7 +319,7 @@ class RecordingStore extends ChangeNotifier {
     required bool enable,
   }) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+    if (token == null) throw Exception('Chưa đăng nhập');
     final uri = Uri.parse('$_baseUrl/proxies/$cameraId');
     final res = await http.patch(
       uri,
@@ -359,7 +330,7 @@ class RecordingStore extends ChangeNotifier {
       body: jsonEncode({'enableMp4': enable}),
     ).timeout(const Duration(seconds: 10));
     if (res.statusCode != 200) {
-      throw Exception('Lỗi cập nhật cài đặt ghi hình'.tr);
+      throw Exception('Lỗi cập nhật cài đặt ghi hình');
     }
   }
 
@@ -380,7 +351,7 @@ class RecordingStore extends ChangeNotifier {
       _notifyCamera(cameraId);
       return;
     }
-    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'.tr));
+    throw Exception(_messageFrom(json, json, fallback: 'Lỗi xóa bản ghi'));
   }
 
   static String errorText(Object e) {
@@ -391,9 +362,9 @@ class RecordingStore extends ChangeNotifier {
   /// Request a 30s clip from the backend.
   Future<String> requestClip(RecordingFile file, int startTime, int duration) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+    if (token == null) throw Exception('Chưa đăng nhập');
     
-    final uri = Uri.parse('${ApiConfig.apiV1Base}/recordings/clip');
+    final uri = Uri.parse('$_baseUrl/recordings/clip');
     final res = await http.post(
       uri,
       headers: {
@@ -415,10 +386,10 @@ class RecordingStore extends ChangeNotifier {
       if (json['success'] == true) {
         return json['url'] as String;
       }
-      throw Exception('Lỗi tạo bản cắt'.tr);
+      throw Exception('Lỗi tạo bản cắt');
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt'.tr);
+      throw Exception(json['error'] ?? 'Lỗi tạo bản cắt');
     }
   }
 

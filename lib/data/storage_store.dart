@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
-import '../utils/app_strings.dart';
 
 class CameraStorageUsage {
   final String id;
@@ -81,11 +80,12 @@ class StorageStore extends ChangeNotifier {
 
   Future<void>? _inFlight;
 
-  /// De-dupes concurrent callers (e.g. a fast back-and-forth into
-  /// CloudStorageScreen) so they share one request instead of racing to
-  /// write the same singleton fields, where whichever resolves last wins
-  /// even if it's stale/incomplete — the class of bug behind "shows 0MB on
-  /// first login, correct after logging back in".
+  /// ReportTab and ProfileTab both call this from their own `initState()` —
+  /// `IndexedStack` mounts every tab eagerly, so both fire the moment
+  /// `HomeShell` builds. Without de-duping, two concurrent requests race to
+  /// write the same singleton fields and whichever resolves last wins, even
+  /// if it's stale/incomplete — the class of bug behind "shows 0MB on first
+  /// login, correct after logging back in". One in-flight request, shared.
   Future<void> fetchStorage() {
     return _inFlight ??= _doFetchStorage().whenComplete(() => _inFlight = null);
   }
@@ -95,7 +95,7 @@ class StorageStore extends ChangeNotifier {
     final token = prefs.getString("token");
     debugPrint("[STORAGE] fetchStorage() start, token=${token == null ? 'NULL' : '${token.substring(0, 12)}...'}");
     if (token == null) {
-      error = "Chưa đăng nhập".tr;
+      error = "Chưa đăng nhập";
       notifyListeners();
       return;
     }
@@ -138,11 +138,11 @@ class StorageStore extends ChangeNotifier {
         await _saveCache(prefs);
         debugPrint("[STORAGE] parsed OK: usedStorageMb=$usedStorageMb, storageQuotaMb=$storageQuotaMb, cameras=${cameras.length}");
       } else {
-        error = "Không tải được dung lượng lưu trữ".tr;
+        error = "Không tải được dung lượng lưu trữ";
       }
     } catch (e, st) {
       debugPrint("[STORAGE] EXCEPTION: $e\n$st");
-      error = "Không tải được dung lượng lưu trữ".tr;
+      error = "Không tải được dung lượng lưu trữ";
     }
 
     loading = false;

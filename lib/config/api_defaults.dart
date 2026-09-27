@@ -4,7 +4,7 @@ class ApiDefaults {
   ApiDefaults._();
 
   /// Production API host (no scheme).
-  static const String productionHost = 'dev1.api.aqvision.net';
+  static const String productionHost = 'api.aqvision.net';
 
   /// Production URL scheme (`https` or `http`).
   static const String productionScheme = 'https';
