@@ -45,6 +45,7 @@ class Camera {
   String? fmp4Url;
   String? targetUrl;
   String? playProtocol;
+  String? mapLink;
 
   Camera({
     required this.id,
@@ -63,6 +64,7 @@ class Camera {
     this.fmp4Url,
     this.targetUrl,
     this.playProtocol,
+    this.mapLink,
   });
 }
 

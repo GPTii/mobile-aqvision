@@ -64,12 +64,28 @@ class RecordingFile {
   }
 
   String get durationText {
+    final dur = durationSeconds;
+    if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
+    return '';
+  }
+
+  int? get durationSeconds {
     final parts = fileName.replaceAll('.mp4', '').split('-');
     if (parts.length >= 7 && parts[0].length == 4) {
-      int? dur = int.tryParse(parts[6]);
-      if (dur != null && dur > 0) return 'Thời lượng: $dur giây';
+      return int.tryParse(parts[6]);
     }
-    return '';
+    return null;
+  }
+
+  int? get startOfDaySeconds {
+    final parts = fileName.replaceAll('.mp4', '').split('-');
+    if (parts.length >= 6 && parts[0].length == 4) {
+      final h = int.tryParse(parts[3]) ?? 0;
+      final m = int.tryParse(parts[4]) ?? 0;
+      final s = int.tryParse(parts[5]) ?? 0;
+      return h * 3600 + m * 60 + s;
+    }
+    return null;
   }
 
   String get id => '$date/$fileName';

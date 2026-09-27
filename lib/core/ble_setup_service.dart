@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../data/models/eyerus_ble_models.dart';
 import '../data/models/eyerus_qr_data.dart';
+import 'dart:io';
 
 class BleSetupService {
   // Service UUID
@@ -47,11 +48,11 @@ class BleSetupService {
           await FlutterBluePlus.stopScan();
           _device = r.device;
           
-          await _device!.connect(autoConnect: false);
+          await _device!.connect(autoConnect: false, license: License.nonprofit);
           _connectionController.add(true);
           
           // Request MTU (cho Android)
-          if (Theme.of(context).platform == TargetPlatform.android) { // Thường dùng logic check nền tảng, giả lập
+          if (Platform.isAndroid) { // Thường dùng logic check nền tảng, giả lập
              await _device!.requestMtu(517);
           }
 

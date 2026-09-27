@@ -4,8 +4,10 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
+  flutter_blue_plus_winrt
   flutter_webrtc
   geolocator_windows
+  permission_handler_windows
   share_plus
   url_launcher_windows
 )
