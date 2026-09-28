@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../data/auth_store.dart';
 import '../../config/api_config.dart';
+import '../../config/api_defaults.dart';
 import '../../core/ble_setup_service.dart';
 import '../../data/models/eyerus_ble_models.dart';
 import '../../data/models/eyerus_qr_data.dart';
@@ -162,7 +163,7 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
         },
         "mqtt": {
           "enabled": true,
-          "broker_host": ApiConfig.host,
+          "broker_host": ApiDefaults.productionHost,
           "broker_port": 1883,
           "use_tls": false,
           "username": "gw",

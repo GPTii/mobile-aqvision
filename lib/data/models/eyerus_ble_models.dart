@@ -60,6 +60,7 @@ class EyerusBleResult {
   final bool ok;
   final String error;
   final String message;
+  final String? ip;
   final Map<String, dynamic> raw;
 
   EyerusBleResult.fromJson(Map<String, dynamic> json)
@@ -69,5 +70,6 @@ class EyerusBleResult {
         ok = json['ok'] == true,
         error = json['error'] ?? '',
         message = json['message'] ?? '',
+        ip = json['ip'],
         raw = json;
 }

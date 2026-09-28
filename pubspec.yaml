@@ -70,14 +70,16 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon/aqpc_logo.png"
+  image_path: "assets/icon/aqpc_logo_perfect.png"
+  adaptive_icon_background: "#8E0104"
+  adaptive_icon_foreground: "assets/icon/aqpc_logo_perfect.png"
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/icon/aqpc_logo.png
+  image: assets/icon/aqpc_logo_perfect.png
   android_12:
     color: "#FFFFFF"
-    image: assets/icon/aqpc_logo.png
+    image: assets/icon/aqpc_logo_perfect.png
   android: true
   ios: true
 

@@ -30,6 +30,7 @@ class CameraDetailScreen extends StatefulWidget {
 class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
+  bool _forceHls = false;
   final GlobalKey _videoKey = GlobalKey();
 
   @override
@@ -247,11 +248,16 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       );
     }
 
-    if (camera.playProtocol?.toLowerCase() == 'webrtc') {
+    if (!_forceHls) {
       return WebRTCPlayerWidget(
         key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
         app: camera.app ?? 'live',
         stream: camera.cameraCode,
+        onFallback: () {
+          setState(() {
+            _forceHls = true;
+          });
+        },
       );
     }
 
@@ -360,10 +366,15 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: (camera.playProtocol?.toLowerCase() == 'webrtc')
+                                  child: (!_forceHls)
                                       ? WebRTCPlayerWidget(
                                           app: camera.app ?? 'live',
                                           stream: camera.cameraCode,
+                                          onFallback: () {
+                                            setState(() {
+                                              _forceHls = true;
+                                            });
+                                          },
                                         )
                                       : _DetailVideoPlayer(
                                           cameraId: camera.id,
@@ -513,6 +524,23 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       child: _buildActivitySection(camera),
                     ),
                   ),
+                ),
+              );
+            },
+          ),
+          (
+            icon: Icons.settings_input_antenna_rounded,
+            label: _forceHls ? 'HLS' : 'WebRTC',
+            active: !_forceHls,
+            disabled: false,
+            onTap: () {
+              setState(() {
+                _forceHls = !_forceHls;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_forceHls ? 'Đã chuyển sang luồng HLS' : 'Đã chuyển sang luồng WebRTC'),
+                  duration: const Duration(seconds: 1),
                 ),
               );
             },

@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>AQPCamera</string>
+		<string>AQP Connect</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>AQPCamera</string>
+		<string>AQP Connect</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -49,12 +49,11 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
-	
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Ứng dụng cần Bluetooth để kết nối và cài đặt Gateway.</string>
-    <key>NSCameraUsageDescription</key>
-    <string>Ứng dụng cần Camera để quét mã QR trên thiết bị.</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Ứng dụng cần Vị trí để quét sóng WiFi xung quanh thiết bị.</string>
-    </dict>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>Ứng dụng cần Bluetooth để kết nối và cài đặt Gateway.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Ứng dụng cần Camera để quét mã QR trên thiết bị.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Ứng dụng cần Vị trí để quét sóng WiFi xung quanh thiết bị.</string>
+	</dict>
 </plist>

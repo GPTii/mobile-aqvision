@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../theme/app_colors.dart';
@@ -10,8 +10,14 @@ import '../utils/app_strings.dart';
 class WebRTCPlayerWidget extends StatefulWidget {
   final String app;
   final String stream;
+  final VoidCallback? onFallback;
 
-  const WebRTCPlayerWidget({super.key, required this.app, required this.stream});
+  const WebRTCPlayerWidget({
+    super.key,
+    required this.app,
+    required this.stream,
+    this.onFallback,
+  });
 
   @override
   State<WebRTCPlayerWidget> createState() => _WebRTCPlayerWidgetState();
@@ -107,23 +113,33 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
+      final base = ApiConfig.mediaBase.replaceFirst('http://', 'https://');
       final uri = Uri.parse(
-        '${ApiConfig.mediaBase}'.replaceFirst('http://', 'https://') + '/index/api/webrtc'
+        '$base/index/api/webrtc'
         '?app=${Uri.encodeComponent(widget.app)}&stream=${Uri.encodeComponent(widget.stream)}&type=play',
       );
-      final res = await http.post(
-        uri,
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-          if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-        },
-        body: offer.sdp,
-      );
+
+      final httpClient = HttpClient();
+      httpClient.connectionTimeout = const Duration(seconds: 10);
+      
+      final request = await httpClient.postUrl(uri);
+      request.headers.set('Content-Type', 'text/plain');
+      request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      if (token.isNotEmpty) {
+        request.headers.set('Authorization', 'Bearer $token');
+      }
+
+      final sdpBytes = utf8.encode(offer.sdp!);
+      request.headers.set('Content-Length', sdpBytes.length.toString());
+      request.add(sdpBytes);
+
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
 
       if (!mounted) return;
 
-      if (res.statusCode == 200) {
-        final json = jsonDecode(res.body);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(responseBody);
         if (json['sdp'] != null) {
           await _peerConnection!.setRemoteDescription(
             RTCSessionDescription(json['sdp'], 'answer'),
@@ -132,7 +148,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
           throw Exception(json['msg'] ?? 'Server không trả SDP answer'.tr);
         }
       } else {
-        throw Exception('Server lỗi ${res.statusCode}'.tr);
+        throw Exception('Server lỗi ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -191,6 +207,17 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
                   foregroundColor: AppColors.accent,
                 ),
               ),
+              if (widget.onFallback != null) ...[
+                SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: widget.onFallback,
+                  icon: const Icon(Icons.video_library, size: 16),
+                  label: Text('Chuyển sang HLS'.tr),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
