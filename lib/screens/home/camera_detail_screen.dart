@@ -6,6 +6,7 @@ import '../../../main.dart' as import_main;
 
 import '../../data/camera_store.dart';
 import '../../data/notification_store.dart';
+import '../../data/playback_prefs.dart';
 import '../../data/recording_store.dart';
 import '../../data/video_preload_cache.dart';
 import '../../theme/app_colors.dart';
@@ -31,6 +32,8 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
   bool _isAlarmArmed = false;
   bool _recordBusy = false;
   final GlobalKey _videoKey = GlobalKey();
+  // Fullscreen WebRTC opens its own peer connection; drop the inline one meanwhile.
+  bool _fullscreenOpen = false;
 
   @override
   void initState() {
@@ -87,12 +90,50 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
     Navigator.of(context).pop();
   }
 
+  Future<void> _selectProtocol(Camera camera, String protocol) async {
+    if (PlaybackPrefs.protocol.value == protocol) return;
+    await PlaybackPrefs.set(protocol);
+    if (protocol == PlaybackPrefs.webrtc) {
+      // Stop the HLS stream entirely so only WebRTC uses bandwidth.
+      // Wait a frame so the HLS player widget releases its controller first.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final cache = VideoPreloadCache.instance;
+        cache.unpin(camera.id);
+        cache.invalidate(camera.id);
+      });
+    }
+  }
+
+  Widget _buildLivePlayer(Camera camera) {
+    if (PlaybackPrefs.isWebRtc) {
+      return WebRTCPlayerWidget(
+        key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
+        app: camera.app ?? 'live',
+        stream: camera.cameraCode,
+      );
+    }
+    if (camera.hlsUrl?.isNotEmpty ?? false) {
+      return _DetailVideoPlayer(
+        key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
+        cameraId: camera.id,
+        hlsUrl: camera.hlsUrl!,
+      );
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
+      child: Center(
+        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: Listenable.merge([
         CameraStore.instance,
         CameraStore.instance.cameraListenable(widget.cameraId),
+        PlaybackPrefs.protocol,
       ]),
       builder: (context, _) {
         final camera = CameraStore.instance.cameraById(widget.cameraId);
@@ -247,28 +288,11 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
       );
     }
 
-    if (camera.playProtocol?.toLowerCase() == 'webrtc') {
-      return WebRTCPlayerWidget(
-        key: ValueKey('webrtc-${camera.id}-${camera.app}-${camera.cameraCode}'),
-        app: camera.app ?? 'live',
-        stream: camera.cameraCode,
-      );
+    if (_fullscreenOpen && PlaybackPrefs.isWebRtc) {
+      return const ColoredBox(color: Colors.black);
     }
 
-    if (camera.hlsUrl?.isNotEmpty ?? false) {
-      return _DetailVideoPlayer(
-        key: ValueKey('detail-${camera.id}-${camera.hlsUrl}'),
-        cameraId: camera.id,
-        hlsUrl: camera.hlsUrl!,
-      );
-    }
-
-    return DecoratedBox(
-      decoration: BoxDecoration(gradient: AppColors.mediaPlaceholderGradient),
-      child: Center(
-        child: Icon(Icons.videocam_rounded, color: AppColors.mediaPlaceholderIcon, size: 56),
-      ),
-    );
+    return _buildLivePlayer(camera);
   }
 
   Widget _buildPreview(Camera camera) {
@@ -346,29 +370,32 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                       ),
                     ),
                   ),
+                // Protocol switch: only the selected protocol is streamed
+                if (camera.online)
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: _ProtocolSwitch(
+                      value: PlaybackPrefs.protocol.value,
+                      onChanged: (p) => _selectProtocol(camera, p),
+                    ),
+                  ),
                 // Fullscreen button
                 if (camera.online)
                   Positioned(
                     bottom: 12,
                     right: 12,
                     child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(MaterialPageRoute(
+                      onTap: () async {
+                        setState(() => _fullscreenOpen = true);
+                        await Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => Scaffold(
                             backgroundColor: Colors.black,
                             body: SafeArea(
                               child: Center(
                                 child: AspectRatio(
                                   aspectRatio: 16 / 9,
-                                  child: (camera.playProtocol?.toLowerCase() == 'webrtc')
-                                      ? WebRTCPlayerWidget(
-                                          app: camera.app ?? 'live',
-                                          stream: camera.cameraCode,
-                                        )
-                                      : _DetailVideoPlayer(
-                                          cameraId: camera.id,
-                                          hlsUrl: camera.hlsUrl!,
-                                        ),
+                                  child: _buildLivePlayer(camera),
                                 ),
                               ),
                             ),
@@ -380,6 +407,7 @@ class _CameraDetailScreenState extends State<CameraDetailScreen> {
                             floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
                           ),
                         ));
+                        if (mounted) setState(() => _fullscreenOpen = false);
                       },
                       child: Container(
                         padding: const EdgeInsets.all(6),
@@ -1166,6 +1194,55 @@ class _DetailVideoPlayerState extends State<_DetailVideoPlayer> with RouteAware 
                     ),
         ),
       ],
+    );
+  }
+}
+
+/// WebRTC | HLS segmented switch on the live preview.
+class _ProtocolSwitch extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _ProtocolSwitch({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(String protocol, String label) {
+      final selected = value == protocol;
+      return GestureDetector(
+        onTap: () => onChanged(protocol),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.black : Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          option(PlaybackPrefs.webrtc, 'WebRTC'),
+          option(PlaybackPrefs.hls, 'HLS'),
+        ],
+      ),
     );
   }
 }
