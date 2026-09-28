@@ -1,171 +1,130 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import '../data/models/eyerus_ble_models.dart';
-import '../data/models/eyerus_qr_data.dart';
 import 'dart:io';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+
+final improvService = Guid("00467768-6228-2272-4663-277478268000");
+Guid improvChar(int n) => Guid("00467768-6228-2272-4663-27747826800$n");
+
+List<int> improvFrame(int cmd, [List<int> data = const []]) {
+  final out = [cmd, data.length, ...data];
+  return [...out, out.fold<int>(0, (a, b) => a + b) & 0xFF];
+}
+
+/// Result frame -> list of strings (null when the checksum is wrong)
+List<String>? improvStrings(List<int> v) {
+  if (v.length < 3) return null;
+  if (v.sublist(0, v.length - 1).fold<int>(0, (a, b) => a + b) & 0xFF != v.last) return null;
+  final out = <String>[];
+  var i = 2;
+  while (i < v.length - 1) {
+    final n = v[i];
+    out.add(utf8.decode(v.sublist(i + 1, i + 1 + n)));
+    i += 1 + n;
+  }
+  return out;
+}
+
+class ImprovError implements Exception {
+  final int code;
+  ImprovError(this.code);
+  @override String toString() => "Improv error 0x${code.toRadixString(16)}";
+}
 
 class BleSetupService {
-  // Service UUID
-  static const String SERVICE_UUID = "e7e50001-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-  // Characteristic UUIDs
-  static const String INFO_UUID = "e7e50002-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-  static const String STATUS_UUID = "e7e50003-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-  static const String NETWORKS_UUID = "e7e50004-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-  static const String COMMAND_UUID = "e7e50005-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-  static const String RESULT_UUID = "e7e50006-7a1e-4c3b-9d2f-5a6b8c0d1e2f";
-
-  BluetoothDevice? _device;
-  BluetoothCharacteristic? _cmdChar;
-  BluetoothCharacteristic? _resultChar;
-  BluetoothCharacteristic? _statusChar;
-  BluetoothCharacteristic? _infoChar;
-  BluetoothCharacteristic? _networksChar;
-
-  StreamSubscription<List<int>>? _resultSub;
-  StreamSubscription<List<int>>? _statusSub;
+  BluetoothDevice? device;
+  late BluetoothCharacteristic _state, _error, _cmd, _result, _caps;
   
-  // Stream Controllers to notify UI
-  final _statusController = StreamController<EyerusBleStatus>.broadcast();
-  final _resultController = StreamController<EyerusBleResult>.broadcast();
-  final _connectionController = StreamController<bool>.broadcast();
+  final stateStream = StreamController<int>.broadcast();
+  final errorStream = StreamController<int>.broadcast();
+  final resultStream = StreamController<List<int>>.broadcast();
 
-  Stream<EyerusBleStatus> get statusStream => _statusController.stream;
-  Stream<EyerusBleResult> get resultStream => _resultController.stream;
-  Stream<bool> get connectionStream => _connectionController.stream;
+  bool get isConnected => device != null;
 
-  EyerusBleInfo? deviceInfo;
-  
-  /// Bắt đầu quét và kết nối tới thiết bị
-  Future<void> connectToDevice(EyerusQrData qrData) async {
+  Future<void> connectToDevice(String nameOrMac) async {
     bool found = false;
-
-    // Lắng nghe kết quả scan
-    var subscription = FlutterBluePlus.scanResults.listen((results) async {
+    var sub = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
-        if (r.device.platformName == qrData.name || r.device.remoteId.str == qrData.mac) {
+        if (r.device.platformName == nameOrMac || r.device.remoteId.str == nameOrMac) {
           found = true;
           await FlutterBluePlus.stopScan();
-          _device = r.device;
-          
-          await _device!.connect(autoConnect: false, license: License.nonprofit);
-          _connectionController.add(true);
-          
-          // Request MTU (cho Android)
-          if (Platform.isAndroid) { // Thường dùng logic check nền tảng, giả lập
-             await _device!.requestMtu(517);
-          }
-
-          await _discoverServices();
+          device = r.device;
           break;
         }
       }
     });
 
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
-    if (!found) {
-      throw Exception("Không tìm thấy thiết bị ${qrData.name}");
-    }
-  }
+    await FlutterBluePlus.startScan(withServices: [improvService], timeout: const Duration(seconds: 15));
+    await sub.cancel();
 
-  Future<void> _discoverServices() async {
-    if (_device == null) return;
-    List<BluetoothService> services = await _device!.discoverServices();
+    if (!found || device == null) {
+      throw Exception("Không tìm thấy thiết bị $nameOrMac");
+    }
+
+    await device!.connect(timeout: const Duration(seconds: 15));
+    if (Platform.isAndroid) await device!.requestMtu(517);
     
-    for (var service in services) {
-      if (service.uuid.toString() == SERVICE_UUID) {
-        for (var char in service.characteristics) {
-          if (char.uuid.toString() == INFO_UUID) _infoChar = char;
-          if (char.uuid.toString() == STATUS_UUID) _statusChar = char;
-          if (char.uuid.toString() == NETWORKS_UUID) _networksChar = char;
-          if (char.uuid.toString() == COMMAND_UUID) _cmdChar = char;
-          if (char.uuid.toString() == RESULT_UUID) _resultChar = char;
-        }
-      }
-    }
-
-    if (_infoChar == null || _cmdChar == null || _resultChar == null) {
-      throw Exception("Thiết bị không hỗ trợ dịch vụ Eyerus");
-    }
-
-    // Đọc INFO ban đầu
-    List<int> infoBytes = await _infoChar!.read();
-    deviceInfo = EyerusBleInfo.fromJson(jsonDecode(utf8.decode(infoBytes)));
-
-    // Bật notify cho RESULT và STATUS
-    if (_resultChar!.properties.notify) {
-      await _resultChar!.setNotifyValue(true);
-      _resultSub = _resultChar!.lastValueStream.listen((value) async {
-        if (value.isNotEmpty) {
-           // Notify chỉ là cờ báo, cần read() lại để lấy toàn bộ json
-           var fullData = await _resultChar!.read();
-           var resJson = jsonDecode(utf8.decode(fullData));
-           _resultController.add(EyerusBleResult.fromJson(resJson));
-        }
-      });
-    }
-
-    if (_statusChar!.properties.notify) {
-      await _statusChar!.setNotifyValue(true);
-      _statusSub = _statusChar!.lastValueStream.listen((value) async {
-        if (value.isNotEmpty) {
-           var fullData = await _statusChar!.read();
-           var statusJson = jsonDecode(utf8.decode(fullData));
-           _statusController.add(EyerusBleStatus.fromJson(statusJson));
-        }
-      });
-    }
-  }
-
-  /// Ghi lệnh xuống Gateway
-  Future<void> sendCommand(Map<String, dynamic> command) async {
-    if (_cmdChar == null) throw Exception("Chưa kết nối");
-    String jsonStr = jsonEncode(command);
-    List<int> bytes = utf8.encode(jsonStr);
+    final chars = (await device!.discoverServices())
+        .firstWhere((s) => s.uuid == improvService).characteristics;
     
-    // Gửi lệnh qua COMMAND characteristic
-    await _cmdChar!.write(bytes, withoutResponse: false);
+    BluetoothCharacteristic c(int n) => chars.firstWhere((x) => x.uuid == improvChar(n));
+    _state = c(1); _error = c(2); _cmd = c(3); _result = c(4); _caps = c(5);
+    
+    _state.onValueReceived.listen((v) => stateStream.add(v.first));
+    _error.onValueReceived.listen((v) => errorStream.add(v.first));
+    _result.onValueReceived.listen(resultStream.add);
+    
+    for (final ch in [_state, _error, _result]) { await ch.setNotifyValue(true); }
+    stateStream.add((await _state.read()).first);
   }
 
-  /// Các lệnh Helper
-  Future<void> auth(String pin) async {
-    await sendCommand({"cmd": "auth", "pin": pin, "id": "auth1"});
-  }
-  
-  Future<void> scanWifi() async {
-    await sendCommand({"cmd": "scan", "id": "scan1"});
-  }
-  
-  Future<List<EyerusBleNetwork>> getNetworks() async {
-    if (_networksChar == null) return [];
-    List<int> bytes = await _networksChar!.read();
-    List<dynamic> list = jsonDecode(utf8.decode(bytes));
-    return list.map((e) => EyerusBleNetwork.fromJson(e)).toList();
-  }
-  
-  Future<void> connectWifi(String ssid, String password) async {
-    await sendCommand({
-      "cmd": "connect", 
-      "ssid": ssid, 
-      "password": password, 
-      "id": "conn1"
+  Future<int> capabilities() async => (await _caps.read()).first;
+
+  Future<void> _send(List<int> frame) => _cmd.write(frame, withoutResponse: false);
+
+  /// Waits for the Result of `cmd`; throws on an Error notify != 0
+  Future<List<String>> _call(int cmd, List<int> data, Duration timeout) async {
+    final done = Completer<List<String>>();
+    final s1 = resultStream.stream.listen((v) {
+      if (v.isNotEmpty && v.first == cmd && !done.isCompleted) done.complete(improvStrings(v) ?? []);
     });
+    final s2 = errorStream.stream.listen((e) {
+      if (e != 0 && !done.isCompleted) done.completeError(ImprovError(e));
+    });
+    try {
+      await _send(improvFrame(cmd, data));
+      return await done.future.timeout(timeout);
+    } finally { await s1.cancel(); await s2.cancel(); }
   }
 
-  Future<void> sendInit(Map<String, dynamic> initData) async {
-    initData["cmd"] = "init";
-    initData["id"] = "init1";
-    await sendCommand(initData);
+  Future<List<String>> deviceInfo() => _call(0x03, [], const Duration(seconds: 10));
+  Future<void> identify() => _send(improvFrame(0x02));
+
+  /// [(ssid, rssi, security)], strongest first; ends at the empty Result
+  Future<List<List<String>>> scanWifi() async {
+    final nets = <List<String>>[];
+    final done = Completer<void>();
+    final sub = resultStream.stream.listen((v) {
+      if (v.isEmpty || v.first != 0x04) return;
+      final s = improvStrings(v) ?? [];
+      if (s.isEmpty) { if (!done.isCompleted) done.complete(); } else { nets.add(s); }
+    });
+    try {
+      await _send(improvFrame(0x04));
+      await done.future.timeout(const Duration(seconds: 30));
+      return nets;
+    } finally { await sub.cancel(); }
   }
 
-  Future<void> finish() async {
-    await sendCommand({"cmd": "finish", "id": "fin1"});
+  /// Returns the gateway URL, e.g. "http://192.168.1.189:5050"
+  Future<String> sendWifi(String ssid, String password) async {
+    final s = utf8.encode(ssid), p = utf8.encode(password);
+    final r = await _call(0x01, [s.length, ...s, p.length, ...p], const Duration(seconds: 120));
+    return r.isNotEmpty ? r.first : "";
   }
 
   void disconnect() {
-    _resultSub?.cancel();
-    _statusSub?.cancel();
-    _device?.disconnect();
-    _connectionController.add(false);
+    device?.disconnect();
+    device = null;
   }
 }
