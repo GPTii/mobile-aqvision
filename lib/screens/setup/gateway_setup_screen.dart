@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import '../../data/auth_store.dart';
+import '../../config/api_config.dart';
 import '../../core/ble_setup_service.dart';
 import '../../data/models/eyerus_ble_models.dart';
 import '../../data/models/eyerus_qr_data.dart';
@@ -93,6 +97,31 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
 
       case 'finish':
         setState(() {
+          _statusMessage = 'Đang đăng ký thiết bị lên Cloud...';
+        });
+        
+        try {
+          final user = AuthStore.instance.currentUser;
+          final token = AuthStore.instance.token ?? '';
+          
+          await http.post(
+            Uri.parse('${ApiConfig.apiV1Base}/gateways/register'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token'
+            },
+            body: jsonEncode({
+              'deviceId': widget.qrData.deviceId,
+              'name': widget.qrData.name,
+              'mac': widget.qrData.mac,
+              'localIp': result.ip ?? '',
+            })
+          );
+        } catch (e) {
+          print('Lỗi đăng ký Cloud: $e');
+        }
+
+        setState(() {
           _isConfiguring = false;
           _statusMessage = 'Thiết lập thành công!';
         });
@@ -123,16 +152,28 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
         _statusMessage = 'Đã kết nối WiFi. Đang khởi tạo...';
       });
       
-      // Lấy Token của người dùng (Giả lập hoặc lấy từ SharedPreferences/API Core)
-      // Đây là dữ liệu giả lập cho owner
+      final user = AuthStore.instance.currentUser;
+      final token = AuthStore.instance.token ?? "";
+      
       final initData = {
         "gateway": {
           "name": widget.qrData.name,
           "timezone": "Asia/Ho_Chi_Minh",
         },
+        "mqtt": {
+          "enabled": true,
+          "broker_host": ApiConfig.host,
+          "broker_port": 1883,
+          "use_tls": false,
+          "username": "gw",
+          "password": "gw_password",
+          "base_topic": "eyerus/gateway",
+          "qos": 1,
+          "publish_interval": 10
+        },
         "owner": {
-          "account_id": "test_user_123",
-          "token": "token_placeholder"
+          "account_id": user?.id ?? "unknown",
+          "token": token
         }
       };
 
