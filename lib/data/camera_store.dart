@@ -212,6 +212,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           hlsUrl: hlsUrl,
           fmp4Url: fmp4Url,
           targetUrl: item['url'],
+          playProtocol: 'webrtc',
           
         );
       }).toList();
