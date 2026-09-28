@@ -108,7 +108,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       final token = prefs.getString('token') ?? '';
 
       final uri = Uri.parse(
-        '${ApiConfig.mediaBase}/index/api/webrtc'
+        '${ApiConfig.mediaBase}'.replaceFirst('http://', 'https://') + '/index/api/webrtc'
         '?app=${Uri.encodeComponent(widget.app)}&stream=${Uri.encodeComponent(widget.stream)}&type=play',
       );
       final res = await http.post(
