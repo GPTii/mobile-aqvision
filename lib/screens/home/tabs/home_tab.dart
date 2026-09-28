@@ -40,7 +40,7 @@ class HomeTab extends StatelessWidget {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -52,11 +52,11 @@ class HomeTab extends StatelessWidget {
                             'Trang chủ'.tr,
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 22,
+                              fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          SizedBox(height: 6),
+                          SizedBox(height: 2),
                           WeatherTimeHeader(),
                         ],
                       ),
