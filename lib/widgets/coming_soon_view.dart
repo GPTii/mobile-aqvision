@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'app_ui.dart';
 
 /// Lightweight placeholder used by tabs whose full UI hasn't been built yet.
 class ComingSoonView extends StatelessWidget {
@@ -17,8 +18,9 @@ class ComingSoonView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -56,6 +58,6 @@ class ComingSoonView extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

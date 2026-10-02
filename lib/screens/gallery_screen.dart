@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 
 import '../theme/app_colors.dart';
+import '../widgets/app_ui.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({super.key});
@@ -74,11 +75,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text('Thư viện ảnh'.tr, style: TextStyle(fontWeight: FontWeight.w700)),
-        backgroundColor: AppColors.card,
+        title: Text('Thư viện ảnh'.tr),
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
       body: _loading
@@ -138,7 +140,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     );
                   },
                 ),
-    );
+    ));
   }
 }
 

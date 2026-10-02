@@ -4,6 +4,8 @@ import '../../../data/app_theme_store.dart';
 import '../../../data/news_store.dart';
 import '../../../theme/app_colors.dart';
 import '../../../utils/app_strings.dart';
+import '../news_detail_screen.dart';
+import '../../../widgets/app_ui.dart';
 
 class NewsTab extends StatefulWidget {
   const NewsTab({super.key});
@@ -30,8 +32,9 @@ class _NewsTabState extends State<NewsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -108,7 +111,10 @@ class _NewsTabState extends State<NewsTab> {
                                   Text(
                                     'TIN MỚI NHẤT'.tr,
                                     style: TextStyle(
-                                        fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted, letterSpacing: 0.6),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textMuted,
+                                        letterSpacing: 0.6),
                                   ),
                                   const SizedBox(height: 12),
                                   if (isTablet)
@@ -143,7 +149,7 @@ class _NewsTabState extends State<NewsTab> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -156,26 +162,31 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.headerBackground,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
+      decoration: const BoxDecoration(),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: EdgeInsets.fromLTRB(Navigator.of(context).canPop() ? 8 : 20, 14, 20, 20),
+        child: Row(
           children: [
-            Text('Tin tức'.tr,
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.2)),
-            const SizedBox(height: 2),
-            Text(
-              '$count ${'bài viết mới trong tuần này'.tr}',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-            ),
+            if (Navigator.of(context).canPop())
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                color: AppColors.textPrimary,
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            Expanded(
+                child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tin tức'.tr,
+                    style: TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.2)),
+                const SizedBox(height: 2),
+                Text(
+                  '$count ${'bài viết mới trong tuần này'.tr}',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+                ),
+              ],
+            )),
           ],
         ),
       ),
@@ -206,7 +217,10 @@ class _BannerCarousel extends StatelessWidget {
           controller: controller,
           itemCount: articles.length,
           onPageChanged: onPageChanged,
-          itemBuilder: (context, i) => _NewsImage(url: articles[i].coverImageUrl, iconSize: 60),
+          itemBuilder: (context, i) => GestureDetector(
+            onTap: () => _openArticle(context, articles[i]),
+            child: NewsImage(url: articles[i].coverImageUrl, iconSize: 60),
+          ),
         ),
       ),
     );
@@ -249,45 +263,55 @@ class _ArticleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.divider),
-        color: AppColors.card,
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(article.dateLabel, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: AppColors.textMuted)),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: SizedBox(height: 160, child: _NewsImage(url: article.coverImageUrl, iconSize: 44)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openArticle(context, article),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(article.dateLabel,
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: AppColors.textMuted)),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: SizedBox(height: 160, child: NewsImage(url: article.coverImageUrl, iconSize: 44)),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                article.title,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.35),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                article.excerpt,
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.6),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            article.title,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.35),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            article.excerpt,
-            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.6),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
+void _openArticle(BuildContext context, NewsArticle article) {
+  Navigator.of(context).push(MaterialPageRoute(builder: (_) => NewsDetailScreen(article: article)));
+}
+
 /// A news photo loaded from the server, falling back to a soft branded
 /// placeholder while it loads or if the URL is missing/broken.
-class _NewsImage extends StatelessWidget {
+class NewsImage extends StatelessWidget {
   final String url;
   final double iconSize;
 
-  const _NewsImage({required this.url, required this.iconSize});
+  const NewsImage({super.key, required this.url, required this.iconSize});
 
   @override
   Widget build(BuildContext context) {

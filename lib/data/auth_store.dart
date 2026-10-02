@@ -11,6 +11,7 @@ import '../config/api_config.dart';
 import '../utils/network_error_handler.dart';
 import '../screens/auth/login_screen.dart';
 import 'video_preload_cache.dart';
+import '../utils/app_strings.dart';
 
 class UserAccount {
   final String id;
@@ -18,7 +19,11 @@ class UserAccount {
   String email; // used as username or email
   String phone;
   String role;
-  
+
+  /// Cloud roles are "ADMIN" (operator) and "AGENCY" (customer). The UI
+  /// fallback label 'Quản trị viên' must NOT count as admin.
+  bool get isAdmin => role.toUpperCase() == 'ADMIN';
+
   // Agency info
   String? agencyId;
   String? apiSecret;
@@ -45,6 +50,9 @@ class AuthStore extends ChangeNotifier {
 
   UserAccount? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
+
+  /// Operator account: unlocks gateway maintenance (embedded Maintain web).
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
   String? get token => _token;
 
   /// Cookie JWT for Next.js `/api/rapidmedia` (Luồng B). Not `access_token`.
@@ -59,29 +67,51 @@ class AuthStore extends ChangeNotifier {
     _token = prefs.getString("token");
     _authToken = prefs.getString("auth_token");
     if (_token != null) {
-      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
+      try {
+        await fetchProfile();
+      } catch (e) {
+        print("Token invalid: $e");
+        await logout();
+      }
     }
   }
 
   Future<void> login(String username, String password) async {
+    try {
+      await _login(username, password);
+    } on _NetworkFailure {
+      // dev1 unreachable: switch to the backup domain (if it answers) and retry once.
+      try {
+        if (await ApiConfig.selectReachableOrigin()) {
+          await _login(username, password);
+          return;
+        }
+      } on _NetworkFailure {
+        // backup failed too: fall through to the error below
+      }
+      showNetworkErrorDialog();
+      throw Exception('Không thể kết nối máy chủ'.tr);
+    }
+  }
+
+  Future<void> _login(String username, String password) async {
     final uri = Uri.parse("$_baseUrl/auth/login");
     final stopwatch = Stopwatch()..start();
     debugPrint("[LOGIN] POST $uri");
 
     http.Response res;
     try {
-      res = await http.post(uri,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: jsonEncode({"username": username, "password": password})
-      ).timeout(const Duration(seconds: 10));
+      res = await http
+          .post(uri,
+              headers: {"Content-Type": "application/json"},
+              body: jsonEncode({"username": username, "password": password}))
+          .timeout(const Duration(seconds: 10));
     } on SocketException catch (_) {
-      showNetworkErrorDialog();
-      throw Exception("Không thể kết nối máy chủ");
+      throw _NetworkFailure();
     } on TimeoutException catch (_) {
-      showNetworkErrorDialog();
-      throw Exception("Kết nối quá hạn");
+      throw _NetworkFailure();
+    } on http.ClientException catch (_) {
+      throw _NetworkFailure();
     } catch (e) {
       debugPrint("[LOGIN] FAILED after ${stopwatch.elapsedMilliseconds}ms — ${e.runtimeType}: $e");
       rethrow;
@@ -104,7 +134,7 @@ class AuthStore extends ChangeNotifier {
       }
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Đăng nhập thất bại");
+      throw Exception(json["error"] ?? 'Đăng nhập thất bại'.tr);
     }
   }
 
@@ -113,16 +143,16 @@ class AuthStore extends ChangeNotifier {
     try {
       final uri = Uri.parse("$_webOrigin/api/auth/login");
       debugPrint("[LOGIN] web session POST $uri");
-      final res = await http.post(
-        uri,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"username": username, "password": password}),
-      ).timeout(const Duration(seconds: 10));
+      final res = await http
+          .post(
+            uri,
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"username": username, "password": password}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       final fromCookie = _parseAuthTokenCookie(res.headers["set-cookie"]);
-      final cookie = (fromCookie != null && fromCookie.isNotEmpty)
-          ? fromCookie
-          : _token;
+      final cookie = (fromCookie != null && fromCookie.isNotEmpty) ? fromCookie : _token;
       debugPrint(
         "[LOGIN] web session ${res.statusCode} cookie=${fromCookie != null}",
       );
@@ -148,18 +178,18 @@ class AuthStore extends ChangeNotifier {
 
   Future<void> fetchProfile() async {
     if (_token == null) return;
-    
+
     final uri = Uri.parse("$_baseUrl/auth/me");
     final res = await http.get(uri, headers: {
       "Authorization": "Bearer $_token",
       "Bypass-Tunnel-Reminder": "true"
     }).timeout(const Duration(seconds: 10));
-    
+
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
       final user = json["user"];
       final agency = json["agency"];
-      
+
       _currentUser = UserAccount(
         id: user["id"]?.toString() ?? "",
         name: user["name"] ?? user["fullName"] ?? user["username"] ?? "Người dùng",
@@ -169,10 +199,10 @@ class AuthStore extends ChangeNotifier {
         agencyId: agency != null ? agency["agencyId"] : null,
         apiSecret: agency != null ? agency["apiSecret"] : null,
       );
-      
+
       // Register device token for push notifications
       _registerDeviceToken();
-      
+
       notifyListeners();
     } else {
       // Token may be expired
@@ -201,28 +231,37 @@ class AuthStore extends ChangeNotifier {
 
   Future<void> updateProfile({String? name, String? email, String? phone}) async {
     final uri = Uri.parse("$_baseUrl/auth/me");
-    final res = await http.patch(uri,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $_token",
-      },
-      body: jsonEncode({
-        if (name != null && name.trim().isNotEmpty) "name": name.trim(),
-        if (phone != null) "phone": phone.trim(),
-      }),
-    ).timeout(const Duration(seconds: 10));
+    final res = await http
+        .patch(
+          uri,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $_token",
+          },
+          body: jsonEncode({
+            if (name != null && name.trim().isNotEmpty) "name": name.trim(),
+            if (phone != null) "phone": phone.trim(),
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
 
     if (res.statusCode == 200) {
-      try { await fetchProfile(); } catch (e) { print("Token invalid: $e"); await logout(); }
+      try {
+        await fetchProfile();
+      } catch (e) {
+        print("Token invalid: $e");
+        await logout();
+      }
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi cập nhật thông tin");
+      throw Exception(json["error"] ?? 'Lỗi cập nhật thông tin'.tr);
     }
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
     final uri = Uri.parse("$_baseUrl/auth/me");
-    final res = await http.put(uri, 
+    final res = await http.put(
+      uri,
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer $_token",
@@ -231,7 +270,7 @@ class AuthStore extends ChangeNotifier {
     );
     if (res.statusCode != 200) {
       final json = jsonDecode(res.body);
-      throw Exception(json["error"] ?? "Lỗi đổi mật khẩu");
+      throw Exception(json["error"] ?? 'Lỗi đổi mật khẩu'.tr);
     }
   }
 
@@ -264,3 +303,7 @@ class AuthStore extends ChangeNotifier {
     }
   }
 }
+
+/// Login could not reach the server at all (DNS, TLS, timeout) — as opposed
+/// to the server answering with an error. Triggers the backup-domain retry.
+class _NetworkFailure implements Exception {}

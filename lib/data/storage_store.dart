@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../utils/app_strings.dart';
 
 class CameraStorageUsage {
   final String id;
@@ -63,19 +64,21 @@ class StorageStore extends ChangeNotifier {
   }
 
   Future<void> _saveCache(SharedPreferences prefs) async {
-    await prefs.setString(_cacheKey, jsonEncode({
-      "usedStorageMb": usedStorageMb,
-      "storageQuotaMb": storageQuotaMb,
-      "percent": percent,
-      "tier": tier,
-      "cameras": cameras
-          .map((c) => {
-                "id": c.id,
-                "name": c.name,
-                "usedStorageMb": c.usedStorageMb,
-              })
-          .toList(),
-    }));
+    await prefs.setString(
+        _cacheKey,
+        jsonEncode({
+          "usedStorageMb": usedStorageMb,
+          "storageQuotaMb": storageQuotaMb,
+          "percent": percent,
+          "tier": tier,
+          "cameras": cameras
+              .map((c) => {
+                    "id": c.id,
+                    "name": c.name,
+                    "usedStorageMb": c.usedStorageMb,
+                  })
+              .toList(),
+        }));
   }
 
   Future<void>? _inFlight;
@@ -95,7 +98,7 @@ class StorageStore extends ChangeNotifier {
     final token = prefs.getString("token");
     debugPrint("[STORAGE] fetchStorage() start, token=${token == null ? 'NULL' : '${token.substring(0, 12)}...'}");
     if (token == null) {
-      error = "Chưa đăng nhập";
+      error = 'Chưa đăng nhập'.tr;
       notifyListeners();
       return;
     }
@@ -136,13 +139,14 @@ class StorageStore extends ChangeNotifier {
           ..sort((a, b) => b.usedStorageMb.compareTo(a.usedStorageMb));
         error = null;
         await _saveCache(prefs);
-        debugPrint("[STORAGE] parsed OK: usedStorageMb=$usedStorageMb, storageQuotaMb=$storageQuotaMb, cameras=${cameras.length}");
+        debugPrint(
+            "[STORAGE] parsed OK: usedStorageMb=$usedStorageMb, storageQuotaMb=$storageQuotaMb, cameras=${cameras.length}");
       } else {
-        error = "Không tải được dung lượng lưu trữ";
+        error = 'Không tải được dung lượng lưu trữ'.tr;
       }
     } catch (e, st) {
       debugPrint("[STORAGE] EXCEPTION: $e\n$st");
-      error = "Không tải được dung lượng lưu trữ";
+      error = 'Không tải được dung lượng lưu trữ'.tr;
     }
 
     loading = false;

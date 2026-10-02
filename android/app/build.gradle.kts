@@ -43,7 +43,10 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "AQPCamera-v${flutter.versionName}-${buildType.name}.apk"
+            // `--split-per-abi` builds one APK per CPU type; tag each file with it.
+            val abi = output.getFilter(com.android.build.OutputFile.ABI)
+            val suffix = if (abi != null) "-$abi" else ""
+            output.outputFileName = "AQPConnect-${flutter.versionName}-${buildType.name}$suffix.apk"
         }
     }
 }

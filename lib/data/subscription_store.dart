@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'service_plans.dart';
+import '../utils/app_strings.dart';
 
 class SubscriptionStore extends ChangeNotifier {
   static final SubscriptionStore instance = SubscriptionStore._();
@@ -46,7 +47,7 @@ class SubscriptionStore extends ChangeNotifier {
       await Future.wait([_fetchPlans(token), _fetchCurrent(token)]);
       error = null;
     } catch (_) {
-      error = 'Không tải được thông tin gói dịch vụ';
+      error = 'Không tải được thông tin gói dịch vụ'.tr;
     }
 
     loading = false;
@@ -96,7 +97,7 @@ class SubscriptionStore extends ChangeNotifier {
     String? message,
   }) async {
     final token = await _getToken();
-    if (token == null) throw Exception('Chưa đăng nhập');
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
 
     _upgrading = true;
     notifyListeners();
@@ -104,26 +105,27 @@ class SubscriptionStore extends ChangeNotifier {
     try {
       final uri = Uri.parse('$_baseUrl/subscription/upgrade');
       final trimmedMessage = message?.trim();
-      final res = await http.post(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'planId': planId,
-          'billingCycle': cycle.name,
-          if (trimmedMessage != null && trimmedMessage.isNotEmpty) 'message': trimmedMessage,
-        }),
-      ).timeout(const Duration(seconds: 10));
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'planId': planId,
+              'billingCycle': cycle.name,
+              if (trimmedMessage != null && trimmedMessage.isNotEmpty) 'message': trimmedMessage,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (res.statusCode != 200) {
-        throw Exception('Lỗi gửi yêu cầu liên hệ (${res.statusCode}): ${res.body}');
+        throw Exception('Lỗi gửi yêu cầu liên hệ ({code}): {body}'.trArgs({'code': res.statusCode, 'body': res.body}));
       }
 
       final json = jsonDecode(res.body);
-      return json['msg']?.toString() ??
-          'Yêu cầu liên hệ đã được ghi nhận, quản lý sẽ liên hệ với bạn sớm';
+      return json['msg']?.toString() ?? 'Yêu cầu liên hệ đã được ghi nhận, quản lý sẽ liên hệ với bạn sớm'.tr;
     } finally {
       _upgrading = false;
       notifyListeners();

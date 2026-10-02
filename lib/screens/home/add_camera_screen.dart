@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_config.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_ui.dart';
 
 class AddCameraScreen extends StatefulWidget {
   final Map<String, dynamic>? cameraToEdit;
@@ -18,7 +19,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
   final _appController = TextEditingController(text: "live");
   final _streamController = TextEditingController();
   final _urlController = TextEditingController();
-  
+
   bool _isLoading = false;
   List<dynamic> _groups = [];
   List<int> _selectedGroupIds = [];
@@ -64,20 +65,20 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("token") ?? "";
-      
-      final url = widget.cameraToEdit == null 
-        ? Uri.parse("$_apiBase/proxies")
-        : Uri.parse("$_apiBase/proxies/${widget.cameraToEdit!['id']}");
-        
+
+      final url = widget.cameraToEdit == null
+          ? Uri.parse("$_apiBase/proxies")
+          : Uri.parse("$_apiBase/proxies/${widget.cameraToEdit!['id']}");
+
       final headers = {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
       };
-      
+
       final body = jsonEncode({
         "app": _appController.text,
         "stream": _streamController.text,
@@ -87,13 +88,13 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
         "enableCloudSync": _enableCloudSync,
         "groupIds": _selectedGroupIds,
       });
-      
+
       final res = widget.cameraToEdit == null
           ? await http.post(url, headers: headers, body: body)
           : await http.put(url, headers: headers, body: body);
-          
+
       setState(() => _isLoading = false);
-      
+
       if (res.statusCode == 200 || res.statusCode == 201) {
         if (!mounted) return;
         Navigator.of(context).pop(true);
@@ -111,12 +112,14 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(widget.cameraToEdit == null ? "Thêm Camera" : "Sửa Camera", style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text(widget.cameraToEdit == null ? "Thêm Camera" : "Sửa Camera",
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
@@ -132,21 +135,24 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
               TextFormField(
                 controller: _appController,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: "App (Thường là 'live')", filled: true, fillColor: AppColors.surface),
+                decoration: const InputDecoration(
+                    labelText: "App (Thường là 'live')", filled: true, fillColor: AppColors.surface),
                 validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập App" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _streamController,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: "Stream ID (Mã camera)", filled: true, fillColor: AppColors.surface),
+                decoration: const InputDecoration(
+                    labelText: "Stream ID (Mã camera)", filled: true, fillColor: AppColors.surface),
                 validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập Stream ID" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _urlController,
                 style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(labelText: "Source URL (RTSP/RTMP/HTTP)", filled: true, fillColor: AppColors.surface),
+                decoration: const InputDecoration(
+                    labelText: "Source URL (RTSP/RTMP/HTTP)", filled: true, fillColor: AppColors.surface),
                 validator: (val) => val == null || val.isEmpty ? "Vui lòng nhập URL nguồn" : null,
               ),
               const SizedBox(height: 16),
@@ -159,7 +165,8 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
                   final id = g["id"] as int;
                   final isSelected = _selectedGroupIds.contains(id);
                   return FilterChip(
-                    label: Text(g["name"], style: TextStyle(color: isSelected ? AppColors.accent : AppColors.textPrimary)),
+                    label:
+                        Text(g["name"], style: TextStyle(color: isSelected ? AppColors.accent : AppColors.textPrimary)),
                     selected: isSelected,
                     onSelected: (selected) {
                       setState(() {
@@ -230,7 +237,7 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Future<void> _delete() async {
@@ -239,25 +246,30 @@ class _AddCameraScreenState extends State<AddCameraScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text("Xác nhận xóa", style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text("Bạn có chắc chắn muốn xóa camera này không?", style: TextStyle(color: AppColors.textSecondary)),
+        content:
+            const Text("Bạn có chắc chắn muốn xóa camera này không?", style: TextStyle(color: AppColors.textSecondary)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Hủy", style: TextStyle(color: AppColors.textSecondary))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Xóa", style: TextStyle(color: AppColors.danger))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Hủy", style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Xóa", style: TextStyle(color: AppColors.danger))),
         ],
       ),
     );
-    
+
     if (confirm != true) return;
-    
+
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString("token") ?? "";
       final uri = Uri.parse("$_apiBase/proxies/${widget.cameraToEdit!['id']}");
-      
+
       final res = await http.delete(uri, headers: {"Authorization": "Bearer $token"});
       setState(() => _isLoading = false);
-      
+
       if (res.statusCode == 200) {
         if (!mounted) return;
         Navigator.of(context).pop(true);

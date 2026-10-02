@@ -2,28 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../data/app_state.dart';
 import '../data/camera_store.dart';
-import '../data/playback_prefs.dart';
 import '../data/video_preload_cache.dart';
 import '../screens/home/camera_detail_screen.dart';
 
-/// Open camera detail. In HLS mode a warm controller is pinned for instant play.
+/// Open camera detail. Live view plays over WebRTC (HLS only as automatic
+/// fallback), so no background HLS stream of this camera is kept.
 Future<void> openCameraDetail(BuildContext context, String cameraId) async {
-  await PlaybackPrefs.load();
-  if (!context.mounted) return;
-  final camera = CameraStore.instance.cameraById(cameraId);
-  final url = camera?.hlsUrl ?? '';
   final cache = VideoPreloadCache.instance;
-
-  if (PlaybackPrefs.isWebRtc) {
-    // WebRTC mode: do not keep a background HLS stream of the same camera.
-    cache.invalidate(cameraId);
-  } else {
-    cache.pin(cameraId);
-    if (url.isNotEmpty) {
-      // Kick warm if grid hasn't finished init yet — don't await navigation.
-      cache.warm(cameraId, url);
-    }
-  }
+  cache.invalidate(cameraId);
 
   AppState.isVideoGridActive.value = false;
   cache.disposeUnpinned();

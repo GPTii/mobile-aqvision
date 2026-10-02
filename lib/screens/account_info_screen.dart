@@ -7,6 +7,7 @@ import '../widgets/prompt_dialog.dart';
 import '../utils/app_strings.dart';
 import 'auth/login_screen.dart';
 import 'edit_account_screen.dart';
+import '../widgets/app_ui.dart';
 
 class AccountInfoScreen extends StatefulWidget {
   const AccountInfoScreen({super.key});
@@ -35,8 +36,9 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: ListenableBuilder(
           listenable: Listenable.merge([AuthStore.instance, BusinessInfoStore.instance]),
@@ -47,13 +49,7 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
             return Column(
               children: [
                 DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                     child: Row(
@@ -65,8 +61,7 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
                         Expanded(
                           child: Text(
                             'Thông tin người dùng'.tr,
-                            style: TextStyle(
-                                color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
@@ -88,7 +83,6 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
                         ),
                       ]),
                       const SizedBox(height: 18),
-
                       _GroupLabel('Thông tin doanh nghiệp'.tr),
                       const SizedBox(height: 8),
                       _Card(children: [
@@ -100,7 +94,6 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
                         _BizField('Hotline hỗ trợ'.tr, biz.hotline),
                       ]),
                       const SizedBox(height: 18),
-
                       _GroupLabel('Bảo mật'.tr),
                       const SizedBox(height: 8),
                       _Card(children: [
@@ -118,7 +111,6 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
                         ),
                       ]),
                       const SizedBox(height: 18),
-
                       _Card(children: [
                         _ActionRow(
                           icon: Icons.logout_rounded,
@@ -135,7 +127,7 @@ class _AccountInfoScreenState extends State<AccountInfoScreen> {
           },
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -161,8 +153,7 @@ class _Card extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(

@@ -37,13 +37,14 @@ void main() {
     expect(v.version, '1.0.9');
     expect(v.buildLabel, 'Build 10');
     expect(v.isLatest, isTrue);
-    expect(v.teaser, 'Sửa lỗi ghi hình.');
+    expect(v.teaser.vi, 'Sửa lỗi ghi hình.');
+    expect(v.name, 'AQPConnect-1.0.9-release');
     expect(v.sections.map((s) => s.kind).toList(), [
       ReleaseNoteKind.improvement,
       ReleaseNoteKind.fix,
       ReleaseNoteKind.note,
     ]);
-    expect(v.sections[1].items, ['Sửa lỗi A.', 'Sửa lỗi B.']);
+    expect(v.sections[1].items.map((t) => t.vi), ['Sửa lỗi A.', 'Sửa lỗi B.']);
     expect(v.releasedAt.toUtc(), DateTime.utc(2026, 8, 28, 5));
   });
 
@@ -53,6 +54,6 @@ void main() {
     expect(v.version, '2.0.0');
     expect(v.buildNumber, 0);
     expect(v.sections, isEmpty);
-    expect(v.teaser, '');
+    expect(v.teaser.vi, '');
   });
 }

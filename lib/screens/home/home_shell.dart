@@ -8,7 +8,7 @@ import '../../data/notification_store.dart';
 import 'tabs/camera_tab.dart';
 import 'tabs/home_tab.dart';
 import '../settings_screen.dart';
-import 'tabs/news_tab.dart';
+import '../devices/device_management_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -21,18 +21,18 @@ class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
 
   List<Widget> get _tabs => [
-    HomeTab(),
-    CameraTab(),
-    NewsTab(),
-    SettingsScreen(),
-  ];
+        HomeTab(),
+        CameraTab(),
+        DeviceManagementScreen(),
+        SettingsScreen(),
+      ];
 
   List<_NavItemData> get _navItems => [
-    _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'.tr),
-    _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'.tr),
-    _NavItemData(icon: Icons.article_rounded, outlineIcon: Icons.article_outlined, label: 'Tin tức'.tr),
-    _NavItemData(icon: Icons.settings_rounded, outlineIcon: Icons.settings_outlined, label: 'Cài đặt'.tr),
-  ];
+        _NavItemData(icon: Icons.home_rounded, outlineIcon: Icons.home_outlined, label: 'Trang chủ'.tr),
+        _NavItemData(icon: Icons.videocam_rounded, outlineIcon: Icons.videocam_outlined, label: 'Camera'.tr),
+        _NavItemData(icon: Icons.router_rounded, outlineIcon: Icons.router_outlined, label: 'Thiết bị'.tr),
+        _NavItemData(icon: Icons.settings_rounded, outlineIcon: Icons.settings_outlined, label: 'Cài đặt'.tr),
+      ];
 
   @override
   void initState() {
@@ -102,21 +102,12 @@ class _BottomNav extends StatelessWidget {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        border: Border(top: BorderSide(color: AppColors.border)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+      // Same colour as the page bottom — the bar blends in, no line / shadow.
+      decoration: BoxDecoration(color: AppColors.background),
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomInset),
         child: SizedBox(
-          height: 60,
+          height: 64,
           child: Row(
             children: List.generate(items.length, (index) {
               final selected = index == currentIndex;
@@ -145,6 +136,7 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.accent : AppColors.textMuted;
+    final labelColor = selected ? AppColors.textPrimary : AppColors.textMuted;
 
     return Material(
       color: Colors.transparent,
@@ -153,23 +145,17 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
+            AnimatedScale(
               duration: const Duration(milliseconds: 180),
-              width: selected ? 20 : 0,
-              height: 3,
-              margin: const EdgeInsets.only(bottom: 6),
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(2),
-              ),
+              scale: selected ? 1.08 : 1.0,
+              child: Icon(selected ? data.icon : data.outlineIcon, size: 27, color: color),
             ),
-            Icon(selected ? data.icon : data.outlineIcon, size: 22, color: color),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               data.label,
               style: TextStyle(
-                color: color,
-                fontSize: 10.5,
+                color: labelColor,
+                fontSize: 11.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),

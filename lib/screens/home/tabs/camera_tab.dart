@@ -5,10 +5,19 @@ import 'package:visibility_detector/visibility_detector.dart';
 import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
+import '../../../data/gateway_session_store.dart';
 import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/app_ui.dart';
 import '../../../widgets/camera_navigation.dart';
+import '../../../widgets/gateway_picker.dart';
 import '../../../widgets/notification_bell_button.dart';
+import '../../setup/camera_scan_screen.dart';
+import '../../setup/qr_scanner_screen.dart';
+
+/// Camera-tab home filter: null = "Tất cả" (default). Picking a home also
+/// makes it the working gateway (used by "+ → Quét camera").
+final ValueNotifier<String?> cameraTabFilter = ValueNotifier(null);
 
 class CameraTab extends StatefulWidget {
   const CameraTab({super.key});
@@ -20,6 +29,66 @@ class CameraTab extends StatefulWidget {
 class _CameraTabState extends State<CameraTab> {
   bool _isGridView = true;
   String? _selectedGroupId; // null = All
+  final ScrollController _groupScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    GatewaySessionStore.instance.loadSaved();
+  }
+
+  @override
+  void dispose() {
+    _groupScrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToGroup(String? groupId, List<CameraGroup> groups) {
+    if (!_groupScrollController.hasClients) return;
+    if (groupId == null) {
+      _groupScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    final index = groups.indexWhere((g) => g.id == groupId);
+    if (index != -1) {
+      final targetOffset = (index + 1) * 95.0 - 60.0;
+      final maxScroll = _groupScrollController.position.maxScrollExtent;
+      _groupScrollController.animateTo(
+        targetOffset.clamp(0.0, maxScroll),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  /// Cameras of the home picked in the header (see
+  /// [GatewaySessionStore.homeIncludesCamera]).
+  List<Camera> _homeCameras() {
+    return CameraStore.instance.cameras
+        .where((c) => GatewaySessionStore.homeIncludesCamera(cameraTabFilter.value, c.cameraCode))
+        .toList();
+  }
+
+  /// Group chips for the current home: with "Tất cả" every group (empty ones
+  /// too, so cameras can be added); otherwise only groups that hold at least
+  /// one of this home's cameras.
+  List<CameraGroup> _visibleGroups(List<Camera> homeCameras) {
+    final groups = CameraStore.instance.groups;
+    if (cameraTabFilter.value == null) return groups;
+    final used = {for (final c in homeCameras) ...c.groupIds};
+    return groups.where((g) => used.contains(g.id)).toList();
+  }
+
+  /// [_selectedGroupId], unless the home switch hid that group.
+  String? _effectiveGroupId(List<Camera> homeCameras) {
+    final id = _selectedGroupId;
+    if (id == null) return null;
+    return _visibleGroups(homeCameras).any((g) => g.id == id) ? id : null;
+  }
 
   Future<void> _handleRefresh() async {
     await CameraStore.instance.fetchCameras();
@@ -30,92 +99,119 @@ class _CameraTabState extends State<CameraTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.headerBackground,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  ListenableBuilder(
-                    listenable: CameraStore.instance.listAndStatus,
-                    builder: (context, _) {
-                      final all = CameraStore.instance.cameras;
-                      return _Header(
-                        total: all.length,
-                        online: CameraStore.instance.onlineCount,
-                        isGridView: _isGridView,
-                        onToggleView: () =>
-                            setState(() => _isGridView = !_isGridView),
-                      );
-                    },
-                  ),
-                  ListenableBuilder(
-                    listenable: CameraStore.instance,
-                    builder: (context, _) {
-                      final groups = CameraStore.instance.groups;
-                      if (groups.isEmpty) return const SizedBox.shrink();
-                      return SizedBox(
-                        height: 36,
-                        child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _GroupChip(
-                              label: 'Tất cả'.tr,
-                              selected: _selectedGroupId == null,
-                              onTap: () =>
-                                  setState(() => _selectedGroupId = null),
-                            ),
-                            ...groups.map((g) => _GroupChip(
-                                  label: g.name,
-                                  selected: _selectedGroupId == g.id,
-                                  onTap: () => setState(() => _selectedGroupId =
-                                      _selectedGroupId == g.id ? null : g.id),
-                                )),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              bottom: false,
-              child: RefreshIndicator(
-                onRefresh: _handleRefresh,
-                color: AppColors.accent,
-                backgroundColor: AppColors.card,
-                child: ListenableBuilder(
-                  listenable: CameraStore.instance,
-                  builder: (context, _) {
-                    final allCameras = CameraStore.instance.cameras;
-                    final cameras = _selectedGroupId == null
-                        ? allCameras
-                        : allCameras
-                            .where((c) => c.groupIds.contains(_selectedGroupId))
-                            .toList();
-                    if (cameras.isEmpty) return const _EmptyState();
-                    return _isGridView
-                        ? _CameraGrid(cameras: cameras)
-                        : _CameraList(cameras: cameras);
-                  },
+      body: AppBackground(
+        child: Column(
+          children: [
+            DecoratedBox(
+              // Header sits directly on the page gradient.
+              decoration: const BoxDecoration(),
+              child: SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        CameraStore.instance.listAndStatus,
+                        GatewaySessionStore.instance,
+                        cameraTabFilter,
+                      ]),
+                      builder: (context, _) {
+                        final all = _homeCameras();
+                        return _Header(
+                          total: all.length,
+                          online: all.where((c) => c.online).length,
+                          isGridView: _isGridView,
+                          onToggleView: () => setState(() => _isGridView = !_isGridView),
+                        );
+                      },
+                    ),
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        CameraStore.instance,
+                        GatewaySessionStore.instance,
+                        cameraTabFilter,
+                      ]),
+                      builder: (context, _) {
+                        final homeCameras = _homeCameras();
+                        final groups = _visibleGroups(homeCameras);
+                        final selectedGroupId = _effectiveGroupId(homeCameras);
+                        if (groups.isEmpty) return const SizedBox.shrink();
+                        return SizedBox(
+                          height: 38,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: ListView(
+                                  controller: _groupScrollController,
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 6),
+                                  scrollDirection: Axis.horizontal,
+                                  children: [
+                                    _GroupChip(
+                                      label: 'Tất cả'.tr,
+                                      selected: selectedGroupId == null,
+                                      onTap: () {
+                                        setState(() => _selectedGroupId = null);
+                                        _scrollToGroup(null, groups);
+                                      },
+                                    ),
+                                    ...groups.map((g) => _GroupChip(
+                                          label: g.displayName,
+                                          selected: selectedGroupId == g.id,
+                                          onTap: () {
+                                            final next = selectedGroupId == g.id ? null : g.id;
+                                            setState(() => _selectedGroupId = next);
+                                            _scrollToGroup(next, groups);
+                                          },
+                                        )),
+                                  ],
+                                ),
+                              ),
+                              _GroupDropdownButton(
+                                groups: groups,
+                                homeCameras: homeCameras,
+                                selectedGroupId: selectedGroupId,
+                                onSelected: (id) {
+                                  setState(() => _selectedGroupId = id);
+                                  _scrollToGroup(id, groups);
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: AppColors.accent,
+                  backgroundColor: AppColors.card,
+                  child: ListenableBuilder(
+                    listenable: Listenable.merge([
+                      CameraStore.instance,
+                      GatewaySessionStore.instance,
+                      cameraTabFilter,
+                    ]),
+                    builder: (context, _) {
+                      final allCameras = _homeCameras();
+                      final groupId = _effectiveGroupId(allCameras);
+                      final cameras =
+                          groupId == null ? allCameras : allCameras.where((c) => c.groupIds.contains(groupId)).toList();
+                      if (cameras.isEmpty) return const _EmptyState();
+                      return _isGridView ? _CameraGrid(cameras: cameras) : _CameraList(cameras: cameras);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -132,22 +228,214 @@ class _GroupChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Container(
+        margin: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : AppColors.card,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: selected ? AppColors.accent : AppColors.border),
+          border: selected ? Border(bottom: BorderSide(color: AppColors.textPrimary, width: 2)) : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppColors.textSecondary,
+            fontSize: 16,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupDropdownButton extends StatelessWidget {
+  final List<CameraGroup> groups;
+  final List<Camera> homeCameras;
+  final String? selectedGroupId;
+  final ValueChanged<String?> onSelected;
+
+  const _GroupDropdownButton({
+    required this.groups,
+    required this.homeCameras,
+    required this.selectedGroupId,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isCustomGroup = selectedGroupId != null;
+    return Padding(
+      padding: const EdgeInsets.only(right: 12, bottom: 6),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          popupMenuTheme: PopupMenuThemeData(
+            color: AppColors.card,
+            elevation: 10,
+            shadowColor: Colors.black.withValues(alpha: 0.25),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppColors.divider.withValues(alpha: 0.7), width: 1),
+            ),
+          ),
+        ),
+        child: PopupMenuButton<String?>(
+          tooltip: 'Danh sách phòng'.tr,
+          offset: const Offset(0, 36),
+          constraints: const BoxConstraints(minWidth: 200, maxWidth: 280),
+          onSelected: onSelected,
+          itemBuilder: (context) {
+            return [
+              PopupMenuItem<String?>(
+                enabled: false,
+                height: 32,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'DANH SÁCH PHÒNG'.tr,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMuted,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.divider.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${groups.length}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const PopupMenuDivider(height: 6),
+              PopupMenuItem<String?>(
+                value: null,
+                height: 42,
+                child: Row(
+                  children: [
+                    Icon(
+                      selectedGroupId == null ? Icons.check_circle_rounded : Icons.apps_rounded,
+                      size: 18,
+                      color: selectedGroupId == null ? AppColors.accent : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Tất cả'.tr,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: selectedGroupId == null ? FontWeight.w700 : FontWeight.w500,
+                          color: selectedGroupId == null ? AppColors.accent : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: selectedGroupId == null
+                            ? AppColors.accent.withValues(alpha: 0.15)
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${homeCameras.length}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: selectedGroupId == null ? AppColors.accent : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...groups.map((g) {
+                final isSelected = selectedGroupId == g.id;
+                final count = homeCameras.where((c) => c.groupIds.contains(g.id)).length;
+                return PopupMenuItem<String?>(
+                  value: g.id,
+                  height: 42,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected ? Icons.check_circle_rounded : Icons.meeting_room_outlined,
+                        size: 18,
+                        color: isSelected ? AppColors.accent : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          g.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppColors.accent : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.accent.withValues(alpha: 0.15)
+                              : AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? AppColors.accent : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ];
+          },
+          child: Container(
+            width: 32,
+            height: 28,
+            decoration: BoxDecoration(
+              color: isCustomGroup ? AppColors.accent.withValues(alpha: 0.12) : AppColors.card,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: isCustomGroup ? AppColors.accent.withValues(alpha: 0.5) : AppColors.border,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: isCustomGroup ? AppColors.accent : AppColors.textSecondary,
+              ),
+            ),
           ),
         ),
       ),
@@ -168,43 +456,70 @@ class _Header extends StatelessWidget {
     required this.onToggleView,
   });
 
+  void _showAddSheet(BuildContext context) {
+    void open(Widget screen) {
+      Navigator.pop(context);
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Icon(Icons.qr_code_scanner_outlined, color: AppColors.accent),
+                title: Text('Thêm thiết bị mới'.tr,
+                    style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: Text('Quét mã QR để cài đặt Gateway Eyerus'.tr,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () => open(const QrScannerScreen()),
+              ),
+              ListTile(
+                leading: Icon(Icons.radar, color: AppColors.info),
+                title:
+                    Text('Quét camera'.tr, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: Text('Tìm và thêm camera qua Gateway trong mạng'.tr,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () => open(const CameraScanScreen()),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Camera',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$total ' + 'thiết bị'.tr + ' · $online ' + 'đang hoạt động'.tr,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: GatewayPicker(filter: cameraTabFilter, selectsGateway: true),
             ),
           ),
           const NotificationBellButton(),
-          const SizedBox(width: 10),
-          _SquareIconButton(
-            icon: isGridView
-                ? Icons.view_list_rounded
-                : Icons.grid_view_rounded,
-            onTap: onToggleView,
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _showAddSheet(context),
+            child: Icon(Icons.add, color: AppColors.textPrimary, size: 28),
           ),
         ],
       ),
@@ -223,17 +538,12 @@ class _SquareIconButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        customBorder: const CircleBorder(),
         onTap: onTap,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Icon(icon, size: 21, color: AppColors.textSecondary),
+        child: SizedBox(
+          width: 46,
+          height: 46,
+          child: Icon(icon, size: 26, color: AppColors.textPrimary),
         ),
       ),
     );
@@ -253,8 +563,7 @@ class _CameraGrid extends StatelessWidget {
         // (phone landscape, tablets) pick up extra columns instead of
         // stretching 2 fixed tiles across the whole width, matching the
         // multi-screen wall look on bigger screens.
-        final crossAxisCount =
-            (constraints.maxWidth / 190).floor().clamp(2, 5);
+        final crossAxisCount = (constraints.maxWidth / 190).floor().clamp(2, 5);
 
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -286,10 +595,10 @@ class _CameraGridCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         onTap: () => openCameraDetail(context, camera.id),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -344,10 +653,7 @@ class _CameraGridCard extends StatelessWidget {
                 child: ListenableBuilder(
                   listenable: CameraStore.instance.cameraListenable(camera.id),
                   builder: (_, __) {
-                    final online = CameraStore.instance
-                            .cameraById(camera.id)
-                            ?.online ??
-                        camera.online;
+                    final online = CameraStore.instance.cameraById(camera.id)?.online ?? camera.online;
                     return _StatusBadge(online: online);
                   },
                 ),
@@ -355,13 +661,9 @@ class _CameraGridCard extends StatelessWidget {
               ListenableBuilder(
                 listenable: CameraStore.instance.cameraListenable(camera.id),
                 builder: (_, __) {
-                  final recording = CameraStore.instance
-                          .cameraById(camera.id)
-                          ?.recording ??
-                      camera.recording;
+                  final recording = CameraStore.instance.cameraById(camera.id)?.recording ?? camera.recording;
                   if (!recording) return const SizedBox.shrink();
-                  return const Positioned(
-                      top: 8, right: 8, child: _RecordingDot());
+                  return const Positioned(top: 8, right: 8, child: _RecordingDot());
                 },
               ),
             ],
@@ -400,7 +702,7 @@ class _CameraListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final groupNames = camera.groupIds
-        .map((id) => CameraStore.instance.groupById(id)?.name)
+        .map((id) => CameraStore.instance.groupById(id)?.displayName)
         .where((name) => name != null)
         .join(', ');
     final displayGroupName = groupNames.isNotEmpty ? groupNames : 'Chưa phân nhóm'.tr;
@@ -408,19 +710,18 @@ class _CameraListTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         onTap: () => openCameraDetail(context, camera.id),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
+            borderRadius: BorderRadius.circular(AppColors.cardRadius),
           ),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: SizedBox(
                   width: 68,
                   height: 68,
@@ -458,13 +759,9 @@ class _CameraListTile extends StatelessWidget {
                         ),
                       ),
                       ListenableBuilder(
-                        listenable:
-                            CameraStore.instance.cameraListenable(camera.id),
+                        listenable: CameraStore.instance.cameraListenable(camera.id),
                         builder: (_, __) {
-                          final recording = CameraStore.instance
-                                  .cameraById(camera.id)
-                                  ?.recording ??
-                              camera.recording;
+                          final recording = CameraStore.instance.cameraById(camera.id)?.recording ?? camera.recording;
                           if (!recording) return const SizedBox.shrink();
                           return const Positioned(
                             top: 5,
@@ -518,13 +815,9 @@ class _CameraListTile extends StatelessWidget {
                     Row(
                       children: [
                         ListenableBuilder(
-                          listenable: CameraStore.instance
-                              .cameraListenable(camera.id),
+                          listenable: CameraStore.instance.cameraListenable(camera.id),
                           builder: (_, __) {
-                            final online = CameraStore.instance
-                                    .cameraById(camera.id)
-                                    ?.online ??
-                                camera.online;
+                            final online = CameraStore.instance.cameraById(camera.id)?.online ?? camera.online;
                             return _StatusBadge(online: online);
                           },
                         ),
@@ -575,7 +868,8 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: (online ? AppColors.danger : Colors.black).withOpacity(0.85,
+        color: (online ? AppColors.danger : Colors.black).withOpacity(
+          0.85,
         ),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -648,7 +942,6 @@ class _EmptyState extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.card,
-                      border: Border.all(color: AppColors.divider),
                     ),
                     child: Icon(
                       Icons.videocam_off_outlined,
@@ -728,8 +1021,7 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   @override
   void didUpdateWidget(covariant _VideoThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.hlsUrl != widget.hlsUrl ||
-        oldWidget.cameraId != widget.cameraId) {
+    if (oldWidget.hlsUrl != widget.hlsUrl || oldWidget.cameraId != widget.cameraId) {
       _detach();
       if (oldWidget.hlsUrl != widget.hlsUrl) {
         VideoPreloadCache.instance.invalidate(oldWidget.cameraId);

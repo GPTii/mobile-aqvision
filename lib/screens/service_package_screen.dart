@@ -6,6 +6,7 @@ import '../data/subscription_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
 import 'home/plan_selection_screen.dart';
+import '../widgets/app_ui.dart';
 
 class ServicePackageScreen extends StatefulWidget {
   const ServicePackageScreen({super.key});
@@ -23,20 +24,15 @@ class _ServicePackageScreenState extends State<ServicePackageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
-              ),
+              decoration: const BoxDecoration(),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                 child: Row(
@@ -57,7 +53,7 @@ class _ServicePackageScreenState extends State<ServicePackageScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -104,8 +100,7 @@ class _ServicePackageBody extends StatelessWidget {
         if (plan == null) {
           return Padding(
             padding: const EdgeInsets.all(20),
-            child: Text(sub.error ?? 'Chưa có dữ liệu gói dịch vụ'.tr,
-                style: TextStyle(color: AppColors.textMuted)),
+            child: Text(sub.error ?? 'Chưa có dữ liệu gói dịch vụ'.tr, style: TextStyle(color: AppColors.textMuted)),
           );
         }
 
@@ -122,8 +117,7 @@ class _ServicePackageBody extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: AppColors.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(AppColors.cardRadius),
               ),
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -194,8 +188,7 @@ class _ServicePackageBody extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${'Dung lượng đang ở mức'.tr} "$tierLabel" — ${'cân nhắc nâng cấp gói để tránh gián đoạn ghi hình.'.tr}',
-                        style:
-                            TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
+                        style: TextStyle(fontSize: 12, color: tierColor, fontWeight: FontWeight.w600, height: 1.4),
                       ),
                     ),
                   ],
@@ -223,8 +216,7 @@ class _ServicePackageBody extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text('Nâng cấp gói dịch vụ'.tr,
-                            style: TextStyle(
-                                color: AppColors.danger, fontSize: 14.5, fontWeight: FontWeight.w700)),
+                            style: TextStyle(color: AppColors.danger, fontSize: 14.5, fontWeight: FontWeight.w700)),
                       ),
                       Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.danger),
                     ],

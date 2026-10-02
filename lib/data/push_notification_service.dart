@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../screens/notifications_screen.dart';
 import '../utils/network_error_handler.dart';
 import 'notification_store.dart';
+import '../utils/server_text.dart';
 
 /// Displays real OS-level notifications (lock screen / notification tray),
 /// backed by Firebase Cloud Messaging.
@@ -96,6 +97,8 @@ class PushNotificationService {
     final body = notification?.body ?? message.data['body']?.toString() ?? message.data['message']?.toString();
 
     if (title == null && body == null) return;
+    final shownTitle = title == null ? null : localizeServerText(title);
+    final shownBody = body == null ? null : localizeServerText(body);
 
     const androidDetails = AndroidNotificationDetails(
       _channelId,
@@ -108,8 +111,8 @@ class PushNotificationService {
 
     await _local.show(
       _nextId++,
-      title,
-      body,
+      shownTitle,
+      shownBody,
       const NotificationDetails(android: androidDetails),
       payload: jsonEncode(message.data),
     );

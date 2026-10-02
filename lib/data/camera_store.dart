@@ -11,6 +11,7 @@ import 'debounced_notifier.dart';
 import 'video_preload_cache.dart';
 import '../utils/network_error_handler.dart';
 import 'notification_store.dart';
+import '../utils/app_strings.dart';
 
 const kCameraTypes = [
   'Camera Dome',
@@ -24,6 +25,11 @@ class CameraGroup {
   String name;
 
   CameraGroup({required this.id, required this.name});
+
+  /// Name to show in the UI. Common room / place names ("Phòng ngủ",
+  /// "Giao thông"…) follow the app language; anything the user typed
+  /// themselves has no table entry and is shown as-is.
+  String get displayName => name.tr;
 }
 
 class Camera {
@@ -81,6 +87,16 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
 
   CameraStore._();
 
+  /// Fill the store with sample data (UI screenshots / widget tests only).
+  @visibleForTesting
+  void debugSeed({required List<CameraGroup> groups, required List<Camera> cameras}) {
+    _groups
+      ..clear()
+      ..addAll(groups);
+    _cameras = [...cameras];
+    notifyListeners();
+  }
+
   List<CameraGroup> get groups => List.unmodifiable(_groups);
   List<Camera> get cameras => List.unmodifiable(_cameras);
 
@@ -92,8 +108,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
   /// Structure + status (headers that show online counts).
   Listenable get listAndStatus => Listenable.merge([this, statusEpoch]);
 
-  List<Camera> camerasInGroup(String groupId) =>
-      _cameras.where((c) => c.groupIds.contains(groupId)).toList();
+  List<Camera> camerasInGroup(String groupId) => _cameras.where((c) => c.groupIds.contains(groupId)).toList();
 
   CameraGroup? groupById(String id) {
     for (final group in _groups) {
@@ -199,21 +214,18 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
           cameraCode: item['stream'] ?? 'CAM-0000',
           type: kCameraTypes[0],
           ipAddress: item['url'] ?? '',
-          location: 'Góc camera',
-          groupIds: (item['groupIds'] as List<dynamic>?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              [],
+          location: (item['location'] ?? '').toString(),
+          mapLink: (item['mapLink'] ?? '').toString(),
+          groupIds: (item['groupIds'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           online: item['status'] == 'Online',
           resolution: '1080p',
           recording: item['enableMp4'] == true,
-          lastSeen: 'Vừa mới',
+          lastSeen: 'Vừa mới'.tr,
           app: app,
           hlsUrl: hlsUrl,
           fmp4Url: fmp4Url,
           targetUrl: item['url'],
-          playProtocol: 'webrtc',
-          
+          playProtocol: 'hls',
         );
       }).toList();
       notifyNow();
@@ -237,10 +249,12 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     if (token == null) throw Exception('Unauthorized');
 
     final uri = Uri.parse('$_baseUrl/groups');
-    final res = await http.post(uri, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    }, body: jsonEncode({'name': name.trim()}));
+    final res = await http.post(uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'name': name.trim()}));
 
     if (res.statusCode == 200 || res.statusCode == 201) {
       final json = jsonDecode(res.body);
@@ -251,15 +265,35 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       return group;
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi thêm nhóm');
+      throw Exception(json['error'] ?? 'Lỗi thêm nhóm'.tr);
     }
   }
 
   Future<void> renameGroup(String groupId, String newName) async {
     final group = groupById(groupId);
-    if (group == null || newName.trim().isEmpty) return;
-    group.name = newName.trim();
-    notifyNow();
+    final trimmed = newName.trim();
+    if (group == null || trimmed.isEmpty) return;
+
+    final token = await _getToken();
+    if (token == null) throw Exception('Unauthorized');
+
+    final uri = Uri.parse('$_baseUrl/groups/$groupId');
+    final res = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'name': trimmed}),
+    ).timeout(const Duration(seconds: 10));
+
+    if (res.statusCode == 200) {
+      group.name = trimmed;
+      notifyNow();
+    } else {
+      final json = jsonDecode(res.body);
+      throw Exception(json['error'] ?? 'Lỗi đổi tên nhóm'.tr);
+    }
   }
 
   Future<void> deleteGroup(String groupId) async {
@@ -282,6 +316,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     required String type,
     required String ipAddress,
     required String location,
+    String mapLink = '',
     String resolution = '1080p',
     bool online = true,
     bool recording = false,
@@ -289,17 +324,21 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
   }) async {
     final token = await _getToken();
     final uri = Uri.parse('$_baseUrl/proxies');
-    final res = await http.post(uri, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    }, body: jsonEncode({
-      'app': 'live',
-      'stream': cameraCode,
-      'url': ipAddress,
-      'groupIds': groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
-      'enableHls': true,
-      'enableMp4': recording,
-    }));
+    final res = await http.post(uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'app': 'live',
+          'stream': cameraCode,
+          'url': ipAddress,
+          'groupIds': groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
+          'enableHls': true,
+          'enableMp4': recording,
+          'location': location,
+          'mapLink': mapLink,
+        }));
 
     if (res.statusCode == 200 || res.statusCode == 201) {
       await fetchCameras();
@@ -309,7 +348,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       );
     } else {
       final json = jsonDecode(res.body);
-      throw Exception(json['error'] ?? 'Lỗi thêm camera');
+      throw Exception(json['error'] ?? 'Lỗi thêm camera'.tr);
     }
   }
 
@@ -321,6 +360,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     String? type,
     String? ipAddress,
     String? location,
+    String? mapLink,
     String? resolution,
     bool? online,
     bool? recording,
@@ -328,21 +368,24 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
     final token = await _getToken();
     final uri = Uri.parse('$_baseUrl/proxies/$cameraId');
 
-    final res = await http.patch(uri, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    }, body: jsonEncode({
-      if (cameraCode != null) 'stream': cameraCode,
-      if (ipAddress != null) 'url': ipAddress,
-      if (groupIds != null)
-        'groupIds': groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
-      if (recording != null) 'enableMp4': recording,
-    }));
+    final res = await http.patch(uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          if (cameraCode != null) 'stream': cameraCode,
+          if (ipAddress != null) 'url': ipAddress,
+          if (groupIds != null) 'groupIds': groupIds.map((id) => int.tryParse(id) ?? 0).toList(),
+          if (recording != null) 'enableMp4': recording,
+          if (location != null) 'location': location,
+          if (mapLink != null) 'mapLink': mapLink,
+        }));
 
     if (res.statusCode == 200) {
       await fetchCameras();
     } else {
-      throw Exception('Lỗi cập nhật camera');
+      throw Exception('Lỗi cập nhật camera'.tr);
     }
   }
 
@@ -357,7 +400,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       _cameras.removeWhere((c) => c.id == cameraId);
       notifyNow();
     } else {
-      throw Exception('Lỗi xóa camera');
+      throw Exception('Lỗi xóa camera'.tr);
     }
   }
 
@@ -371,10 +414,12 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
 
     final action = camera.online ? 'disconnect' : 'reconnect';
     final uri = Uri.parse('$_baseUrl/proxies/$cameraId');
-    final res = await http.put(uri, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    }, body: jsonEncode({'action': action}));
+    final res = await http.put(uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'action': action}));
 
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
@@ -387,8 +432,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
       _bumpStatus(cameraId);
       NotificationStore.instance.fetchAlerts();
     } else {
-      throw Exception(
-          'Lỗi khi ${action == 'disconnect' ? 'ngắt kết nối' : 'kết nối lại'} camera');
+      throw Exception((action == 'disconnect' ? 'Lỗi khi ngắt kết nối camera' : 'Lỗi khi kết nối lại camera').tr);
     }
   }
 
@@ -405,10 +449,7 @@ class CameraStore extends ChangeNotifier with DebouncedNotify {
 
       final res = await _sseClient!.send(req);
 
-      res.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) {
+      res.stream.transform(utf8.decoder).transform(const LineSplitter()).listen((line) {
         if (line.startsWith('data: ')) {
           final dataStr = line.substring(6);
           try {

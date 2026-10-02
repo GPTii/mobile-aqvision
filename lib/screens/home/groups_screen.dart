@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/camera_store.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/app_strings.dart';
+import '../../widgets/app_ui.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
@@ -28,9 +29,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
       await CameraStore.instance.addGroup(name);
       _addCtrl.clear();
       setState(() => _adding = false);
-      _showSnack('Đã thêm nhóm "$name"'.tr);
+      _showSnack('Đã thêm nhóm "{name}"'.trArgs({'name': name}));
     } catch (e) {
-      _showSnack('Lỗi: $e'.tr, error: true);
+      _showSnack('Lỗi: {e}'.trArgs({'e': e}), error: true);
     }
   }
 
@@ -41,62 +42,60 @@ class _GroupsScreenState extends State<GroupsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Đổi tên nhóm'.tr,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        title: Text('Đổi tên nhóm'.tr, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           decoration: InputDecoration(hintText: 'Tên nhóm mới'.tr),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Hủy'.tr)),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Hủy'.tr)),
           TextButton(
               onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: Text('Lưu'.tr,
-                  style: TextStyle(color: AppColors.accent))),
+              child: Text('Lưu'.tr, style: TextStyle(color: AppColors.accent))),
         ],
       ),
     );
     if (newName != null && newName.isNotEmpty && newName != group.name) {
-      await CameraStore.instance.renameGroup(group.id, newName);
-      _showSnack('Đã đổi tên thành "$newName"'.tr);
+      try {
+        await CameraStore.instance.renameGroup(group.id, newName);
+        _showSnack('Đã đổi tên thành "{name}"'.trArgs({'name': newName}));
+      } catch (e) {
+        _showSnack('Lỗi: {e}'.trArgs({'e': e}), error: true);
+      }
     }
   }
 
   Future<void> _deleteGroup(CameraGroup group) async {
     final cameras = CameraStore.instance.camerasInGroup(group.id);
     final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Xóa nhóm?'.tr,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-        content: Text(
-          cameras.isNotEmpty
-              ? 'Nhóm "${group.name}" có ${cameras.length} camera. '.tr + 'Camera sẽ không bị xóa nhưng sẽ không còn thuộc nhóm này.'.tr
-              : 'Xóa nhóm "${group.name}"?'.tr,
-          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Hủy'.tr)),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text('Xóa'.tr,
-                  style: TextStyle(color: AppColors.danger))),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Xóa nhóm?'.tr, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+            content: Text(
+              cameras.isNotEmpty
+                  ? 'Nhóm "{name}" có {count} camera. '.trArgs({'name': group.displayName, 'count': cameras.length}) +
+                      'Camera sẽ không bị xóa nhưng sẽ không còn thuộc nhóm này.'.tr
+                  : 'Xóa nhóm "{name}"?'.trArgs({'name': group.displayName}),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Hủy'.tr)),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text('Xóa'.tr, style: TextStyle(color: AppColors.danger))),
+            ],
+          ),
+        ) ??
+        false;
     if (ok) {
       try {
         await CameraStore.instance.deleteGroup(group.id);
-        _showSnack('Đã xóa nhóm "${group.name}"'.tr);
+        _showSnack('Đã xóa nhóm "{name}"'.trArgs({'name': group.displayName}));
       } catch (e) {
-        _showSnack('Lỗi: $e'.tr, error: true);
+        _showSnack('Lỗi: {e}'.trArgs({'e': e}), error: true);
       }
     }
   }
@@ -117,35 +116,27 @@ class _GroupsScreenState extends State<GroupsScreen> {
       listenable: CameraStore.instance,
       builder: (ctx, _) {
         final groups = CameraStore.instance.groups;
-        return Scaffold(
-          backgroundColor: AppColors.background,
+        return AppBackground(
+            child: Scaffold(
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: Column(
               children: [
                 // Header
                 DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 4, 16, 16),
                     child: Row(
                       children: [
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(Icons.arrow_back_ios_new_rounded,
-                              color: AppColors.textPrimary, size: 20),
+                          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                         ),
                         Expanded(
                           child: Text('Quản lý nhóm'.tr,
-                              style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700)),
+                              style:
+                                  TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700)),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -154,10 +145,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('${groups.length} ${'nhóm'.tr}',
-                              style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700)),
+                              style: TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -183,8 +171,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                     hintStyle: TextStyle(color: AppColors.textMuted),
                                     filled: true,
                                     fillColor: AppColors.card,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 14, vertical: 10),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(color: AppColors.border),
@@ -206,17 +193,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.accent,
                                   foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 ),
                                 child: Text('Thêm'.tr),
                               ),
                               SizedBox(width: 4),
                               IconButton(
-                                icon: Icon(Icons.close_rounded,
-                                    color: AppColors.textMuted),
+                                icon: Icon(Icons.close_rounded, color: AppColors.textMuted),
                                 onPressed: () {
                                   _addCtrl.clear();
                                   setState(() => _adding = false);
@@ -235,19 +219,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.folder_off_rounded,
-                                  size: 52,
-                                  color: AppColors.textMuted.withOpacity(0.4)),
+                              Icon(Icons.folder_off_rounded, size: 52, color: AppColors.textMuted.withOpacity(0.4)),
                               SizedBox(height: 12),
                               Text('Chưa có nhóm nào'.tr,
                                   style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600)),
+                                      color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
                               SizedBox(height: 6),
                               Text('Nhấn "+" để thêm nhóm mới'.tr,
-                                  style: TextStyle(
-                                      color: AppColors.textMuted, fontSize: 12)),
+                                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                             ],
                           ),
                         )
@@ -276,18 +255,16 @@ class _GroupsScreenState extends State<GroupsScreen> {
             backgroundColor: AppColors.accent,
             child: const Icon(Icons.add_rounded, color: Colors.white),
           ),
-        );
+        ));
       },
     );
   }
 
-  void _showGroupCameras(
-      BuildContext context, CameraGroup group, List<Camera> cameras) {
+  void _showGroupCameras(BuildContext context, CameraGroup group, List<Camera> cameras) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
@@ -296,7 +273,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
           children: [
             Center(
               child: Container(
-                width: 36, height: 4,
+                width: 36,
+                height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
@@ -304,9 +282,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
               ),
             ),
             SizedBox(height: 14),
-            Text('Nhóm: ${group.name}'.tr,
-                style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text('Nhóm: {name}'.trArgs({'name': group.displayName}),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             SizedBox(height: 12),
             if (cameras.isEmpty)
               Padding(
@@ -320,25 +297,17 @@ class _GroupsScreenState extends State<GroupsScreen> {
               ...cameras.map((c) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor: c.online
-                          ? AppColors.success.withOpacity(0.1)
-                          : AppColors.textMuted.withOpacity(0.1),
+                      backgroundColor:
+                          c.online ? AppColors.success.withOpacity(0.1) : AppColors.textMuted.withOpacity(0.1),
                       child: Icon(Icons.videocam_rounded,
-                          size: 18,
-                          color: c.online ? AppColors.success : AppColors.textMuted),
+                          size: 18, color: c.online ? AppColors.success : AppColors.textMuted),
                     ),
-                    title: Text(c.name,
-                        style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600)),
-                    subtitle: Text(c.cameraCode,
-                        style: TextStyle(
-                            fontSize: 11.5, color: AppColors.textMuted)),
+                    title: Text(c.name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    subtitle: Text(c.cameraCode, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: c.online
-                            ? AppColors.success.withOpacity(0.1)
-                            : AppColors.textMuted.withOpacity(0.1),
+                        color: c.online ? AppColors.success.withOpacity(0.1) : AppColors.textMuted.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -383,13 +352,13 @@ class _GroupTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppColors.cardRadius),
           ),
           child: Row(
             children: [
               Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   gradient: AppColors.accentGradient,
                   borderRadius: BorderRadius.circular(10),
@@ -401,21 +370,15 @@ class _GroupTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(group.name,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
+                    Text(group.displayName,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                     SizedBox(height: 2),
-                    Text('$cameraCount camera',
-                        style: TextStyle(
-                            fontSize: 11.5, color: AppColors.textMuted)),
+                    Text('$cameraCount camera', style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                   ],
                 ),
               ),
               PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert_rounded,
-                    color: AppColors.textMuted, size: 20),
+                icon: Icon(Icons.more_vert_rounded, color: AppColors.textMuted, size: 20),
                 color: AppColors.card,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 onSelected: (v) {
@@ -424,10 +387,7 @@ class _GroupTile extends StatelessWidget {
                 },
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'rename', child: Text('Đổi tên'.tr)),
-                  PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Xóa nhóm'.tr,
-                          style: TextStyle(color: AppColors.danger))),
+                  PopupMenuItem(value: 'delete', child: Text('Xóa nhóm'.tr, style: TextStyle(color: AppColors.danger))),
                 ],
               ),
             ],

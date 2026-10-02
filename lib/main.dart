@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'config/api_config.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -29,12 +30,12 @@ final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<v
 void main() async {
   HttpOverrides.global = MyHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
+
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission(
         alert: true,
@@ -48,6 +49,7 @@ void main() async {
     }
   }
 
+  await ApiConfig.init();
   await AuthStore.instance.init();
   await AppThemeStore.instance.init();
   runApp(const RapidMediaApp());
@@ -74,6 +76,16 @@ class RapidMediaApp extends StatelessWidget {
               brightness: AppThemeStore.instance.isDark ? Brightness.dark : Brightness.light,
             ),
             fontFamily: 'Roboto',
+            // Transparent app bars sit on the page gradient (AppBackground).
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+              elevation: 0,
+              foregroundColor: AppColors.textPrimary,
+              titleTextStyle: TextStyle(
+                  fontFamily: 'Roboto', color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
+            ),
           ),
           home: ListenableBuilder(
             listenable: AuthStore.instance,
@@ -89,10 +101,10 @@ class RapidMediaApp extends StatelessWidget {
   }
 }
 
-class MyHttpOverrides extends HttpOverrides{
+class MyHttpOverrides extends HttpOverrides {
   @override
-  HttpClient createHttpClient(SecurityContext? context){
+  HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
-      ..badCertificateCallback = (X509Certificate cert, String host, int port)=> true;
+      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
   }
 }

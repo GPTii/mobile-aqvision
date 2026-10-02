@@ -52,8 +52,17 @@
 		<key>NSBluetoothAlwaysUsageDescription</key>
 		<string>Ứng dụng cần Bluetooth để kết nối và cài đặt Gateway.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Ứng dụng cần Camera để quét mã QR trên thiết bị.</string>
+		<string>Ứng dụng cần Camera để quét mã QR trên thiết bị và chụp ảnh gateway.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Ứng dụng cần truy cập thư viện ảnh để chọn ảnh đại diện cho gateway.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Ứng dụng cần Vị trí để quét sóng WiFi xung quanh thiết bị.</string>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsLocalNetworking</key>
+			<true/>
+		</dict>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Ứng dụng cần truy cập mạng nội bộ để kết nối và quản lý Gateway Eyerus.</string>
 	</dict>
 </plist>

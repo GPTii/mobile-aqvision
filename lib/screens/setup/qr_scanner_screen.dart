@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/eyerus_qr_data.dart';
 import 'gateway_setup_screen.dart';
+import 'ble_scanner_screen.dart';
+import '../../utils/app_strings.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({Key? key}) : super(key: key);
@@ -14,6 +16,7 @@ class QrScannerScreen extends StatefulWidget {
 class _QrScannerScreenState extends State<QrScannerScreen> {
   MobileScannerController cameraController = MobileScannerController();
   bool _isProcessing = false;
+  final TextEditingController _manualCodeController = TextEditingController();
 
   @override
   void initState() {
@@ -30,12 +33,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     ].request();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quét mã QR Gateway'),
+        title: Text('Quét mã QR Gateway'.tr),
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on, color: Colors.yellow),
@@ -85,23 +87,48 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             bottom: 50,
             left: 0,
             right: 0,
-            child: Text(
-              'Đưa mã QR trên thiết bị vào khung',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 16, backgroundColor: Colors.black45),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Đưa mã QR trên thiết bị vào khung'.tr,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 16, backgroundColor: Colors.black45),
+                ),
+                const SizedBox(height: 20),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BleScannerScreen(),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.white24,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: Text(
+                    'Tìm Gateway qua Bluetooth'.tr,
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
           )
         ],
       ),
     );
   }
-  
+
   @override
   void dispose() {
+    _manualCodeController.dispose();
     cameraController.dispose();
     super.dispose();
   }

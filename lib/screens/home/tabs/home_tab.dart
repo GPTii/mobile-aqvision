@@ -4,13 +4,32 @@ import 'package:video_player/video_player.dart';
 import '../../../data/app_state.dart';
 
 import '../../../data/camera_store.dart';
+import '../../../data/hidden_cameras_store.dart';
 import '../../../data/video_preload_cache.dart';
 import '../../../theme/app_colors.dart';
+import '../../../widgets/app_ui.dart';
 import '../../../widgets/camera_selection_sheet.dart';
 import '../../../widgets/camera_navigation.dart';
+import '../../../data/gateway_session_store.dart';
+import '../../../widgets/gateway_picker.dart';
+import '../../../widgets/news_button.dart';
 import '../../../widgets/notification_bell_button.dart';
 import '../../../widgets/prompt_dialog.dart';
 import '../../../widgets/weather_time_header.dart';
+
+/// Home-tab camera filter picked in the header: null = "Tất cả" (default).
+/// Independent of the gateway selected on the Camera tab.
+final ValueNotifier<String?> homeCameraFilter = ValueNotifier(null);
+
+bool _inGatewayFilter(Camera c) => GatewaySessionStore.homeIncludesCamera(homeCameraFilter.value, c.cameraCode);
+
+/// Shown on Home: in the picked gateway and not hidden by the user.
+bool _inHomeFilter(Camera c) => _inGatewayFilter(c) && !HiddenCamerasStore.instance.isHidden(c.id);
+
+/// Cameras the user hid that would otherwise show under the current filter.
+List<Camera> _hiddenCameras() => CameraStore.instance.cameras
+    .where((c) => _inGatewayFilter(c) && HiddenCamerasStore.instance.isHidden(c.id))
+    .toList();
 
 class HomeTab extends StatelessWidget {
   const HomeTab({super.key});
@@ -27,20 +46,13 @@ class HomeTab extends StatelessWidget {
     // Chrome stays outside the store listener — SSE/status flips don't rebuild headers.
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.headerBackground,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
-            ),
-            child: SafeArea(
+      body: AppBackground(
+        child: Column(
+          children: [
+            SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                padding: const EdgeInsets.fromLTRB(20, 10, 8, 10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -48,65 +60,71 @@ class HomeTab extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Trang chủ'.tr,
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          SizedBox(height: 2),
+                          GatewayPicker(fontSize: 24, filter: homeCameraFilter),
+                          SizedBox(height: 4),
                           WeatherTimeHeader(),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const NewsButton(),
                     const NotificationBellButton(),
                   ],
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: RefreshIndicator(
-                onRefresh: _handleRefresh,
-                color: AppColors.accent,
-                backgroundColor: AppColors.card,
-                child: ListenableBuilder(
-                  listenable: CameraStore.instance,
-                  builder: (context, _) {
-                    final groups = CameraStore.instance.groups;
-                    final ungrouped = CameraStore.instance.cameras
-                        .where((c) => c.groupIds.every(
-                            (id) => CameraStore.instance.groupById(id) == null))
-                        .toList();
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: AppColors.accent,
+                  backgroundColor: AppColors.card,
+                  child: ListenableBuilder(
+                    listenable: Listenable.merge([
+                      CameraStore.instance,
+                      GatewaySessionStore.instance,
+                      homeCameraFilter,
+                      HiddenCamerasStore.instance,
+                    ]),
+                    builder: (context, _) {
+                      // Filtered to one home: hide groups with none of its cameras.
+                      // "Tất cả" keeps empty groups so cameras can be added to them.
+                      final groups = homeCameraFilter.value == null
+                          ? CameraStore.instance.groups
+                          : CameraStore.instance.groups
+                              .where((g) => CameraStore.instance.camerasInGroup(g.id).any(_inHomeFilter))
+                              .toList();
+                      final ungrouped = CameraStore.instance.cameras
+                          .where(_inHomeFilter)
+                          .where((c) => c.groupIds.every((id) => CameraStore.instance.groupById(id) == null))
+                          .toList();
+                      final hidden = _hiddenCameras();
 
-                    return CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                        SliverList.builder(
-                          itemCount: groups.length,
-                          itemBuilder: (context, index) =>
-                              _RoomSection(group: groups[index]),
-                        ),
-                        if (ungrouped.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: _UngroupedSection(cameras: ungrouped),
+                      return CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                          SliverList.builder(
+                            itemCount: groups.length,
+                            itemBuilder: (context, index) => _RoomSection(group: groups[index]),
                           ),
-                        const SliverToBoxAdapter(child: _AddRoomCard()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      ],
-                    );
-                  },
+                          if (ungrouped.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: _UngroupedSection(cameras: ungrouped),
+                            ),
+                          if (hidden.isNotEmpty)
+                            SliverToBoxAdapter(child: _HiddenCamerasCard(count: hidden.length)),
+                          const SliverToBoxAdapter(child: _AddRoomCard()),
+                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -119,7 +137,8 @@ class _RoomSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cameras = CameraStore.instance.camerasInGroup(group.id);
+    final inRoom = CameraStore.instance.camerasInGroup(group.id).where(_inGatewayFilter).toList();
+    final cameras = inRoom.where(_inHomeFilter).toList();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 22),
@@ -127,10 +146,12 @@ class _RoomSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _RoomHeader(group: group, cameraCount: cameras.length),
-          if (cameras.isEmpty)
-            _EmptyRoomHint(groupId: group.id)
+          if (cameras.isNotEmpty)
+            _CameraGrid(cameras: cameras, groupId: group.id)
+          else if (inRoom.isNotEmpty)
+            _AllHiddenHint(count: inRoom.length)
           else
-            _CameraGrid(cameras: cameras, groupId: group.id),
+            _EmptyRoomHint(groupId: group.id),
         ],
       ),
     );
@@ -173,7 +194,7 @@ class _UngroupedHeader extends StatelessWidget {
             'Chưa phân nhóm'.tr,
             style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: 19,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -238,8 +259,7 @@ class _CameraGrid extends StatelessWidget {
           // instead of stretching just 2 of them — same responsive idea
           // as the Camera tab's grid, applied to this tab's hero-tile
           // layout instead of a uniform grid.
-          final extraCount =
-              (constraints.maxWidth / 150).floor().clamp(2, 4);
+          final extraCount = (constraints.maxWidth / 150).floor().clamp(2, 4);
           final extras = cameras.skip(1).take(extraCount).toList();
           final overflowCount = cameras.length - (1 + extraCount);
 
@@ -254,24 +274,21 @@ class _CameraGrid extends StatelessWidget {
               if (extras.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Row(
-                  children: List.generate(extras.length, (index) {
-                    final isLast = index == extras.length - 1;
-                    final showOverflow = isLast && overflowCount > 0;
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          right: index == extras.length - 1 ? 0 : 10,
-                        ),
+                  children: [
+                    for (var index = 0; index < extras.length; index++) ...[
+                      // Gap between tiles, not padding inside one — keeps all tiles the same size.
+                      if (index > 0) const SizedBox(width: 10),
+                      Expanded(
                         child: _CameraTile(
                           key: ValueKey(extras[index].id),
                           camera: extras[index],
                           groupId: groupId,
                           aspectRatio: 1.3,
-                          overflowCount: showOverflow ? overflowCount : 0,
+                          overflowCount: index == extras.length - 1 && overflowCount > 0 ? overflowCount : 0,
                         ),
                       ),
-                    );
-                  }),
+                    ],
+                  ],
                 ),
               ],
             ],
@@ -334,20 +351,25 @@ class _EmptyRoomHint extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
           onTap: () => showCameraSelectionSheet(context, groupId: groupId),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 26),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppColors.cardRadius),
             ),
-            child: Text(
-              'Chưa có camera · Nhấn để thêm'.tr,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12.5, fontWeight: FontWeight.w500),
+            child: Column(
+              children: [
+                Icon(Icons.add_circle_rounded, size: 30, color: AppColors.accent.withValues(alpha: 0.85)),
+                const SizedBox(height: 8),
+                Text(
+                  'Chưa có camera · Nhấn để thêm'.tr,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5, fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
           ),
         ),
@@ -369,13 +391,24 @@ class _RoomHeader extends StatelessWidget {
       initialValue: group.name,
       hint: 'Tên nhóm camera'.tr,
     );
-    if (name != null) CameraStore.instance.renameGroup(group.id, name);
+    if (name != null && name.trim().isNotEmpty && name.trim() != group.name) {
+      try {
+        await CameraStore.instance.renameGroup(group.id, name.trim());
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppColors.danger,
+          ));
+        }
+      }
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'Xoá nhóm'.tr + ' "${group.name}"?',
+      title: 'Xoá nhóm'.tr + ' "${group.displayName}"?',
       message: 'Toàn bộ camera trong nhóm này'.tr + ' ($cameraCount ' + 'camera'.tr + ') ' + 'sẽ bị xoá theo.'.tr,
     );
     if (confirmed) {
@@ -398,10 +431,10 @@ class _RoomHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  group.name,
+                  group.displayName,
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 16,
+                    fontSize: 19,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -434,7 +467,7 @@ class _RoomHeader extends StatelessWidget {
           PopupMenuButton<String>(
             color: AppColors.card,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            icon: Icon(Icons.more_horiz_rounded, size: 20, color: AppColors.textSecondary),
+            icon: Icon(Icons.more_horiz_rounded, size: 24, color: AppColors.textPrimary),
             onSelected: (value) {
               switch (value) {
                 case 'add_existing':
@@ -486,23 +519,23 @@ class _AddRoomCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
           onTap: () => _addGroup(context),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 18),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppColors.cardRadius),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_rounded, size: 18, color: AppColors.accent),
+                Icon(Icons.add_rounded, size: 22, color: AppColors.accent),
                 const SizedBox(width: 6),
                 Text(
                   'Thêm nhóm camera'.tr,
-                  style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -532,12 +565,12 @@ class _CameraTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         onTap: () => openCameraDetail(context, camera.id),
         child: AspectRatio(
           aspectRatio: aspectRatio,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppColors.cardRadius),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -561,21 +594,14 @@ class _CameraTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ListenableBuilder(
-                        listenable:
-                            CameraStore.instance.cameraListenable(camera.id),
+                        listenable: CameraStore.instance.cameraListenable(camera.id),
                         builder: (_, __) {
-                          final live = CameraStore.instance
-                                  .cameraById(camera.id)
-                                  ?.online ??
-                              camera.online;
-                          return live
-                              ? const _LiveBadge()
-                              : const SizedBox.shrink();
+                          final live = CameraStore.instance.cameraById(camera.id)?.online ?? camera.online;
+                          return live ? const _LiveBadge() : const SizedBox.shrink();
                         },
                       ),
                       const SizedBox(width: 4),
-                      if (groupId.isNotEmpty && groupId != '0')
-                        _CameraOptionsMenu(camera: camera, groupId: groupId),
+                      _CameraOptionsMenu(camera: camera, groupId: groupId),
                     ],
                   ),
                 ),
@@ -706,6 +732,7 @@ class _LiveBadge extends StatelessWidget {
 class _VideoThumbnail extends StatefulWidget {
   final String cameraId;
   final String hlsUrl;
+
   /// Bottom-nav tab that owns this player (0 = Home, 1 = Camera).
   final int activeTabIndex;
 
@@ -737,8 +764,7 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   @override
   void didUpdateWidget(covariant _VideoThumbnail oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.hlsUrl != widget.hlsUrl ||
-        oldWidget.cameraId != widget.cameraId) {
+    if (oldWidget.hlsUrl != widget.hlsUrl || oldWidget.cameraId != widget.cameraId) {
       _detach();
       if (oldWidget.hlsUrl != widget.hlsUrl) {
         VideoPreloadCache.instance.invalidate(oldWidget.cameraId);
@@ -841,7 +867,19 @@ class _CameraOptionsMenu extends StatelessWidget {
         child: const Icon(Icons.more_horiz_rounded, size: 16, color: Colors.white),
       ),
       onSelected: (value) async {
-        if (value == 'remove') {
+        if (value == 'hide') {
+          await HiddenCamerasStore.instance.hide(camera.id);
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text('Đã ẩn "{name}" khỏi trang chủ'.trArgs({'name': camera.name})),
+              action: SnackBarAction(
+                label: 'Hoàn tác'.tr,
+                onPressed: () => HiddenCamerasStore.instance.show(camera.id),
+              ),
+            ));
+        } else if (value == 'remove') {
           try {
             final newGroupIds = camera.groupIds.where((id) => id != groupId).toList();
             await CameraStore.instance.updateCamera(camera.id, groupIds: newGroupIds);
@@ -851,11 +889,165 @@ class _CameraOptionsMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'remove',
-          child: Text('Xoá khỏi nhóm'.tr, style: TextStyle(color: AppColors.danger)),
-        ),
+        PopupMenuItem(value: 'hide', child: Text('Ẩn khỏi trang chủ'.tr)),
+        if (groupId.isNotEmpty && groupId != '0')
+          PopupMenuItem(
+            value: 'remove',
+            child: Text('Xoá khỏi nhóm'.tr, style: TextStyle(color: AppColors.danger)),
+          ),
       ],
     );
   }
+}
+
+/// Room whose cameras are all hidden — says so instead of "no camera yet".
+class _AllHiddenHint extends StatelessWidget {
+  final int count;
+
+  const _AllHiddenHint({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
+          onTap: () => _showHiddenCamerasSheet(context),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppColors.cardRadius),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.visibility_off_rounded, size: 26, color: AppColors.textMuted),
+                const SizedBox(height: 8),
+                Text(
+                  'Đã ẩn {count} camera · Nhấn để hiện lại'.trArgs({'count': count}),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13.5, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Entry to the hidden cameras list, above "Thêm nhóm camera".
+class _HiddenCamerasCard extends StatelessWidget {
+  final int count;
+
+  const _HiddenCamerasCard({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppColors.cardRadius),
+          onTap: () => _showHiddenCamerasSheet(context),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppColors.cardRadius),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.visibility_off_rounded, size: 20, color: AppColors.textSecondary),
+                const SizedBox(width: 8),
+                Text(
+                  'Camera đã ẩn ({count})'.trArgs({'count': count}),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14.5, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lists hidden cameras with a "Hiện lại" button each; closes once empty.
+void _showHiddenCamerasSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.card,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => ListenableBuilder(
+      listenable: HiddenCamerasStore.instance,
+      builder: (ctx, _) {
+        final cameras = _hiddenCameras();
+        if (cameras.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (ctx.mounted) Navigator.of(ctx).maybePop();
+          });
+        }
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('Camera đã ẩn'.tr,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    ),
+                    TextButton(
+                      onPressed: HiddenCamerasStore.instance.showAll,
+                      child: Text('Hiện tất cả'.tr, style: TextStyle(color: AppColors.accent)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final c in cameras)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.videocam_off_rounded, color: AppColors.textMuted),
+                          title: Text(c.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          trailing: TextButton.icon(
+                            onPressed: () => HiddenCamerasStore.instance.show(c.id),
+                            icon: Icon(Icons.visibility_rounded, size: 18, color: AppColors.accent),
+                            label: Text('Hiện lại'.tr, style: TextStyle(color: AppColors.accent)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }

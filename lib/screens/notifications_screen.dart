@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/notification_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
+import '../widgets/app_ui.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -25,19 +26,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       builder: (context, _) {
         final notifications = NotificationStore.instance.notifications;
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
+        return AppBackground(
+            child: Scaffold(
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: Column(
               children: [
                 DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(),
                   child: _Header(context: context, hasUnread: NotificationStore.instance.unreadCount > 0),
                 ),
                 Expanded(
@@ -63,7 +59,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
           ),
-        );
+        ));
       },
     );
   }
@@ -140,8 +136,7 @@ class _SettingsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       child: Column(
         children: [
@@ -219,8 +214,7 @@ class _NotificationList extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       child: Column(
         children: List.generate(notifications.length, (i) {
@@ -294,7 +288,7 @@ class _NotificationTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      notification.title,
+                      notification.displayTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -306,7 +300,7 @@ class _NotificationTile extends StatelessWidget {
                     if (notification.message.isNotEmpty) ...[
                       SizedBox(height: 2),
                       Text(
-                        notification.message,
+                        notification.displayMessage,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
@@ -347,8 +341,7 @@ class _EmptyNotifications extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       child: Text(
         'Không có thông báo nào'.tr,

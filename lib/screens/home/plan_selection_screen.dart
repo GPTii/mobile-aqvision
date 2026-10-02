@@ -4,6 +4,7 @@ import '../../data/service_plans.dart';
 import '../../data/subscription_store.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/app_strings.dart';
+import '../../widgets/app_ui.dart';
 
 class PlanSelectionScreen extends StatefulWidget {
   final String currentPlanId;
@@ -66,8 +67,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Yêu cầu đã gửi'.tr,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          title: Text('Yêu cầu đã gửi'.tr, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           content: Text(
             'Yêu cầu của bạn đang chờ quản trị viên duyệt. Gói sẽ tự cập nhật '.tr + resultMessage,
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -92,8 +92,9 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
@@ -103,16 +104,12 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary, size: 20),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                   ),
                   Expanded(
                     child: Text(
                       'Nâng cấp gói dịch vụ'.tr,
-                      style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700),
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -152,8 +149,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
                       // Phone: 1 column, cards stacked (unchanged). Tablet/wide
                       // screens: lay plans out side by side like a real plan
                       // comparison, instead of one long scroll of full-width cards.
-                      final crossAxisCount =
-                          (constraints.maxWidth / 320).floor().clamp(1, 3);
+                      final crossAxisCount = (constraints.maxWidth / 320).floor().clamp(1, 3);
 
                       if (crossAxisCount == 1) {
                         return ListView.separated(
@@ -183,7 +179,7 @@ class _PlanSelectionScreenState extends State<PlanSelectionScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildCard(ServicePlan plan) {
@@ -304,79 +300,76 @@ class _PlanCard extends StatelessWidget {
       ),
       child: SingleChildScrollView(
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(plan.name,
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              if (isCurrent) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(99),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(plan.name,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                if (isCurrent) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text('Gói hiện tại'.tr,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.accent)),
                   ),
-                  child: Text('Gói hiện tại'.tr,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.accent)),
-                ),
+                ],
               ],
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(plan.tagline,
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Icon(Icons.support_agent_rounded, size: 18, color: AppColors.accent),
-              const SizedBox(width: 6),
-              Text('Liên hệ quản lý'.tr,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _FeatureRow(icon: Icons.videocam_outlined, text: plan.cameraLabel),
-          const SizedBox(height: 6),
-          _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} ${'GB lưu trữ'.tr}'),
-          const SizedBox(height: 6),
-          _FeatureRow(icon: Icons.history_rounded, text: kRetentionPolicy.tr),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: isCurrent
-                ? OutlinedButton(
-                    onPressed: null,
-                    style: OutlinedButton.styleFrom(
-                      disabledForegroundColor: AppColors.textMuted,
-                      side: BorderSide(color: AppColors.divider),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            const SizedBox(height: 2),
+            Text(plan.tagline, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(Icons.support_agent_rounded, size: 18, color: AppColors.accent),
+                const SizedBox(width: 6),
+                Text('Liên hệ quản lý'.tr,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _FeatureRow(icon: Icons.videocam_outlined, text: plan.cameraLabel),
+            const SizedBox(height: 6),
+            _FeatureRow(icon: Icons.cloud_outlined, text: '${plan.storageGb.toStringAsFixed(0)} ${'GB lưu trữ'.tr}'),
+            const SizedBox(height: 6),
+            _FeatureRow(icon: Icons.history_rounded, text: kRetentionPolicy.tr),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: isCurrent
+                  ? OutlinedButton(
+                      onPressed: null,
+                      style: OutlinedButton.styleFrom(
+                        disabledForegroundColor: AppColors.textMuted,
+                        side: BorderSide(color: AppColors.divider),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text('Đang sử dụng'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    )
+                  : ElevatedButton(
+                      onPressed: isUpgrading ? null : onUpgrade,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: isUpgrading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text('Liên hệ quản lý'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
-                    child: Text('Đang sử dụng'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  )
-                : ElevatedButton(
-                    onPressed: isUpgrading ? null : onUpgrade,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: isUpgrading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text('Liên hệ quản lý'.tr,
-                            style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -399,8 +392,7 @@ class _FeatureRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(text,
-              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3)),
+          child: Text(text, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3)),
         ),
       ],
     );

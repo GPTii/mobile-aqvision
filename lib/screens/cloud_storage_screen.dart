@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/storage_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
+import '../widgets/app_ui.dart';
 
 /// Cloud storage detail — moved here from the old Report tab. Reachable from
 /// Settings ("Dung lượng Cloud") instead of living in a dedicated tab.
@@ -22,19 +23,14 @@ class _CloudStorageScreenState extends State<CloudStorageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
             DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
-              ),
+              decoration: const BoxDecoration(),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                 child: Row(
@@ -72,7 +68,7 @@ class _CloudStorageScreenState extends State<CloudStorageScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -111,7 +107,8 @@ _TierInfo _tierInfo(String tier) {
       return _TierInfo(
         'Đã đầy'.tr,
         AppColors.danger,
-        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.'.tr,
+        'Đã đầy dung lượng — recording mới sẽ KHÔNG được lưu cho tới khi bạn xoá bớt hoặc được tăng dung lượng. Dữ liệu cũ vẫn an toàn, không bị xoá.'
+            .tr,
       );
     default:
       return _TierInfo('Bình thường'.tr, AppColors.success, null);
@@ -134,8 +131,7 @@ class _StorageCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
       ),
       child: child,
     );
@@ -233,7 +229,8 @@ class _StorageSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(tierInfo.message!,
-                        style: TextStyle(fontSize: 12, color: tierInfo.color, fontWeight: FontWeight.w600, height: 1.4)),
+                        style:
+                            TextStyle(fontSize: 12, color: tierInfo.color, fontWeight: FontWeight.w600, height: 1.4)),
                   ),
                 ],
               ),
@@ -279,7 +276,9 @@ class _StorageCameraRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(camera.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
           ),
           const SizedBox(width: 8),
           Text(_formatMb(camera.usedStorageMb),

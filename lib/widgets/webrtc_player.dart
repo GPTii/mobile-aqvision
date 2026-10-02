@@ -1,15 +1,21 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../data/video_preload_cache.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
 
 class WebRTCPlayerWidget extends StatefulWidget {
   final String app;
   final String stream;
+
+  /// Called once when WebRTC can't play (signaling error, ICE / connection
+  /// failure, or no video within [_connectTimeout]). When set, the parent
+  /// switches to HLS by itself and no error screen is shown.
   final VoidCallback? onFallback;
 
   const WebRTCPlayerWidget({
@@ -30,12 +36,17 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
   bool _connecting = false;
   String? _error;
 
-  String _iceState = 'unknown';
-  String _connState = 'unknown';
+  /// No first video frame by then → treat WebRTC as broken (UDP blocked…).
+  static const _connectTimeout = Duration(seconds: 12);
+  Timer? _timeout;
+  bool _fellBack = false;
 
   @override
   void initState() {
     super.initState();
+    // Background HLS warm-up competes with WebRTC for the hardware decoder,
+    // CPU and bandwidth and makes playback stutter; hold it while we play.
+    VideoPreloadCache.instance.suspend();
     _initWebRTC();
   }
 
@@ -53,9 +64,11 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
     _connecting = true;
     _error = null;
     _initialized = false;
-    _iceState = 'new';
-    _connState = 'new';
     if (mounted) setState(() {});
+    _timeout?.cancel();
+    _timeout = Timer(_connectTimeout, () {
+      if (!_initialized) _fail('Kết nối WebRTC thất bại'.tr);
+    });
 
     try {
       await _renderer.initialize();
@@ -75,25 +88,16 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       };
 
       _peerConnection!.onIceConnectionState = (state) {
-        if (mounted) {
-          setState(() {
-            _iceState = state.name;
-            if (state == RTCIceConnectionState.RTCIceConnectionStateFailed || 
-                state == RTCIceConnectionState.RTCIceConnectionStateDisconnected) {
-              _error = 'ICE Connection Failed (Có thể do mạng Simulator chặn UDP)'.tr;
-            }
-          });
+        // "Disconnected" is often a brief blip on mobile networks that
+        // ICE recovers from by itself; only give up on "Failed".
+        if (state == RTCIceConnectionState.RTCIceConnectionStateFailed) {
+          _fail('Kết nối WebRTC thất bại'.tr);
         }
       };
-      
+
       _peerConnection!.onConnectionState = (state) {
-        if (mounted) {
-          setState(() {
-            _connState = state.name;
-            if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
-              _error = 'WebRTC Connection Failed';
-            }
-          });
+        if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+          _fail('Kết nối WebRTC thất bại'.tr);
         }
       };
 
@@ -113,7 +117,9 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      final base = ApiConfig.mediaBase.replaceFirst('http://', 'https://');
+      final base = ApiConfig.isLocal
+          ? ApiConfig.mediaBase
+          : ApiConfig.mediaBase.replaceFirst('http://', 'https://');
       final uri = Uri.parse(
         '$base/index/api/webrtc'
         '?app=${Uri.encodeComponent(widget.app)}&stream=${Uri.encodeComponent(widget.stream)}&type=play',
@@ -121,10 +127,11 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
 
       final httpClient = HttpClient();
       httpClient.connectionTimeout = const Duration(seconds: 10);
-      
+
       final request = await httpClient.postUrl(uri);
       request.headers.set('Content-Type', 'text/plain');
-      request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      request.headers.set('User-Agent',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
       if (token.isNotEmpty) {
         request.headers.set('Authorization', 'Bearer $token');
       }
@@ -148,18 +155,34 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
           throw Exception(json['msg'] ?? 'Server không trả SDP answer'.tr);
         }
       } else {
-        throw Exception('Server lỗi ${response.statusCode}');
+        throw Exception('Server lỗi {code}'.trArgs({'code': response.statusCode}));
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _error = e.toString());
-      }
+      _fail(e.toString());
     } finally {
       _connecting = false;
     }
   }
 
+  /// WebRTC can't play: hand over to HLS if the parent allows, otherwise
+  /// show the error with a retry button.
+  void _fail(String message) {
+    if (!mounted) return;
+    _timeout?.cancel();
+    final fallback = widget.onFallback;
+    if (fallback != null) {
+      if (_fellBack) return;
+      _fellBack = true;
+      _cleanup();
+      // Parent rebuilds with the HLS player; don't setState mid-callback.
+      WidgetsBinding.instance.addPostFrameCallback((_) => fallback());
+      return;
+    }
+    setState(() => _error = message);
+  }
+
   void _cleanup() {
+    _timeout?.cancel();
     _renderer.srcObject = null;
     _peerConnection?.close();
     _peerConnection = null;
@@ -171,6 +194,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
   void dispose() {
     _cleanup();
     _renderer.dispose();
+    VideoPreloadCache.instance.resume();
     super.dispose();
   }
 
@@ -207,17 +231,6 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
                   foregroundColor: AppColors.accent,
                 ),
               ),
-              if (widget.onFallback != null) ...[
-                SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: widget.onFallback,
-                  icon: const Icon(Icons.video_library, size: 16),
-                  label: Text('Chuyển sang HLS'.tr),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -240,7 +253,7 @@ class _WebRTCPlayerWidgetState extends State<WebRTCPlayerWidget> {
               ),
               SizedBox(height: 10),
               Text(
-                'Đang kết nối WebRTC…'.tr,
+                'Đang kết nối…'.tr,
                 style: TextStyle(color: Colors.white54, fontSize: 11),
               ),
             ],

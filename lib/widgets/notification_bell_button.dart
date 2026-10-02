@@ -19,32 +19,27 @@ class NotificationBellButton extends StatelessWidget {
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            customBorder: const CircleBorder(),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             ),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.divider),
-              ),
+            child: SizedBox(
+              width: 46,
+              height: 46,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Center(
                     child: Icon(
-                      Icons.notifications_rounded,
-                      color: AppColors.textSecondary,
-                      size: 21,
+                      Icons.notifications_none_rounded,
+                      color: AppColors.textPrimary,
+                      size: 27,
                     ),
                   ),
                   if (unread > 0)
                     Positioned(
-                      top: -2,
-                      right: -2,
+                      top: 6,
+                      right: 5,
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(

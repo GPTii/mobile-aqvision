@@ -4,7 +4,6 @@ import '../data/camera_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
 
-
 /// Opens the shared add/edit camera form. Pass [camera] to edit an existing
 /// one, or omit it to create a new camera (optionally pre-selecting
 /// [initialGroupId], e.g. when adding from within a room section).
@@ -39,6 +38,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
   late final TextEditingController _codeController;
   late final TextEditingController _ipController;
   late final TextEditingController _newGroupController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _mapLinkController;
 
   List<String> _selectedGroupIds = [];
   bool _creatingNewGroup = false;
@@ -58,6 +59,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
       text: camera?.ipAddress ?? 'rtsp://',
     );
     _newGroupController = TextEditingController();
+    _locationController = TextEditingController(text: camera?.location ?? '');
+    _mapLinkController = TextEditingController(text: camera?.mapLink ?? '');
     _recording = camera?.recording ?? false;
 
     final groups = CameraStore.instance.groups;
@@ -73,6 +76,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
     _codeController.dispose();
     _ipController.dispose();
     _newGroupController.dispose();
+    _locationController.dispose();
+    _mapLinkController.dispose();
     super.dispose();
   }
 
@@ -95,6 +100,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
           ipAddress: _ipController.text,
           groupIds: groupIdsToSave,
           recording: _recording,
+          location: _locationController.text.trim(),
+          mapLink: _mapLinkController.text.trim(),
         );
       } else {
         await CameraStore.instance.addCamera(
@@ -102,7 +109,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
           cameraCode: _codeController.text,
           type: kCameraTypes.first,
           ipAddress: _ipController.text,
-          location: '',
+          location: _locationController.text.trim(),
+          mapLink: _mapLinkController.text.trim(),
           groupIds: groupIdsToSave,
           recording: _recording,
         );
@@ -168,9 +176,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       controller: _codeController,
                       style: TextStyle(color: AppColors.textPrimary),
                       decoration: _fieldDecoration('VD: cam_cong_chinh'),
-                      validator: (value) => (value == null || value.trim().isEmpty)
-                          ? 'Vui lòng nhập Stream ID'.tr
-                          : null,
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty) ? 'Vui lòng nhập Stream ID'.tr : null,
                     ),
                     SizedBox(height: 16),
                     _FieldLabel('Nguồn RTSP / URL'.tr),
@@ -186,6 +193,32 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       },
                     ),
                     SizedBox(height: 16),
+                    _FieldLabel('Vị trí lắp đặt'.tr),
+                    SizedBox(height: 8),
+                    TextFormField(
+                      controller: _locationController,
+                      style: TextStyle(color: AppColors.textPrimary),
+                      decoration: _fieldDecoration('VD: Cổng trước, tầng 1'.tr),
+                    ),
+                    SizedBox(height: 16),
+                    _FieldLabel('Link Google Maps'.tr),
+                    SizedBox(height: 8),
+                    TextFormField(
+                      controller: _mapLinkController,
+                      keyboardType: TextInputType.url,
+                      style: TextStyle(color: AppColors.textPrimary),
+                      decoration: _fieldDecoration('https://maps.app.goo.gl/...'),
+                      validator: (value) {
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return null;
+                        final uri = Uri.tryParse(v);
+                        if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https') || uri.host.isEmpty) {
+                          return 'Link không hợp lệ (phải bắt đầu bằng https://)'.tr;
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
                     _FieldLabel('Nhóm / phòng'.tr),
                     SizedBox(height: 8),
                     Wrap(
@@ -194,7 +227,11 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                       children: [
                         for (final group in groups)
                           FilterChip(
-                            label: Text(group.name, style: TextStyle(color: _selectedGroupIds.contains(group.id) ? AppColors.accent : AppColors.textPrimary)),
+                            label: Text(group.displayName,
+                                style: TextStyle(
+                                    color: _selectedGroupIds.contains(group.id)
+                                        ? AppColors.accent
+                                        : AppColors.textPrimary)),
                             selected: _selectedGroupIds.contains(group.id),
                             onSelected: (selected) {
                               setState(() {
@@ -211,7 +248,8 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ActionChip(
-                          label: Text('+ Tạo nhóm mới'.tr, style: TextStyle(color: _creatingNewGroup ? AppColors.accent : AppColors.textSecondary)),
+                          label: Text('+ Tạo nhóm mới'.tr,
+                              style: TextStyle(color: _creatingNewGroup ? AppColors.accent : AppColors.textSecondary)),
                           backgroundColor: AppColors.card,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           onPressed: () => setState(() => _creatingNewGroup = !_creatingNewGroup),
@@ -226,9 +264,7 @@ class _CameraFormSheetState extends State<_CameraFormSheet> {
                         decoration: _fieldDecoration('Tên nhóm mới'.tr),
                         validator: (value) {
                           if (!_creatingNewGroup) return null;
-                          return (value == null || value.trim().isEmpty)
-                              ? 'Vui lòng nhập tên nhóm'.tr
-                              : null;
+                          return (value == null || value.trim().isEmpty) ? 'Vui lòng nhập tên nhóm'.tr : null;
                         },
                       ),
                     ],

@@ -22,6 +22,33 @@ class VideoPreloadCache {
   int _activeWarms = 0;
   final Queue<({String id, String url, Completer<VideoPlayerController?> completer})> _warmQueue = Queue();
 
+  /// While > 0 (a WebRTC view is on screen) background HLS streams are
+  /// paused and no new ones are warmed, so the phone's decoder, CPU and
+  /// bandwidth all go to the live WebRTC stream. See [suspend] / [resume].
+  int _suspended = 0;
+  bool get isSuspended => _suspended > 0;
+
+  /// Pause every warmed stream and hold the warm queue. Pair with [resume].
+  void suspend() {
+    if (_suspended++ > 0) return;
+    for (final c in _ready.values) {
+      try {
+        c.pause();
+      } catch (_) {}
+    }
+  }
+
+  /// Undo one [suspend]; on the last one, restart warmed streams and warming.
+  void resume() {
+    if (_suspended == 0 || --_suspended > 0) return;
+    for (final c in _ready.values) {
+      try {
+        if (!c.value.isPlaying) c.play();
+      } catch (_) {}
+    }
+    _processQueue();
+  }
+
   bool isReady(String cameraId) {
     final c = _ready[cameraId];
     return c != null && c.value.isInitialized;
@@ -63,7 +90,7 @@ class VideoPreloadCache {
   }
 
   void _processQueue() async {
-    if (_activeWarms >= maxConcurrentWarm || _warmQueue.isEmpty) return;
+    if (isSuspended || _activeWarms >= maxConcurrentWarm || _warmQueue.isEmpty) return;
 
     final task = _warmQueue.removeFirst();
     _activeWarms++;
@@ -81,8 +108,7 @@ class VideoPreloadCache {
   }
 
   Future<void> warmMany(Iterable<({String id, String url})> items) async {
-    final list =
-        items.where((e) => e.url.isNotEmpty).take(maxWarm).toList();
+    final list = items.where((e) => e.url.isNotEmpty).take(maxWarm).toList();
     await Future.wait(list.map((e) => warm(e.id, e.url)));
   }
 
@@ -111,16 +137,13 @@ class VideoPreloadCache {
     }
     try {
       c.setVolume(0);
-      if (!c.value.isPlaying) c.play();
+      if (!isSuspended && !c.value.isPlaying) c.play();
     } catch (_) {}
   }
 
   /// Drop unpinned, unused controllers (leaving video grids).
   void disposeUnpinned() {
-    final ids = _ready.keys
-        .where((id) =>
-            !_pinned.contains(id) && (_refs[id] ?? 0) == 0)
-        .toList();
+    final ids = _ready.keys.where((id) => !_pinned.contains(id) && (_refs[id] ?? 0) == 0).toList();
     for (final id in ids) {
       _evict(id);
     }
@@ -157,7 +180,8 @@ class VideoPreloadCache {
       await controller.initialize();
       await controller.setVolume(0);
       await controller.setLooping(true);
-      await controller.play();
+      // A WebRTC view may have opened while this was initializing.
+      if (!isSuspended) await controller.play();
       final stale = _ready[cameraId];
       if (stale != null && stale != controller) {
         controller.dispose();

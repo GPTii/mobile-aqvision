@@ -1,0 +1,434 @@
+[
+  {
+    "name": "AQPConnect-1.1.6-release",
+    "version": "1.1.6",
+    "buildNumber": 18,
+    "releasedAt": "2026-10-01T19:25:00+07:00",
+    "teaser": {
+      "vi": "Hỗ trợ tùy chọn máy chủ Cloud (dev1) hoặc Local Server (IP/Port LAN) ngay tại màn hình đăng nhập.",
+      "en": "Support choosing between Cloud Server (dev1) or Local Server (LAN IP/Port) directly at login."
+    },
+    "sections": [
+      {
+        "kind": "feature",
+        "items": [
+          {
+            "vi": "Thêm công cụ chuyển đổi Cloud Server (mặc định dev1.aqvision.net) và Local Server ở màn hình đăng nhập.",
+            "en": "Added Cloud Server and Local Server switcher on the login screen."
+          },
+          {
+            "vi": "Cho phép cấu hình giao thức (http/https), IP và Port của máy chủ nội bộ kèm nút Kiểm tra kết nối nhanh.",
+            "en": "Allow configuring protocol, IP, and Port for local server with quick connection test."
+          },
+          {
+            "vi": "Tự động định tuyến toàn bộ API và luồng media sang máy chủ local khi được chọn.",
+            "en": "Automatically route all APIs and media streaming to local server when selected."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.5-release",
+    "version": "1.1.5",
+    "buildNumber": 17,
+    "releasedAt": "2026-10-01T18:35:00+07:00",
+    "teaser": {
+      "vi": "Hiển thị đầy đủ danh sách camera Gateway và hỗ trợ đẩy luồng trực tiếp lên Media Server.",
+      "en": "Fully display Gateway camera list and support streaming directly to Media Server."
+    },
+    "sections": [
+      {
+        "kind": "feature",
+        "items": [
+          {
+            "vi": "Hỗ trợ tự động nhận diện danh sách camera trên Gateway ngay cả khi Gateway chưa cập nhật API autopush mới.",
+            "en": "Automatically discover Gateway cameras even on older firmware without the new autopush API."
+          },
+          {
+            "vi": "Cho phép bật/tắt đẩy luồng từng camera Gateway lên Media Server trực tiếp từ màn hình Đẩy luồng.",
+            "en": "Allow toggling push streaming for each Gateway camera directly from the Stream Push screen."
+          },
+          {
+            "vi": "Hỗ trợ đồng bộ đưa camera từ Gateway lên Cloud để xem trực tiếp qua nút 'Thêm camera vào app'.",
+            "en": "Support syncing Gateway cameras to Cloud for live viewing via 'Add camera to app' button."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.4-release",
+    "version": "1.1.4",
+    "buildNumber": 16,
+    "releasedAt": "2026-10-01T17:45:00+07:00",
+    "teaser": {
+      "vi": "Sửa lỗi màn hình Đẩy luồng và cải thiện tính tương thích với các phiên bản Gateway.",
+      "en": "Fixed Stream Push screen error and improved compatibility across Gateway versions."
+    },
+    "sections": [
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Sửa lỗi văng màn hình Đẩy luồng (FormatException <!DOCTYPE HTML>) khi kết nối với Gateway chạy phiên bản firmware cũ chưa hỗ trợ tự động đẩy luồng.",
+            "en": "Fixed Stream Push screen crashing (FormatException <!DOCTYPE HTML>) when connected to a Gateway with older firmware lacking autopush support."
+          },
+          {
+            "vi": "Cải thiện khả năng bắt lỗi kết nối Gateway: hiển thị thông báo lỗi HTTP chi tiết thay vì lỗi cú pháp dữ liệu.",
+            "en": "Improved Gateway error handling: displays clean HTTP errors instead of raw syntax errors."
+          }
+        ]
+      },
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Bổ sung cơ chế tương thích ngược (fallback) cho Gateway: người dùng vẫn có thể xem và cấu hình thêm URL đẩy luồng thủ công khi tính năng tự động chưa sẵn sàng.",
+            "en": "Added backward compatibility fallback for Gateway: users can still view and configure manual push targets when autopush is not yet available."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.3-release",
+    "version": "1.1.3",
+    "buildNumber": 15,
+    "releasedAt": "2026-09-30T17:00:00+07:00",
+    "teaser": {
+      "vi": "Thêm menu dropdown chọn phòng nhanh chóng và tiện lợi trên màn hình Camera.",
+      "en": "Added quick room dropdown menu on Camera screen."
+    },
+    "sections": [
+      {
+        "kind": "new_feature",
+        "items": [
+          {
+            "vi": "Thêm nút mũi tên dropdown bên cạnh thanh chọn phòng trên màn hình Camera: hiển thị danh sách tất cả các phòng kèm số lượng camera, giúp chuyển phòng nhanh mà không cần cuộn ngang.",
+            "en": "Added a dropdown menu next to the room filter bar on the Camera screen: shows all rooms with camera counts for quick switching without horizontal scrolling."
+          },
+          {
+            "vi": "Ẩn camera ở trang chủ: bấm nút ⋯ trên ô camera, chọn \"Ẩn khỏi trang chủ\" (có nút Hoàn tác). Mục \"Camera đã ẩn\" cuối trang chủ cho phép hiện lại từng camera hoặc tất cả. Camera vẫn hiện bình thường ở tab Camera.",
+            "en": "Hide cameras on Home: tap the ⋯ button on a camera tile and choose \"Hide from Home\" (with Undo). The \"Hidden cameras\" entry at the bottom of Home brings back one or all of them. Hidden cameras still show on the Camera tab."
+          },
+          {
+            "vi": "Ảnh gateway: mọi gateway (kể cả gateway thật vừa thêm) mặc định hiện ảnh sản phẩm AQPTech thay cho biểu tượng router. Bấm vào ảnh ở màn chi tiết gateway để đổi: chọn từ thư viện, chụp ảnh, dùng một trong hai ảnh mẫu, hoặc quay về ảnh mặc định. Ảnh được lưu trên điện thoại.",
+            "en": "Gateway photos: every gateway (including newly added real ones) shows the AQPTech product photo instead of the router icon by default. Tap the photo on the gateway detail screen to change it: pick from the gallery, take a photo, use one of the two product photos, or go back to the default. Photos are stored on the phone."
+          }
+        ]
+      },
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Tối ưu thanh chọn phòng gọn gàng, tự động căn vừa chiều rộng màn hình.",
+            "en": "Optimized room filter bar to fit neatly within screen width."
+          },
+          {
+            "vi": "Kiểm tra và tối ưu dung lượng gói cài đặt APK cho từng kiến trúc CPU (khoảng 35-43 MB khi tách theo ABI).",
+            "en": "Verified and optimized APK package size per CPU architecture (~35-43 MB with split ABI)."
+          },
+          {
+            "vi": "Quản lý thiết bị: gateway mẫu (Gateway Công ty, Gateway Giao thông) luôn hiển thị bên dưới gateway thật để tiện trình diễn, mỗi gateway có ảnh đại diện riêng, sắc nét.",
+            "en": "Device management: demo gateways (Company, Traffic) are always listed below real gateways for demos, each with its own sharp product photo as avatar."
+          }
+        ]
+      },
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Sửa lỗi cài Gateway qua Bluetooth báo \"GATT_UNLIKELY (14)\" khi quét lại WiFi hoặc gửi tên WiFi và mật khẩu: app nay gửi mỗi lệnh trên một kết nối Bluetooth mới, giống cách app Improv WiFi chính thức làm, nên gateway nhận được WiFi.",
+            "en": "Fixed Gateway Bluetooth setup failing with \"GATT_UNLIKELY (14)\" when rescanning WiFi or sending the WiFi name and password: each command now goes over a fresh Bluetooth connection, as the official Improv WiFi app does, so the gateway receives the WiFi."
+          },
+          {
+            "vi": "Sửa lỗi cài Gateway qua Bluetooth: gateway đã vào WiFi thành công nhưng app vẫn báo lỗi và không thêm gateway vào danh sách. App nay chờ kết quả từ gateway dù Bluetooth báo lỗi, và tự dò tìm đúng gateway đó trong mạng LAN nếu mất kết nối Bluetooth. Lỗi Bluetooth (mã 14) hiện kèm hướng dẫn xử lý dễ hiểu.",
+            "en": "Fixed Gateway Bluetooth setup: the gateway joined the WiFi but the app still showed an error and did not add it. The app now waits for the gateway's result despite the Bluetooth error and finds that gateway on the LAN if the Bluetooth link drops. Bluetooth errors (code 14) now come with clear instructions."
+          },
+          {
+            "vi": "Sửa lỗi đổi tên nhóm/phòng không lưu vào hệ thống dẫn đến việc tải lại trang bị mất tên mới.",
+            "en": "Fixed an issue where renaming a group/room was not saved to the server and reverted upon reload."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.2-release",
+    "version": "1.1.2",
+    "buildNumber": 14,
+    "releasedAt": "2026-09-30T15:00:00+07:00",
+    "teaser": {
+      "vi": "Xem bản ghi nhanh hơn: tự phát bản ghi mới nhất và có thanh tua video.",
+      "en": "Faster playback: auto-plays the latest recording and adds a seek bar."
+    },
+    "sections": [
+      {
+        "kind": "new_feature",
+        "items": [
+          {
+            "vi": "Mở màn Bản ghi là tự phát ngay bản ghi gần nhất, không cần chọn trên dòng thời gian.",
+            "en": "Opening Recordings now plays the most recent recording right away, no need to pick it on the timeline."
+          },
+          {
+            "vi": "Thêm thanh tua video: hiện đang phát tới giây nào / tổng thời lượng, kéo để tua tới đoạn bất kỳ.",
+            "en": "Added a video seek bar showing current time / total length; drag to jump anywhere."
+          },
+          {
+            "vi": "Kết nối gateway qua IP nay nhập được Port (trước đây cố định 5050); mỗi gateway nhớ port riêng.",
+            "en": "Connecting a gateway by IP now lets you enter the port (previously fixed at 5050); each gateway remembers its own port."
+          }
+        ]
+      },
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Giao diện mới cho toàn bộ app (Trang chủ, Camera, Thiết bị, Cài đặt và tất cả các màn con): nền chuyển màu nhẹ, thẻ bo tròn không viền, icon nhiều màu, chữ tiêu đề to rõ; thanh điều hướng gọn hơn.",
+            "en": "New look across the whole app (Home, Camera, Devices, Settings and every sub-screen): soft gradient background, rounded borderless cards, colourful icons, bigger titles and a cleaner bottom bar."
+          },
+          {
+            "vi": "Dung lượng file cài đặt giảm từ khoảng 115 MB xuống khoảng 42 MB.",
+            "en": "Install file size reduced from about 115 MB to about 42 MB."
+          },
+          {
+            "vi": "Khi mở xem camera, dòng trạng thái đổi từ \"Đang kết nối WebRTC…\" thành \"Đang kết nối…\" cho dễ hiểu.",
+            "en": "When opening a camera, the status now reads \"Connecting…\" instead of \"Connecting to WebRTC…\"."
+          }
+        ]
+      },
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Thông báo camera mất kết nối / kết nối lại / thêm / xóa camera nay hiển thị đúng theo ngôn ngữ đang chọn (trước đây luôn là tiếng Việt).",
+            "en": "Camera disconnected / reconnected / added / removed notifications now follow the selected language (previously always Vietnamese)."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.1-release",
+    "version": "1.1.1",
+    "buildNumber": 13,
+    "releasedAt": "2026-09-30T09:00:00+07:00",
+    "teaser": {
+      "vi": "Cập nhật lại giao diện: màn khởi động, logo, trang chủ và Nhật ký.",
+      "en": "UI refresh: splash screen, logo, home screen and release log."
+    },
+    "sections": [
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Màn hình khởi động (splash) và logo mới cho Android và iOS.",
+            "en": "New splash screen and logo on Android and iOS."
+          },
+          {
+            "vi": "Thanh tiêu đề trang chủ gọn hơn, hiển thị được nhiều camera hơn.",
+            "en": "A slimmer home header that fits more cameras on screen."
+          },
+          {
+            "vi": "Nhật ký cập nhật được đóng gói sẵn trong app — cài bản mới là thấy ngay ghi chú của bản đó, kể cả khi chưa đăng nhập hoặc mất mạng.",
+            "en": "Release notes now ship inside the app — install a new version and its notes are there right away, even when logged out or offline."
+          },
+          {
+            "vi": "Nhật ký hiển thị tên từng bản cập nhật (AQPConnect-x.x.x-release) và gắn nhãn \"ĐANG DÙNG\" cho bản đang cài trên máy.",
+            "en": "The release log shows each release name (AQPConnect-x.x.x-release) and tags the installed version as \"INSTALLED\"."
+          },
+          {
+            "vi": "Mục \"Nhật ký\" trong Cài đặt hiện đúng số phiên bản đang cài.",
+            "en": "The \"Logs\" entry in Settings shows the installed version number."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.1.0-release",
+    "version": "1.1.0",
+    "buildNumber": 12,
+    "releasedAt": "2026-09-28T18:00:00+07:00",
+    "teaser": {
+      "vi": "Xem trực tiếp bằng WebRTC và cài đặt Gateway qua Bluetooth / QR.",
+      "en": "WebRTC live view and Gateway setup via Bluetooth / QR."
+    },
+    "sections": [
+      {
+        "kind": "new_feature",
+        "items": [
+          {
+            "vi": "Xem camera trực tiếp bằng WebRTC với độ trễ thấp; có nút chuyển WebRTC / HLS ngay trong màn chi tiết camera, app chỉ tải đúng luồng đang chọn.",
+            "en": "Low-latency WebRTC live view; a WebRTC / HLS switch right in the camera detail screen, and the app only streams the selected protocol."
+          },
+          {
+            "vi": "Cài đặt Eyerus BLE Gateway ngay trong app: quét mã QR trên thiết bị rồi kết nối Wi-Fi qua Bluetooth (chuẩn Improv Wi-Fi) hoặc qua điểm phát Wi-Fi của Gateway.",
+            "en": "Set up the Eyerus BLE Gateway in the app: scan the QR code on the device, then join Wi-Fi over Bluetooth (Improv Wi-Fi standard) or via the Gateway's hotspot."
+          },
+          {
+            "vi": "Thêm màn quản lý Gateway: xem chi tiết, điều khiển và nhật ký hoạt động của Gateway.",
+            "en": "Added Gateway management: view details, control it and see the Gateway activity log."
+          },
+          {
+            "vi": "Thêm trang đọc chi tiết bài viết trong tab Tin tức.",
+            "en": "Added a full article page in the News tab."
+          }
+        ]
+      },
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Sửa lỗi WebRTC không phát được do máy chủ trả về chuyển hướng 307 (bị ép dùng http).",
+            "en": "Fixed WebRTC failing to play because the server answered with a 307 redirect (http was forced)."
+          },
+          {
+            "vi": "Sửa lỗi mất hình WebRTC sau khi đổi proxy API của MediaServer; tự chuyển sang HLS khi WebRTC không kết nối được.",
+            "en": "Fixed WebRTC video lost after the MediaServer API proxy change; falls back to HLS automatically when WebRTC cannot connect."
+          },
+          {
+            "vi": "Sửa lỗi quét QR / Bluetooth không chạy trên máy thật do thiếu quyền Bluetooth, Camera và Vị trí.",
+            "en": "Fixed QR / Bluetooth scanning not working on real devices due to missing Bluetooth, Camera and Location permissions."
+          },
+          {
+            "vi": "Sửa biểu tượng hiển thị sai trên màn phát camera.",
+            "en": "Fixed wrong icons on the camera player screen."
+          }
+        ]
+      },
+      {
+        "kind": "note",
+        "items": [
+          {
+            "vi": "Cần bật Bluetooth và cho phép quyền Vị trí khi cài đặt Gateway lần đầu.",
+            "en": "Bluetooth must be on and Location permission granted when setting up a Gateway for the first time."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.0.9-release",
+    "version": "1.0.9",
+    "buildNumber": 11,
+    "releasedAt": "2026-09-21T09:00:00+07:00",
+    "teaser": {
+      "vi": "Tab Tin tức mới, thông báo đẩy thật và lịch sử phiên bản ngay trong app.",
+      "en": "New News tab, real push notifications and in-app version history."
+    },
+    "sections": [
+      {
+        "kind": "new_feature",
+        "items": [
+          {
+            "vi": "Thay tab Báo cáo bằng tab Tin tức — cập nhật tin tức, khuyến mãi từ AQP ngay trong app.",
+            "en": "Replaced the Reports tab with a News tab — news and promotions from AQP right in the app."
+          },
+          {
+            "vi": "Nhận thông báo đẩy thật khi camera có sự kiện.",
+            "en": "Real push notifications when a camera has an event."
+          },
+          {
+            "vi": "Thêm màn \"Lịch sử phiên bản\" trong Cài đặt để xem các bản cập nhật.",
+            "en": "Added a \"Version history\" screen in Settings to browse updates."
+          },
+          {
+            "vi": "Chọn chế độ ghi hình Tự động / Thủ công cho từng camera.",
+            "en": "Choose Automatic / Manual recording for each camera."
+          }
+        ]
+      },
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Chuyển mục Dung lượng Cloud vào trong Cài đặt.",
+            "en": "Moved Cloud Storage into Settings."
+          },
+          {
+            "vi": "Thông tin doanh nghiệp được lưu lên máy chủ, đổi máy vẫn giữ nguyên.",
+            "en": "Business information is saved to the server and kept when you switch phones."
+          },
+          {
+            "vi": "Hoàn thiện đa ngôn ngữ: Tiếng Việt, English, 한국어, 繁體中文.",
+            "en": "Completed localization: Vietnamese, English, Korean, Traditional Chinese."
+          }
+        ]
+      },
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Sửa lỗi ảnh bài viết trong tab Tin tức không tải được làm vỡ giao diện.",
+            "en": "Fixed broken News article images breaking the layout."
+          },
+          {
+            "vi": "Sửa lỗi build Android với các thư viện yêu cầu compileSdk 34.",
+            "en": "Fixed the Android build for libraries that require compileSdk 34."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "AQPConnect-1.0.8-release",
+    "version": "1.0.8",
+    "buildNumber": 10,
+    "releasedAt": "2026-09-05T09:00:00+07:00",
+    "teaser": {
+      "vi": "Thiết kế lại Cài đặt, thêm chế độ tối, thư viện ảnh và sửa lỗi ghi hình / chụp ảnh.",
+      "en": "Redesigned Settings, dark mode, photo gallery and recording / capture fixes."
+    },
+    "sections": [
+      {
+        "kind": "new_feature",
+        "items": [
+          {
+            "vi": "Đổi tab Hồ sơ thành Cài đặt, thiết kế lại bố cục phân nhóm rõ ràng.",
+            "en": "Renamed the Profile tab to Settings with a clearly grouped layout."
+          },
+          {
+            "vi": "Thêm chế độ giao diện Sáng / Tối và Thư viện ảnh chụp từ camera.",
+            "en": "Added Light / Dark mode and a gallery of photos captured from cameras."
+          },
+          {
+            "vi": "Thêm mục Thông tin doanh nghiệp trong Tài khoản & bảo mật.",
+            "en": "Added Business Information under Account & Security."
+          }
+        ]
+      },
+      {
+        "kind": "improvement",
+        "items": [
+          {
+            "vi": "Chuyển toàn bộ app sang API CommaDesk /api/v1 và nâng cấp Flutter 3.29.3.",
+            "en": "Moved the whole app to the CommaDesk /api/v1 API and upgraded to Flutter 3.29.3."
+          },
+          {
+            "vi": "Hiện rõ nguyên nhân khi bật/tắt ghi hình thất bại thay vì báo lỗi chung chung.",
+            "en": "Shows the actual reason when starting/stopping a recording fails instead of a generic error."
+          }
+        ]
+      },
+      {
+        "kind": "fix",
+        "items": [
+          {
+            "vi": "Nút \"Chụp\" trên camera trực tiếp trước đây không lưu được ảnh — nay chụp, xem trước và Lưu / Xoá được.",
+            "en": "The \"Capture\" button on live view saved nothing — it now captures, previews and lets you Save / Delete."
+          },
+          {
+            "vi": "Sửa thông báo sai \"Phiên ghi hình hết hạn, hãy đăng nhập lại\" khi tài khoản vẫn đang đăng nhập.",
+            "en": "Fixed the false \"Recording session expired, please log in again\" message while still logged in."
+          },
+          {
+            "vi": "Sửa lỗi \"Camera chiếm nhiều dung lượng nhất\" luôn hiện 0 MB.",
+            "en": "Fixed \"Cameras using the most storage\" always showing 0 MB."
+          }
+        ]
+      }
+    ]
+  }
+]

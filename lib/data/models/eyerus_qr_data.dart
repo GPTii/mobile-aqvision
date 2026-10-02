@@ -1,62 +1,46 @@
+/// Gateway label QR (README_BLE Phụ lục B):
+/// `EYERUS:3;N:<BLE name>;M:<Bluetooth MAC>;D:<device id>;G:<gateway id>[;U:<user password>]`.
+///
+/// Setup over BLE (Improv Wi-Fi) only needs the BLE name to find the right
+/// gateway, then the WiFi SSID + password. Everything else is informational.
 class EyerusQrData {
   final String version;
   final String name;
   final String mac;
   final String deviceId;
-  final String pin;
+  final String gatewayId;
 
   EyerusQrData({
     required this.version,
     required this.name,
-    required this.mac,
-    required this.deviceId,
-    required this.pin,
+    this.mac = '',
+    this.deviceId = '',
+    this.gatewayId = '',
   });
 
-  /// Parse QR Code có định dạng: EYERUS:1;N:Eyerus-8C09;M:FC:23:CD:03:8C:09;D:6f352dc9d8e9;P:482913
+  /// BLE name when known, otherwise the MAC (Android can match on it).
+  String get bleTarget => name.isNotEmpty ? name : mac;
+
   static EyerusQrData? tryParse(String qrCode) {
     if (!qrCode.startsWith('EYERUS:')) return null;
 
-    final parts = qrCode.split(';');
-    String version = '';
-    String name = '';
-    String mac = '';
-    String deviceId = '';
-    String pin = '';
-
-    for (var part in parts) {
+    final fields = <String, String>{};
+    for (final part in qrCode.split(';')) {
+      // Split on the FIRST ':' only — MAC addresses contain ':' too.
       final idx = part.indexOf(':');
-      if (idx == -1) continue;
-      final key = part.substring(0, idx);
-      final value = part.substring(idx + 1);
-
-      switch (key) {
-        case 'EYERUS':
-          version = value;
-          break;
-        case 'N':
-          name = value;
-          break;
-        case 'M':
-          mac = value;
-          break;
-        case 'D':
-          deviceId = value;
-          break;
-        case 'P':
-          pin = value;
-          break;
-      }
+      if (idx > 0) fields[part.substring(0, idx)] = part.substring(idx + 1);
     }
 
-    if (name.isEmpty || deviceId.isEmpty || pin.isEmpty) return null;
+    final name = fields['N'] ?? '';
+    final mac = fields['M'] ?? '';
+    if (name.isEmpty && mac.isEmpty) return null;
 
     return EyerusQrData(
-      version: version,
+      version: fields['EYERUS'] ?? '',
       name: name,
       mac: mac,
-      deviceId: deviceId,
-      pin: pin,
+      deviceId: fields['D'] ?? '',
+      gatewayId: fields['G'] ?? '',
     );
   }
 }

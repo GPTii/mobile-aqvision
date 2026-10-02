@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+12
+version: 1.1.6+18
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
@@ -43,7 +43,6 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   fl_chart: ^0.68.0
   url_launcher: ^6.3.1
-  flutter_webrtc: ^1.6.0
   visibility_detector: ^0.4.0+2
   package_info_plus: ^8.1.2
   geolocator: ^13.0.2
@@ -54,6 +53,11 @@ dependencies:
   permission_handler: ^11.0.0
   mobile_scanner: ^7.4.2
   flutter_blue_plus: ^2.3.13
+  flutter_markdown_plus: ^1.0.12
+  webview_flutter: ^4.14.1
+  flutter_webrtc: ^1.6.2+hotfix.3
+  wifi_iot: ^0.3.19+3
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -75,11 +79,11 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/icon/aqpc_logo_perfect.png"
 
 flutter_native_splash:
-  color: "#220101"
-  image: assets/icon/aqpc_logo_perfect.png
+  color: "#8E0104"
+  image: assets/icon/aqpc_logo_circle.png
   android_12:
-    color: "#220101"
-    image: assets/icon/aqpc_logo_perfect.png
+    color: "#8E0104"
+    image: assets/icon/aqpc_logo_circle.png
   android: true
   ios: true
 
@@ -95,8 +99,12 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
+  # assets/icon/ is only read by flutter_launcher_icons / flutter_native_splash
+  # at generation time — bundling it would add ~6.5 MB of unused PNGs.
   assets:
-    - assets/icon/
+    - assets/release_notes.json
+    - assets/images/gateway_company.jpg
+    - assets/images/gateway_traffic.jpg
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

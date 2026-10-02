@@ -6,6 +6,10 @@ class ApiDefaults {
   /// Production API host (no scheme).
   static const String productionHost = 'dev1.aqvision.net';
 
+  /// Backup API host, used when [productionHost] cannot be reached.
+  /// Separate deployment (own database): accounts/cameras differ from dev1.
+  static const String backupHost = 'media.aqptech.cloud';
+
   /// Production URL scheme (`https` or `http`).
   static const String productionScheme = 'https';
 
@@ -23,4 +27,12 @@ class ApiDefaults {
 
   /// Path segment for HLS / recording media under [apiPath].
   static const String mediaPathSegment = 'media';
+
+  /// Public host gateways push camera streams to (MediaMTX ingest,
+  /// `rtsp://<host>:1936/<path>`; gateway auto-push default).
+  static const String mediaIngestHost = '14.161.6.65';
+
+  /// The same ingest as seen by the media server itself: cloud cameras pull
+  /// `rtsp://127.0.0.1:1935/<path>` (how cam1 / cam3 are set up on the server).
+  static const String mediaIngestInternal = 'rtsp://127.0.0.1:1935';
 }

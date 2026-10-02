@@ -4,6 +4,7 @@ import '../data/auth_store.dart';
 import '../data/business_info_store.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_strings.dart';
+import '../widgets/app_ui.dart';
 
 class EditAccountScreen extends StatefulWidget {
   const EditAccountScreen({super.key});
@@ -102,20 +103,15 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
-              ),
+              decoration: const BoxDecoration(),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                 child: Row(
@@ -174,7 +170,6 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                       style: TextStyle(color: AppColors.textPrimary),
                       decoration: _decoration('090 xxx xxxx'),
                     ),
-
                     const SizedBox(height: 24),
                     _GroupLabel('Thông tin doanh nghiệp'.tr),
                     const SizedBox(height: 10),
@@ -230,7 +225,6 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                       style: TextStyle(color: AppColors.textPrimary),
                       decoration: _decoration('19002625'),
                     ),
-
                     const SizedBox(height: 24),
                     SizedBox(
                       height: 50,
@@ -253,7 +247,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                                     )
                                   : Text(
                                       'Lưu thay đổi'.tr,
-                                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
                                     ),
                             ),
                           ),
@@ -267,7 +262,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   InputDecoration _decoration(String hint) {

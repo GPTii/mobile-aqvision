@@ -10,7 +10,7 @@ import '../utils/app_strings.dart';
 /// instead of a full URL — browsers resolve that against the page origin
 /// automatically, but Flutter's Image.network does not, so it fails silently.
 /// Prepend the API origin ourselves when we see one.
-String _resolveImageUrl(String url) {
+String resolveNewsImageUrl(String url) {
   if (url.startsWith('/')) return '${ApiConfig.origin}$url';
   return url;
 }
@@ -46,7 +46,7 @@ class NewsArticle {
       title: json['title'] ?? '',
       excerpt: json['excerpt'] ?? '',
       body: json['body'],
-      coverImageUrl: _resolveImageUrl((json['coverImageUrl'] ?? '').toString()),
+      coverImageUrl: resolveNewsImageUrl((json['coverImageUrl'] ?? '').toString()),
       category: json['category'],
       isFeatured: json['isFeatured'] == true,
       publishedAt: DateTime.tryParse(json['publishedAt']?.toString() ?? '') ?? DateTime.now(),
@@ -127,5 +127,32 @@ class NewsStore extends ChangeNotifier {
 
     loading = false;
     notifyListeners();
+  }
+
+  /// Full article (with Markdown `body`) from `GET /api/v1/news/:id` —
+  /// the list endpoint omits `body` to keep the feed payload light.
+  Future<NewsArticle> fetchArticle(String id) async {
+    final token = await _getToken();
+    if (token == null) throw Exception('Chưa đăng nhập'.tr);
+
+    final res = await http.get(Uri.parse('$_baseUrl/news/$id'), headers: {
+      'Authorization': 'Bearer $token',
+    }).timeout(const Duration(seconds: 10));
+
+    if (res.statusCode != 200) throw Exception('Không tải được bài viết'.tr);
+    return NewsArticle.fromJson(jsonDecode(res.body)['data']);
+  }
+
+  /// Fire-and-forget view counter (`POST /api/v1/news/:id/view`).
+  Future<void> recordView(String id) async {
+    final token = await _getToken();
+    if (token == null) return;
+    try {
+      await http.post(Uri.parse('$_baseUrl/news/$id/view'), headers: {
+        'Authorization': 'Bearer $token',
+      }).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('[NEWS] recordView failed for $id: $e');
+    }
   }
 }

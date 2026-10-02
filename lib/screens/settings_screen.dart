@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../config/api_config.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_ui.dart';
 import '../data/app_theme_store.dart';
 import '../data/auth_store.dart';
 import 'account_info_screen.dart';
@@ -12,7 +14,6 @@ import 'auth/login_screen.dart';
 import '../data/app_release_store.dart';
 import 'home/version_history_screen.dart';
 import '../utils/app_strings.dart';
-import 'setup/qr_scanner_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -87,27 +88,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
-                    _LangOption(
-                      code: 'VI',
-                      label: 'Tiếng Việt'.tr,
-                      selected: AppThemeStore.instance.lang == 'vi',
-                      onTap: () {
-                        AppThemeStore.instance.setLanguage('vi');
-                        Navigator.pop(ctx);
-                        setState(() {});
-                      },
-                    ),
-                    Divider(height: 1, color: AppColors.divider, indent: 14, endIndent: 14),
-                    _LangOption(
-                      code: 'EN',
-                      label: 'English',
-                      selected: AppThemeStore.instance.lang == 'en',
-                      onTap: () {
-                        AppThemeStore.instance.setLanguage('en');
-                        Navigator.pop(ctx);
-                        setState(() {});
-                      },
-                    ),
+                    for (final (i, e) in AppStrings.languages.entries.indexed) ...[
+                      if (i > 0) Divider(height: 1, color: AppColors.divider, indent: 14, endIndent: 14),
+                      _LangOption(
+                        code: const {'vi': 'VI', 'en': 'EN', 'ko': 'KO', 'zh_Hant': '繁'}[e.key]!,
+                        label: e.value,
+                        selected: AppThemeStore.instance.lang == e.key,
+                        onTap: () {
+                          AppThemeStore.instance.setLanguage(e.key);
+                          Navigator.pop(ctx);
+                          setState(() {});
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -120,298 +113,184 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final langStr = AppThemeStore.instance.lang == 'vi' ? 'Tiếng Việt'.tr : 'English';
+    final langStr = AppStrings.languages[AppThemeStore.instance.lang] ?? 'Tiếng Việt';
     final themeStr = AppThemeStore.instance.isDark ? 'Tối'.tr : 'Sáng'.tr;
+
+    final user = AuthStore.instance.currentUser;
+    Widget sw(bool v, ValueChanged<bool> onChanged) => CupertinoSwitch(
+          value: v,
+          activeTrackColor: AppColors.accent,
+          onChanged: onChanged,
+        );
+    void open(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
+      body: AppBackground(
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+            children: [
+              AppPageHeader(title: 'Cài đặt'.tr, padding: const EdgeInsets.fromLTRB(4, 14, 4, 18)),
+              _ProfileCard(
+                name: user?.name ?? 'Người dùng'.tr,
+                detail: user?.email ?? '',
+                onTap: () => open(const AccountInfoScreen()),
+              ),
+              const SizedBox(height: 14),
+              AppCard(children: [
+                AppListTile(
+                  icon: Icons.workspace_premium_rounded,
+                  iconColor: AppIconColors.orange,
+                  title: 'Gói dịch vụ'.tr,
+                  onTap: () => open(const ServicePackageScreen()),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                child: Text(
-                  'Cài đặt'.tr,
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w800),
+                AppListTile(
+                  icon: Icons.cloud_rounded,
+                  iconColor: AppIconColors.blue,
+                  title: 'Dung lượng Cloud'.tr,
+                  onTap: () => open(const CloudStorageScreen()),
                 ),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                children: [
-                  _Card(children: [
-                    _SettingsRow(
-                      icon: Icons.person_outline,
-                      iconColor: AppColors.accentSecondary,
-                      iconBg: AppColors.headerBackground,
-                      label: 'Thông tin người dùng'.tr,
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const AccountInfoScreen())),
-                    ),
-                    _SettingsRow(
-                      icon: Icons.workspace_premium_outlined,
-                      iconColor: AppColors.accentSecondary,
-                      iconBg: AppColors.headerBackground,
-                      label: 'Gói dịch vụ'.tr,
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const ServicePackageScreen())),
-                    ),
-                    _SettingsRow(
-                      icon: Icons.cloud_outlined,
-                      iconColor: AppColors.accentSecondary,
-                      iconBg: AppColors.headerBackground,
-                      label: 'Dung lượng Cloud'.tr,
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const CloudStorageScreen())),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
-
-                  _GroupLabel('Thiết bị'.tr),
-                  const SizedBox(height: 8),
-                  _Card(children: [
-                    _SettingsRow(
-                      icon: Icons.qr_code_scanner_outlined,
-                      iconColor: AppColors.accent,
-                      iconBg: AppColors.accent.withOpacity(0.1),
-                      label: 'Thêm thiết bị mới'.tr,
-                      subtitle: 'Quét mã QR để cài đặt Gateway Eyerus'.tr,
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const QrScannerScreen())),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
-
-                  _GroupLabel('Trải nghiệm'.tr),
-                  const SizedBox(height: 8),
-                  _Card(children: [
-                    _SettingsRow(
-                      icon: Icons.dark_mode_outlined,
-                      iconColor: AppColors.info,
-                      iconBg: AppColors.info.withOpacity(0.1),
-                      label: 'Ngoại hình'.tr,
-                      trailingText: themeStr,
-                      onTap: () => AppThemeStore.instance.toggleTheme(),
-                    ),
-                    _SettingsRow(
-                      icon: Icons.photo_library_outlined,
-                      iconColor: AppColors.info,
-                      iconBg: AppColors.info.withOpacity(0.1),
-                      label: 'Thư viện ảnh'.tr,
-                      onTap: () => Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => const GalleryScreen())),
-                    ),
-                    _SettingsRow(
-                      icon: Icons.language_outlined,
-                      iconColor: AppColors.info,
-                      iconBg: AppColors.info.withOpacity(0.1),
-                      label: 'Ngôn ngữ'.tr,
-                      trailingText: langStr,
-                      onTap: _showLanguageDialog,
-                    ),
-                    _SettingsRow(
-                      icon: Icons.play_circle_outline,
-                      iconColor: AppColors.success,
-                      iconBg: AppColors.success.withOpacity(0.1),
-                      label: 'Phát lại tự động'.tr,
-                      subtitle: 'Tự động phát chế độ xem trực tiếp trên trang chủ.'.tr,
-                      trailingWidget: CupertinoSwitch(
-                        value: _autoPlay,
-                        activeColor: AppColors.success,
-                        onChanged: (val) => setState(() => _autoPlay = val),
-                      ),
-                    ),
-                    _SettingsRow(
-                      icon: Icons.signal_cellular_alt_outlined,
-                      iconColor: AppColors.success,
-                      iconBg: AppColors.success.withOpacity(0.1),
-                      label: 'Phát bằng mạng di động'.tr,
-                      subtitle: 'Khi bật lên, luôn cho phép phát lại trên mạng di động'.tr,
-                      trailingWidget: CupertinoSwitch(
-                        value: _cellularPlay,
-                        activeColor: AppColors.success,
-                        onChanged: (val) => setState(() => _cellularPlay = val),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
-
-                  _GroupLabel('Hệ thống'.tr),
-                  const SizedBox(height: 8),
-                  _Card(children: [
-                    _SettingsRow(
-                      icon: Icons.update_outlined,
-                      iconColor: AppColors.warning,
-                      iconBg: AppColors.warning.withOpacity(0.12),
-                      label: 'Tự Động Cập Nhật'.tr,
-                      trailingText: 'Chưa kích hoạt'.tr,
-                      onTap: () {},
-                    ),
-                    _SettingsRow(
-                      icon: Icons.memory_outlined,
-                      iconColor: AppColors.warning,
-                      iconBg: AppColors.warning.withOpacity(0.12),
-                      label: 'Phương pháp giải mã'.tr,
-                      trailingText: 'Giải mã phần cứng'.tr,
-                      onTap: () {},
-                    ),
-                    ListenableBuilder(
-                      listenable: AppReleaseStore.instance,
-                      builder: (context, _) => _SettingsRow(
-                        icon: Icons.article_outlined,
-                        iconColor: AppColors.success,
-                        iconBg: AppColors.success.withOpacity(0.1),
-                        label: 'Nhật ký'.tr,
-                        trailingText: AppReleaseStore.instance.latest?.version,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const VersionHistoryScreen()),
-                        ),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 20),
-
-                  _Card(children: [
-                    _SettingsRow(
-                      icon: Icons.logout_rounded,
-                      iconColor: AppColors.danger,
-                      iconBg: AppColors.headerBackground,
-                      label: 'Đăng xuất'.tr,
-                      danger: true,
-                      onTap: () => _logout(context),
-                    ),
-                  ]),
-                ],
-              ),
-            ),
-          ],
+                AppListTile(
+                  icon: Icons.photo_library_rounded,
+                  iconColor: AppIconColors.pink,
+                  title: 'Thư viện ảnh'.tr,
+                  onTap: () => open(const GalleryScreen()),
+                ),
+              ]),
+              AppSectionTitle('Trải nghiệm'.tr),
+              AppCard(children: [
+                AppListTile(
+                  icon: Icons.dark_mode_rounded,
+                  iconColor: AppIconColors.purple,
+                  title: 'Ngoại hình'.tr,
+                  trailingText: themeStr,
+                  onTap: () => AppThemeStore.instance.toggleTheme(),
+                ),
+                AppListTile(
+                  icon: Icons.translate_rounded,
+                  iconColor: AppIconColors.teal,
+                  title: 'Ngôn ngữ'.tr,
+                  trailingText: langStr,
+                  onTap: _showLanguageDialog,
+                ),
+                AppListTile(
+                  icon: Icons.play_circle_fill_rounded,
+                  iconColor: AppIconColors.green,
+                  title: 'Phát lại tự động'.tr,
+                  subtitle: 'Tự động phát chế độ xem trực tiếp trên trang chủ.'.tr,
+                  trailing: sw(_autoPlay, (v) => setState(() => _autoPlay = v)),
+                ),
+                AppListTile(
+                  icon: Icons.signal_cellular_alt_rounded,
+                  iconColor: AppIconColors.cyan,
+                  title: 'Phát bằng mạng di động'.tr,
+                  subtitle: 'Khi bật lên, luôn cho phép phát lại trên mạng di động'.tr,
+                  trailing: sw(_cellularPlay, (v) => setState(() => _cellularPlay = v)),
+                ),
+              ]),
+              AppSectionTitle('Hệ thống'.tr),
+              AppCard(children: [
+                AppListTile(
+                  icon: Icons.system_update_rounded,
+                  iconColor: AppIconColors.amber,
+                  title: 'Tự Động Cập Nhật'.tr,
+                  trailingText: 'Chưa kích hoạt'.tr,
+                  onTap: () {},
+                ),
+                AppListTile(
+                  icon: Icons.memory_rounded,
+                  iconColor: AppIconColors.indigo,
+                  title: 'Phương pháp giải mã'.tr,
+                  trailingText: 'Giải mã phần cứng'.tr,
+                  onTap: () {},
+                ),
+                ListenableBuilder(
+                  listenable: AppReleaseStore.instance,
+                  builder: (context, _) => AppListTile(
+                    icon: Icons.article_rounded,
+                    iconColor: AppColors.accent,
+                    title: 'Nhật ký'.tr,
+                    trailingText: AppReleaseStore.instance.installedVersion ?? AppReleaseStore.instance.latest?.version,
+                    onTap: () => open(const VersionHistoryScreen()),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              AppCard(children: [
+                AppListTile(
+                  icon: ApiConfig.isLocal ? Icons.lan_outlined : Icons.cloud_outlined,
+                  iconColor: ApiConfig.isLocal ? AppColors.accent : AppColors.success,
+                  title: 'Máy chủ kết nối'.tr,
+                  trailingText: ApiConfig.isLocal ? ApiConfig.localOrigin : 'dev1.aqvision.net',
+                  onTap: () {},
+                ),
+                AppListTile(
+                  icon: Icons.logout_rounded,
+                  iconColor: AppColors.danger,
+                  title: 'Đăng xuất'.tr,
+                  danger: true,
+                  onTap: () => _logout(context),
+                ),
+              ]),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _GroupLabel extends StatelessWidget {
-  final String text;
-  const _GroupLabel(this.text);
+/// Avatar + name + account detail, like the "me" header of smart-home apps.
+class _ProfileCard extends StatelessWidget {
+  final String name;
+  final String detail;
+  final VoidCallback onTap;
+
+  const _ProfileCard({required this.name, required this.detail, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-    );
-  }
-}
-
-class _Card extends StatelessWidget {
-  final List<Widget> children;
-  const _Card({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i != children.length - 1) Divider(height: 1, color: AppColors.divider, indent: 60, endIndent: 14),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final String? subtitle;
-  final String? trailingText;
-  final Widget? trailingWidget;
-  final VoidCallback? onTap;
-  final bool danger;
-
-  const _SettingsRow({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    this.subtitle,
-    this.trailingText,
-    this.trailingWidget,
-    this.onTap,
-    this.danger = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+    final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
     return Material(
-      color: Colors.transparent,
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppColors.cardRadius),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(18, 18, 12, 18),
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(gradient: AppColors.accentGradient, shape: BoxShape.circle),
                 alignment: Alignment.center,
-                child: Icon(icon, size: 18, color: iconColor),
+                child: Text(initial,
+                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: danger ? AppColors.danger : AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(subtitle!, style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                      ),
+                    Text(name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700)),
+                    if (detail.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+                    ],
                   ],
                 ),
               ),
-              if (trailingWidget != null)
-                trailingWidget!
-              else ...[
-                if (trailingText != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Text(trailingText!,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5, fontWeight: FontWeight.w500)),
-                  ),
-                if (!danger && onTap != null)
-                  Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
-              ],
+              Icon(Icons.chevron_right_rounded, size: 26, color: AppColors.textMuted.withValues(alpha: 0.7)),
             ],
           ),
         ),

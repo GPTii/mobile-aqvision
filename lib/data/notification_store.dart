@@ -4,15 +4,19 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
+import '../utils/app_strings.dart';
+import '../utils/server_text.dart';
 
 enum NotificationSeverity { danger, warning, info, subscription }
 
 class AppNotification {
   final String id;
+
+  /// Raw server text (Vietnamese) — use [displayTitle] / [displayMessage] in UI.
   final String title;
   final String message;
-  final String source;
-  final String time;
+  final String rawSource;
+  final DateTime createdAt;
   final NotificationSeverity severity;
   bool read;
 
@@ -20,11 +24,30 @@ class AppNotification {
     required this.id,
     required this.title,
     this.message = '',
-    required this.source,
-    required this.time,
+    required this.rawSource,
+    required this.createdAt,
     required this.severity,
     this.read = false,
   });
+
+  // Localized at render time so switching language updates existing items.
+  String get displayTitle => localizeServerText(title);
+  String get displayMessage => localizeServerText(message);
+
+  String get source {
+    if (rawSource == 'camera' || rawSource.contains('Camera')) return 'Camera';
+    if (rawSource.contains('CPU') || rawSource.contains('Memory') || rawSource.contains('Disk')) return 'Hệ thống'.tr;
+    return rawSource.isNotEmpty ? rawSource : 'Hệ thống'.tr;
+  }
+
+  String get time {
+    final diff = DateTime.now().difference(createdAt);
+    if (diff.inMinutes < 1) return 'Vừa xong'.tr;
+    if (diff.inMinutes < 60) return '{n} phút trước'.trArgs({'n': diff.inMinutes});
+    if (diff.inHours < 24) return '{n} giờ trước'.trArgs({'n': diff.inHours});
+    if (diff.inDays < 7) return '{n} ngày trước'.trArgs({'n': diff.inDays});
+    return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+  }
 }
 
 /// Notifications feed backed by the real `/api/system/alerts` API.
@@ -40,7 +63,6 @@ class NotificationStore extends ChangeNotifier {
   bool offlineAlertsEnabled = true;
   bool systemAlertsEnabled = true;
 
-
   NotificationStore._() {
     _loadPrefs();
   }
@@ -52,7 +74,6 @@ class NotificationStore extends ChangeNotifier {
     systemAlertsEnabled = prefs.getBool('systemAlertsEnabled') ?? true;
     notifyListeners();
   }
-
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
   bool get isLoading => _loading;
@@ -109,16 +130,22 @@ class NotificationStore extends ChangeNotifier {
 
           // Filter by user preferences
           final title = item['title'] ?? '';
-          if (!offlineAlertsEnabled && (title.contains('Camera') || title.contains('ngắt kết nối') || title.contains('kết nối lại'))) continue;
-          if (!systemAlertsEnabled && (title.contains('CPU') || title.contains('Memory') || title.contains('Disk') || title.contains('Cập nhật'))) continue;
-          if (!motionAlertsEnabled && (title.contains('chuyển động') || title.toLowerCase().contains('motion'))) continue;
+          if (!offlineAlertsEnabled &&
+              (title.contains('Camera') || title.contains('ngắt kết nối') || title.contains('kết nối lại'))) continue;
+          if (!systemAlertsEnabled &&
+              (title.contains('CPU') ||
+                  title.contains('Memory') ||
+                  title.contains('Disk') ||
+                  title.contains('Cập nhật'))) continue;
+          if (!motionAlertsEnabled && (title.contains('chuyển động') || title.toLowerCase().contains('motion')))
+            continue;
 
           _notifications.add(AppNotification(
             id: item['id']?.toString() ?? 'alert_$i',
             title: title,
             message: item['message'] ?? '',
-            source: _extractSource(item['source'] as String? ?? title),
-            time: _formatTime(alertTime),
+            rawSource: item['source'] as String? ?? title,
+            createdAt: alertTime,
             severity: severity,
             read: item['read'] == true || item['isRead'] == true,
           ));
@@ -234,23 +261,5 @@ class NotificationStore extends ChangeNotifier {
     } catch (e) {
       debugPrint('Failed to sync prefs with server: $e');
     }
-  }
-
-  // --- Helpers ---
-
-  String _extractSource(String titleOrSource) {
-    if (titleOrSource == 'camera') return 'Camera';
-    if (titleOrSource.contains('Camera')) return 'Camera';
-    if (titleOrSource.contains('CPU') || titleOrSource.contains('Memory') || titleOrSource.contains('Disk')) return 'Hệ thống';
-    return titleOrSource.isNotEmpty ? titleOrSource : 'Hệ thống';
-  }
-
-  String _formatTime(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'Vừa xong';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-    if (diff.inHours < 24) return '${diff.inHours} giờ trước';
-    if (diff.inDays < 7) return '${diff.inDays} ngày trước';
-    return '${time.day}/${time.month}/${time.year}';
   }
 }

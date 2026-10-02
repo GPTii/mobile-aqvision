@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/app_release_store.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/app_strings.dart';
+import '../../widgets/app_ui.dart';
 
 class _KindStyle {
   final String label;
@@ -14,14 +15,11 @@ class _KindStyle {
 }
 
 final Map<ReleaseNoteKind, _KindStyle> _kindStyles = {
-  ReleaseNoteKind.newFeature: _KindStyle(
-      'Tính năng mới', Icons.auto_awesome_rounded, AppColors.info, Color(0xFFEAF1FF)),
-  ReleaseNoteKind.improvement: _KindStyle(
-      'Cải tiến', Icons.trending_up_rounded, AppColors.success, Color(0xFFE6F7F0)),
-  ReleaseNoteKind.fix: _KindStyle(
-      'Sửa lỗi', Icons.check_circle_outline_rounded, AppColors.warning, Color(0xFFFDF1DE)),
-  ReleaseNoteKind.note: _KindStyle(
-      'Lưu ý đặc biệt', Icons.error_outline_rounded, AppColors.danger, Color(0xFFFDEAEC)),
+  ReleaseNoteKind.newFeature:
+      _KindStyle('Tính năng mới', Icons.auto_awesome_rounded, AppColors.info, Color(0xFFEAF1FF)),
+  ReleaseNoteKind.improvement: _KindStyle('Cải tiến', Icons.trending_up_rounded, AppColors.success, Color(0xFFE6F7F0)),
+  ReleaseNoteKind.fix: _KindStyle('Sửa lỗi', Icons.check_circle_outline_rounded, AppColors.warning, Color(0xFFFDF1DE)),
+  ReleaseNoteKind.note: _KindStyle('Lưu ý đặc biệt', Icons.error_outline_rounded, AppColors.danger, Color(0xFFFDEAEC)),
 };
 
 class VersionHistoryScreen extends StatefulWidget {
@@ -51,8 +49,7 @@ class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(store.error!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+                    textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: store.fetchReleases,
@@ -64,8 +61,7 @@ class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
         );
       }
       return Center(
-        child: Text('Chưa có bản cập nhật nào'.tr,
-            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
+        child: Text('Chưa có bản cập nhật nào'.tr, style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
       );
     }
 
@@ -87,27 +83,21 @@ class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
       listenable: AppReleaseStore.instance,
       builder: (context, _) {
         final store = AppReleaseStore.instance;
-        return Scaffold(
-          backgroundColor: AppColors.background,
+        return AppBackground(
+            child: Scaffold(
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: Column(
               children: [
                 DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.headerBackground,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(28),
-                      bottomRight: Radius.circular(28),
-                    ),
-                  ),
+                  decoration: const BoxDecoration(),
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                     child: Row(
                       children: [
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(Icons.arrow_back_ios_new_rounded,
-                              color: AppColors.textPrimary, size: 20),
+                          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                         ),
                         Expanded(
                           child: Column(
@@ -115,18 +105,14 @@ class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
                             children: [
                               Text(
                                 'Lịch sử phiên bản'.tr,
-                                style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800),
+                                style:
+                                    TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 '${store.releases.length} ${'bản cập nhật gần đây'.tr}',
                                 style: TextStyle(
-                                    fontSize: 12.5,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500),
+                                    fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -139,7 +125,7 @@ class _VersionHistoryScreenState extends State<VersionHistoryScreen> {
               ],
             ),
           ),
-        );
+        ));
       },
     );
   }
@@ -159,16 +145,15 @@ class _VersionListTile extends StatelessWidget {
 
     return Material(
       color: AppColors.card,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppColors.cardRadius),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppColors.cardRadius),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => VersionDetailScreen(version: version)),
         ),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider),
+            borderRadius: BorderRadius.circular(AppColors.cardRadius),
           ),
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -206,29 +191,23 @@ class _VersionListTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text('${'Phiên bản'.tr} ${version.version}',
                             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                        if (version.isLatest) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFDEAEC),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: Text('MỚI NHẤT'.tr,
-                                style: TextStyle(
-                                    fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
-                          ),
-                        ],
+                        if (version.isLatest) const _Badge('MỚI NHẤT', Color(0xFFFDEAEC)),
+                        if (version.isInstalled) const _Badge('ĐANG DÙNG', Color(0xFFE6F7F0), installed: true),
                       ],
                     ),
                     const SizedBox(height: 2),
+                    Text(version.name,
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                     Text(version.dateLabel, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                     const SizedBox(height: 6),
-                    Text(version.teaser.tr,
+                    Text(version.teaser.text,
                         style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.45)),
                     const SizedBox(height: 8),
                     Wrap(
@@ -270,53 +249,43 @@ class VersionDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return AppBackground(
+        child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Column(
           children: [
             DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.headerBackground,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
-              ),
+              decoration: const BoxDecoration(),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 20, 20),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.textPrimary, size: 20),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
                     ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text('${'Phiên bản'.tr} ${version.version}',
                                   style: TextStyle(
                                       color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
-                              if (version.isLatest) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(99),
-                                  ),
-                                  child: Text('MỚI NHẤT'.tr,
-                                      style: TextStyle(
-                                          fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accentSecondary, letterSpacing: 0.2)),
-                                ),
-                              ],
+                              if (version.isLatest) _Badge('MỚI NHẤT', Colors.white.withOpacity(0.6)),
+                              if (version.isInstalled)
+                                _Badge('ĐANG DÙNG', Colors.white.withOpacity(0.6), installed: true),
                             ],
                           ),
                           const SizedBox(height: 2),
+                          Text(version.name,
+                              style:
+                                  TextStyle(fontSize: 12.5, color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
                           Text('${version.buildLabel} · ${version.dateLabel}',
                               style: TextStyle(
                                   fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
@@ -339,6 +308,28 @@ class VersionDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+    ));
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color background;
+  final bool installed;
+
+  const _Badge(this.label, this.background, {this.installed = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(99)),
+      child: Text(label.tr,
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: installed ? AppColors.success : AppColors.accentSecondary,
+              letterSpacing: 0.2)),
     );
   }
 }
@@ -364,7 +355,7 @@ class _SectionBlock extends StatelessWidget {
             Icon(style.icon, size: 16, color: style.color),
             const SizedBox(width: 9),
             Expanded(
-              child: Text(section.items.map((i) => i.tr).join(' '),
+              child: Text(section.items.map((i) => i.text).join(' '),
                   style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.textPrimary)),
             ),
           ],
@@ -388,8 +379,7 @@ class _SectionBlock extends StatelessWidget {
               ),
               const SizedBox(width: 7),
               Text(style.label.tr.toUpperCase(),
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: style.color, letterSpacing: 0.6)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: style.color, letterSpacing: 0.6)),
             ],
           ),
           const SizedBox(height: 8),
@@ -405,7 +395,7 @@ class _SectionBlock extends StatelessWidget {
                   Icon(style.icon, size: 15, color: style.color),
                   const SizedBox(width: 9),
                   Expanded(
-                    child: Text(section.items[i].tr,
+                    child: Text(section.items[i].text,
                         style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textPrimary)),
                   ),
                 ],
