@@ -168,116 +168,140 @@ Các mục dưới đây đã có giao diện nhưng chưa có logic phía sau:
 
 ## Yêu cầu
 
-- **Flutter 3.29.3**, đã ghim trong [`.fvmrc`](.fvmrc). Nên dùng [FVM](https://fvm.app): `fvm install && fvm flutter ...`
-- Dart SDK `>=3.5.0 <4.0.0`
-- Android: JDK 17, Android SDK `compileSdk 36`, NDK `27.0.12077973`
-- iOS: Xcode + CocoaPods (cần thêm `GoogleService-Info.plist` cho Firebase)
+Chỉ hỗ trợ cài tự động trên **Windows 10/11**. Script `setup.bat` cài toàn bộ những thứ dưới đây, không cần cài tay:
 
-## Bắt đầu nhanh
+| Thành phần | Phiên bản | Ghi chú |
+|---|---|---|
+| **Git** | bản mới nhất | cài qua `winget` |
+| **Flutter** | **3.29.3** | đã ghim trong [`.fvmrc`](.fvmrc) |
+| Dart SDK | `>=3.5.0 <4.0.0` | có sẵn trong Flutter |
+| **JDK** | 17 (Eclipse Temurin) | dùng được JDK 17–21 nếu máy đã có |
+| **Android SDK** | `compileSdk 36`, build-tools 35 | kèm platform-tools (`adb`) và Google USB driver |
+| **NDK** | `27.0.12077973` | |
+| Gradle | 8.14 | wrapper tự tải khi build |
+| Windows Developer Mode | bật | Flutter cần quyền tạo symlink cho plugin |
+| Firebase | `android/app/google-services.json` | đã có sẵn trong repo |
 
-```bash
-fvm install            # cài đúng bản Flutter theo .fvmrc
-fvm flutter pub get
-fvm flutter run        # chạy trên máy ảo / thiết bị đang kết nối
+Ngoài ra cần khoảng **6 GB** ổ cứng trống, mạng ổn định và một **điện thoại Android** cùng **cáp USB truyền dữ liệu**.
+
+## Cài đặt sau khi clone
+
+### Bước 1. Clone project
+
+```powershell
+git clone <url-repo>
+cd mobile
 ```
 
-Chạy bản web để debug giao diện:
+### Bước 2. Chạy script cài đặt
 
-```bash
-fvm flutter run -d chrome
+Double-click **`setup.bat`**, hoặc chạy trong terminal:
+
+```powershell
+.\setup.bat
 ```
 
-Trên web, nếu đang ở `localhost` thì app gọi API qua `http://localhost:3002` (BFF Next.js của `html5stream/web`).
+Script lần lượt làm các việc sau (bước nào máy đã có thì bỏ qua):
 
-## Cấu hình máy chủ
+1. Cài **Git** nếu chưa có.
+2. Bật **Developer Mode**. Windows sẽ hiện hộp thoại quyền Admin, hãy chọn **Yes**.
+3. Cài **JDK 17** vào `C:\dev\jdk-17` và đặt `JAVA_HOME`.
+4. Cài **Flutter 3.29.3** vào `C:\dev\flutter-3.29.3` và thêm vào `PATH`.
+5. Cài **Android SDK** vào `C:\dev\android-sdk`, tự chấp nhận license và đặt `ANDROID_HOME`. Nếu máy đã có SDK, ví dụ do Android Studio cài, thì script dùng luôn SDK đó.
+6. Chạy `flutter pub get` để tải thư viện của project.
+7. Build thử một bản debug để tải sẵn Gradle và thư viện Android.
+8. Chạy `flutter doctor` để kiểm tra lại.
 
-Mọi host, port và tiền tố đường dẫn nằm trong [`lib/config/api_defaults.dart`](lib/config/api_defaults.dart). Đừng hardcode URL ở store hay screen mà hãy sửa ở file này.
+Lần đầu mất khoảng **15–30 phút**. Nếu đang chạy mà lỗi mạng, cứ chạy lại `setup.bat`: script chạy lại nhiều lần vẫn an toàn.
 
-| Hằng số | Giá trị | Dùng cho |
-| ------- | ------- | -------- |
-| `productionHost` | `dev1.aqvision.net` | Cloud server chính |
-| `backupHost` | `media.aqptech.cloud` | Domain dự phòng, tự chuyển sang khi domain chính không phản hồi |
-| `localApiPort` | `3002` | Debug trên web |
-| `apiPath` / `apiV1Path` | `/api`, `/api/v1` | REST (groups, rapidmedia, alerts…) / auth, stats, devices |
-| `mediaPathSegment` | `media` | HLS và bản ghi: `<origin>/api/media` |
-| `mediaIngestHost` | `14.161.6.65` | Host nhận luồng khi gateway đẩy stream |
-
-[`lib/config/api_config.dart`](lib/config/api_config.dart) tạo các base URL từ những giá trị trên. Người dùng cũng có thể chọn **Local Server** (http/https + IP + port trong LAN) ngay tại màn đăng nhập. Lựa chọn này được lưu trong `SharedPreferences`, sau đó toàn bộ API, media và địa chỉ ingest đều chuyển sang máy chủ local.
-
-## Cấu trúc thư mục
+Khi chạy xong, màn hình sẽ hiện:
 
 ```
-lib/
-├── main.dart          # Khởi tạo Firebase, ApiConfig, AuthStore, theme → RapidMediaApp
-├── config/            # ApiDefaults (hằng số) + ApiConfig (tạo URL, chọn cloud/local/backup)
-├── core/              # Giao tiếp gateway: BLE Improv, LAN finder, session, telemetry, đồng bộ camera cloud
-├── data/              # Store dạng ChangeNotifier (auth, camera, recording, gateway, notification…) + models
-├── screens/
-│   ├── auth/          # Đăng nhập
-│   ├── home/          # HomeShell, các tab, chi tiết camera, bản ghi, nhóm, gói dịch vụ
-│   ├── devices/       # Quản lý / điều khiển gateway, đẩy luồng, trang bảo trì
-│   └── setup/         # Quét QR / BLE / camera, cài đặt gateway và hotspot
-├── widgets/           # UI dùng chung, webrtc_player, camera_navigation, sheet và dialog
-├── theme/             # AppColors
-└── utils/             # Chuỗi đa ngôn ngữ (.tr), xử lý lỗi mạng, ảnh chụp
-assets/
-├── release_notes.json # Nhật ký phiên bản hiển thị trong app (vi/en)
-├── images/            # Ảnh được đóng gói vào app
-└── icon/              # Chỉ dùng để sinh launcher icon / splash, không đóng gói vào app
-docs/                  # Ghi chú kiến trúc, hiệu năng, API recording
-test/                  # Unit / widget test
-tool/                  # Script chụp ảnh UI để review thiết kế
+======================================================================
+ CAI DAT XONG!
+ Mo mot cua so terminal MOI (de nhan PATH moi), cd vao project, roi:
+     flutter devices     # kiem tra dien thoai da ket noi
+     flutter run         # chay app len dien thoai
+======================================================================
 ```
 
-State được quản lý bằng `ChangeNotifier` + `ListenableBuilder`, không dùng thư viện state management bên ngoài. Các store thường là singleton (`XxxStore.instance`). Xem thêm phần đánh giá hiệu năng trong [`docs/MOBILE_PERF_STATE_EVAL.md`](docs/MOBILE_PERF_STATE_EVAL.md).
+> ⚠️ Cài xong phải **đóng terminal (cả VS Code) và mở lại cửa sổ mới**, nếu không lệnh `flutter` sẽ không nhận.
 
-## Kiểm thử
+`flutter doctor` báo thiếu **Android Studio** hoặc **Visual Studio** thì **bỏ qua được**, vì không cần hai thứ đó để chạy và build Android.
 
-```bash
-fvm flutter analyze
-fvm flutter test
+Tuỳ chọn của script:
+
+```powershell
+.\setup.bat -InstallDir D:\dev   # cài vào thư mục khác (đường dẫn không được có dấu cách)
+.\setup.bat -SkipWarmup          # bỏ bước build thử để xong nhanh hơn
 ```
 
-Chụp ảnh các màn hình ra PNG (390×844 @3x) mà không cần thiết bị:
+### Bước 3. Kết nối điện thoại Android
 
-```bash
-fvm flutter test tool/ui_screenshots_test.dart   # ảnh nằm ở build/ui_shots/
+1. Vào **Cài đặt → Thông tin điện thoại**, chạm **7 lần** vào *Số hiệu bản tạo (Build number)* để mở **Tùy chọn nhà phát triển**.
+2. Vào **Tùy chọn nhà phát triển** và bật **Gỡ lỗi USB (USB debugging)**.
+3. Cắm cáp USB vào máy tính. Khi điện thoại hỏi *"Cho phép gỡ lỗi USB?"*, chọn **Cho phép**.
+
+Kiểm tra máy tính đã nhận điện thoại chưa:
+
+```powershell
+flutter devices
 ```
 
-## Build & phát hành
+Kết quả đúng sẽ có tên điện thoại trong danh sách, ví dụ:
 
-### Android APK
-
-```bash
-fvm flutter build apk --release --split-per-abi
-# → build/app/outputs/flutter-apk/AQPConnect-<version>-release-arm64-v8a.apk (và các ABI khác)
+```
+Found 3 connected devices:
+  SM A525F (mobile) • R58R12345AB • android-arm64  • Android 14 (API 34)
+  Windows (desktop) • windows     • windows-x64    • Microsoft Windows
+  Chrome (web)      • chrome      • web-javascript • Google Chrome
 ```
 
-Tên file APK được đặt trong `android/app/build.gradle.kts` (`applicationVariants`).
+### Bước 4. Chạy app lên điện thoại
 
-### Quy trình ra bản mới
-
-1. Tăng `version:` trong `pubspec.yaml`, cả version name lẫn build number (ví dụ `1.1.6+18` → `1.1.7+19`).
-2. Thêm một mục mới **ở đầu** `assets/release_notes.json`, gồm `version`, `buildNumber`, `releasedAt`, `teaser` và `sections`, viết cả `vi` lẫn `en`.
-3. Build APK.
-4. Trên server, `build_and_publish.sh` build rồi copy APK sang `html5stream/web/public/app/app-release-v<version>.apk`. Backend nhận ra bản mới và gửi thông báo cập nhật cho người dùng. Trong app, nhật ký phiên bản được lấy từ API `/app-releases`.
-
-### Icon và splash
-
-```bash
-fvm dart run flutter_launcher_icons
-fvm dart run flutter_native_splash:create
+```powershell
+flutter run                  # chạy bản debug, có hot reload
+flutter run -d <device_id>   # khi có nhiều thiết bị, device_id là cột thứ 2 của `flutter devices`
+flutter run --release        # chạy bản release (nhanh hơn, không hot reload)
 ```
 
-Màu nền thương hiệu là `#8E0104`, ảnh gốc nằm trong `assets/icon/`.
+Khi app đang chạy, gõ vào terminal: `r` để hot reload, `R` để hot restart, `q` để thoát.
 
-## Quyền Android
+Chạy bản web để debug giao diện: `flutter run -d chrome`. Trên web, nếu đang ở `localhost` thì app gọi API qua `http://localhost:3002` (BFF Next.js của `html5stream/web`).
 
-App xin các quyền: Internet, Camera (quét QR, chụp ảnh), Bluetooth / BLE scan & connect (cài gateway), Location và Nearby WiFi devices (quét BLE/WiFi), đổi trạng thái WiFi/mạng (cài qua hotspot) và Post notifications. Xem đầy đủ trong `android/app/src/main/AndroidManifest.xml`.
+## Build APK
 
-## Lưu ý và việc còn tồn đọng
+```powershell
+flutter build apk --release --split-per-abi
+```
 
-- `applicationId` vẫn là `com.example.mobile`, và bản release đang **ký bằng debug key**. Cần tạo keystore riêng trước khi phát hành chính thức.
-- Repo đang commit file **Firebase Admin SDK** (`aq-vision-camera-firebase-adminsdk-*.json`). Đây là khóa phía server, app không cần dùng. Nên gỡ khỏi repo, thu hồi và tạo khóa mới trên Firebase Console.
-- Các file APK (`AQPConnect-*.apk`) và các script `patch_*.py` ở thư mục gốc là sản phẩm tạm. Nên chuyển ra ngoài repo hoặc thêm vào `.gitignore`.
-- Trên dev, `ApiConfig.mediaBase` ép HTTP cho domain `dev1` để ExoPlayer chấp nhận chứng chỉ tự ký.
+File APK nằm ở **`build\app\outputs\apk\release\`**:
+
+| File | Dùng cho |
+|---|---|
+| `AQPConnect-<version>-release-arm64-v8a.apk` | **hầu hết điện thoại hiện nay, gửi file này** |
+| `AQPConnect-<version>-release-armeabi-v7a.apk` | máy 32-bit đời cũ |
+| `AQPConnect-<version>-release-x86_64.apk` | máy ảo, máy x86 |
+
+Flutter cũng chép thêm một bản ra `build\app\outputs\flutter-apk\`, với tên mặc định như `app-arm64-v8a-release.apk`.
+
+Muốn **một APK duy nhất** cài được trên mọi máy (dung lượng lớn hơn):
+
+```powershell
+flutter build apk --release
+# → build\app\outputs\flutter-apk\app-release.apk
+```
+
+- `<version>` lấy từ dòng `version:` trong `pubspec.yaml`, hiện là `1.1.6+18`.
+- Tên file được đặt trong `android/app/build.gradle.kts` (`applicationVariants`).
+- Bản release hiện đang ký bằng **khóa debug**: cài thử được nhưng không đưa lên Google Play được.
+
+## Xử lý lỗi thường gặp
+
+| Hiện tượng | Cách xử lý |
+|---|---|
+| `flutter` không nhận lệnh | Chưa mở terminal mới sau khi cài, hãy đóng hết rồi mở lại |
+| `flutter devices` không thấy điện thoại | Kiểm tra cáp và USB debugging, rút ra cắm lại rồi chọn *Cho phép*. Chạy `adb devices`: nếu thấy `unauthorized` thì mở khóa điện thoại và xác nhận lại |
+| Báo đang dùng Flutter khác 3.29.3 | Máy có sẵn một bản Flutter khác trong PATH hệ thống. Gỡ đường dẫn đó trong *System variables → Path* |
+| Script báo không bật được Developer Mode | Vào *Settings → System → For developers*, bật **Developer Mode** rồi chạy lại `setup.bat` |
+| Build lỗi lạ | `flutter clean`, rồi `flutter pub get`, rồi build lại |
