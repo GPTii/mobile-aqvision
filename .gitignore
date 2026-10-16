@@ -46,3 +46,6 @@ app.*.map.json
 
 # FVM local SDK cache (keep .fvmrc in git)
 .fvm/
+
+# Firebase Admin SDK key (server-side, never commit)
+*-firebase-adminsdk-*.json
